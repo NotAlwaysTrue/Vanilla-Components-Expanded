@@ -1,0 +1,26 @@
+---@meta
+---@class Barotrauma.Networking.VoteType : System.Enum
+---`Field Public Static`
+---@field Unknown Barotrauma.Networking.VoteType
+---`Field Public Static`
+---@field Sub Barotrauma.Networking.VoteType
+---`Field Public Static`
+---@field Mode Barotrauma.Networking.VoteType
+---`Field Public Static`
+---@field EndRound Barotrauma.Networking.VoteType
+---`Field Public Static`
+---@field Kick Barotrauma.Networking.VoteType
+---`Field Public Static`
+---@field StartRound Barotrauma.Networking.VoteType
+---`Field Public Static`
+---@field PurchaseAndSwitchSub Barotrauma.Networking.VoteType
+---`Field Public Static`
+---@field PurchaseSub Barotrauma.Networking.VoteType
+---`Field Public Static`
+---@field SwitchSub Barotrauma.Networking.VoteType
+---`Field Public Static`
+---@field TransferMoney Barotrauma.Networking.VoteType
+---`Field Public Static`
+---@field Traitor Barotrauma.Networking.VoteType
+_G['VoteType'] = {}
+

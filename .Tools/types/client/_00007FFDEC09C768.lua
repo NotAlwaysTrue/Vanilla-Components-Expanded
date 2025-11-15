@@ -1,0 +1,125 @@
+---@meta
+---@class Barotrauma.CharacterParams.TargetParams : Barotrauma.CharacterParams.SubParam
+---`Getter Public Instance Virtual`
+---@field Name System.String
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field Tag Barotrauma.Identifier
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field State Barotrauma.AIState
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field Priority System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field ReactDistance System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field AttackDistance System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field Timer System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field IgnoreContained System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field IgnoreInside System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field IgnoreOutside System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field IgnoreTargetInside System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field IgnoreTargetOutside System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field IgnoreIfNotInSameSub System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field IgnoreIncapacitated System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field Threshold System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field ThresholdMin System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field ThresholdMax System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field PerceptionDistanceMultiplier System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field MaxPerceptionDistance System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field Offset Microsoft.Xna.Framework.Vector2
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field AttackPattern Barotrauma.AttackPattern
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field PrioritizeSubCenter System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field SweepDistance System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field SweepStrength System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field SweepSpeed System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field CircleStartDistance System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field IgnoreTargetSize System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field CircleRotationSpeed System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field DynamicCircleRotationSpeed System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field CircleRandomRotationFactor System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field CircleStrikeDistanceMultiplier System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field CircleMaxRandomOffset System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field Conditionals (System.Collections.Generic.List*1Barotrauma*PropertyConditional)|(Barotrauma.PropertyConditional[])
+_G['CharacterParams']['TargetParams'] = {}
+
+---`Method Public Static`
+---@overload fun(character:Barotrauma.CharacterParams, tag:Barotrauma.Identifier, state:Barotrauma.AIState, priority:System.Single):(Barotrauma.ContentXElement)
+---@param character Barotrauma.CharacterParams
+---@param tag System.String
+---@param state Barotrauma.AIState
+---@param priority System.Single
+---@return Barotrauma.ContentXElement
+_G['CharacterParams']['TargetParams'].CreateNewElement = function(character, tag, state, priority) end
+
+---`Constructor Public Instance`
+---@overload fun(tag:System.String, state:Barotrauma.AIState, priority:System.Single, character:Barotrauma.CharacterParams):Barotrauma.CharacterParams.TargetParams
+---@param element Barotrauma.ContentXElement
+---@param character Barotrauma.CharacterParams
+---@return Barotrauma.CharacterParams.TargetParams
+_G['CharacterParams']['TargetParams'] = function(element, character) end
+
+---`Constructor Public Instance`
+---@overload fun(tag:System.String, state:Barotrauma.AIState, priority:System.Single, character:Barotrauma.CharacterParams):Barotrauma.CharacterParams.TargetParams
+---@param element Barotrauma.ContentXElement
+---@param character Barotrauma.CharacterParams
+---@return Barotrauma.CharacterParams.TargetParams
+_G['CharacterParams']['TargetParams'].__new = function(element, character) end
+

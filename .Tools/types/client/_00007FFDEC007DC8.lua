@@ -1,0 +1,66 @@
+---@meta
+---@class Barotrauma.StatusEffect.CharacterSpawnInfo : System.Object
+---`Getter Public Instance Virtual`
+---@field Name System.String
+---`Getter Public Instance Virtual`
+---<br/>`Setter Public Instance`
+---@field SerializableProperties (System.Collections.Generic.Dictionary*1Barotrauma*Identifier*1Barotrauma*SerializableProperty)|({[Barotrauma.Identifier]:(Barotrauma.SerializableProperty)})
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field SpeciesName Barotrauma.Identifier
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field Count System.Int32
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field TransferBuffs System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field TransferAfflictions System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field TransferInventory System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field TotalMaxCount System.Int32
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field Stun System.Int32
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field AfflictionOnSpawn Barotrauma.Identifier
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field AfflictionStrength System.Int32
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field TransferControl System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field RemovePreviousCharacter System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field Spread System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field Offset Microsoft.Xna.Framework.Vector2
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field InheritEventTags System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field InheritTeam System.Boolean
+_G['StatusEffect']['CharacterSpawnInfo'] = {}
+
+---`Constructor Public Instance`
+---@param element Barotrauma.ContentXElement
+---@param parentDebugName System.String
+---@return Barotrauma.StatusEffect.CharacterSpawnInfo
+_G['StatusEffect']['CharacterSpawnInfo'] = function(element, parentDebugName) end
+
+---`Constructor Public Instance`
+---@param element Barotrauma.ContentXElement
+---@param parentDebugName System.String
+---@return Barotrauma.StatusEffect.CharacterSpawnInfo
+_G['StatusEffect']['CharacterSpawnInfo'].__new = function(element, parentDebugName) end
+

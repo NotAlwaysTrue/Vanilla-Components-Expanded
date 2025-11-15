@@ -1,0 +1,40 @@
+---@meta
+---@class Barotrauma.DummyFireSource : Barotrauma.FireSource
+---`Field Private Instance`
+---@field maxSize Microsoft.Xna.Framework.Vector2
+---`Field Public Instance`
+---@field CausedByPsychosis System.Boolean
+---`Getter NonPublic Instance Virtual`
+---@field SpreadToOtherHullsProbability System.Single
+---`Getter Public Instance Virtual`
+---@field DamageRange System.Single
+_G['DummyFireSource'] = {}
+
+---`Method NonPublic Instance Virtual`
+_G['DummyFireSource'].LimitSize = function() end
+
+---`Method NonPublic Instance Virtual`
+---@param growModifier System.Single
+---@param deltaTime System.Single
+_G['DummyFireSource'].AdjustXPos = function(growModifier, deltaTime) end
+
+---`Method NonPublic Instance Virtual`
+---@param deltaTime System.Single
+_G['DummyFireSource'].ReduceOxygen = function(deltaTime) end
+
+---`Constructor Public Instance`
+---@param maxSize Microsoft.Xna.Framework.Vector2
+---@param worldPosition Microsoft.Xna.Framework.Vector2
+---@param spawningHull? Barotrauma.Hull
+---@param isNetworkMessage? System.Boolean
+---@return Barotrauma.DummyFireSource
+_G['DummyFireSource'] = function(maxSize, worldPosition, spawningHull, isNetworkMessage) end
+
+---`Constructor Public Instance`
+---@param maxSize Microsoft.Xna.Framework.Vector2
+---@param worldPosition Microsoft.Xna.Framework.Vector2
+---@param spawningHull? Barotrauma.Hull
+---@param isNetworkMessage? System.Boolean
+---@return Barotrauma.DummyFireSource
+_G['DummyFireSource'].__new = function(maxSize, worldPosition, spawningHull, isNetworkMessage) end
+

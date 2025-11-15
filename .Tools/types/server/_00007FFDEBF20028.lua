@@ -1,0 +1,73 @@
+---@meta
+---@class Barotrauma.CharacterParams.HealthParams : Barotrauma.CharacterParams.SubParam
+---`Field Private Instance`
+---@field _immunityIdentifiers (System.Collections.Immutable.ImmutableHashSet*1Barotrauma*Identifier)|(Barotrauma.Identifier[])
+---`Getter Public Instance Virtual`
+---@field Name System.String
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field Vitality System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field DoesBleed System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field CrushDepth System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field UseHealthWindow System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field BleedingReduction System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field BurnReduction System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field ConstantHealthRegeneration System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field HealthRegenerationWhenEating System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field StunImmunity System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field PoisonImmunity System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field PoisonVulnerability System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field EmpVulnerability System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field ApplyMovementPenalties System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field DieFromBeheading System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field AllowSeveringLegs System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field ApplyAfflictionColors System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field Immunities System.String
+---`Getter Public Instance`
+---@field ImmunityIdentifiers (System.Collections.Generic.IEnumerable*1Barotrauma*Identifier)|(fun():(Barotrauma.Identifier))
+_G['CharacterParams']['HealthParams'] = {}
+
+---`Constructor Public Instance`
+---@param element Barotrauma.ContentXElement
+---@param character Barotrauma.CharacterParams
+---@return Barotrauma.CharacterParams.HealthParams
+_G['CharacterParams']['HealthParams'] = function(element, character) end
+
+---`Constructor Public Instance`
+---@param element Barotrauma.ContentXElement
+---@param character Barotrauma.CharacterParams
+---@return Barotrauma.CharacterParams.HealthParams
+_G['CharacterParams']['HealthParams'].__new = function(element, character) end
+

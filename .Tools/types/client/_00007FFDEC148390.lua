@@ -1,0 +1,22 @@
+---@meta
+---@class Barotrauma.CircuitBoxSizes : System.Object
+---`Field Public Static`
+---@field ConnectorSize System.Int32
+---`Field Public Static`
+---@field AnchorOffset System.Int32
+---`Field Public Static`
+---@field NodeHeaderHeight System.Int32
+---`Field Public Static`
+---@field NodeInitialPadding System.Int32
+---`Field Public Static`
+---@field WireWidth System.Int32
+---`Field Public Static`
+---@field WireKnobLength System.Int32
+---`Field Public Static`
+---@field NodeHeaderTextPadding System.Int32
+---`Field Public Static`
+---@field NodeBodyTextPadding System.Int32
+---`Field Public Static`
+---@field PlayableAreaSize System.Single
+_G['CircuitBoxSizes'] = {}
+

@@ -1,0 +1,110 @@
+---@meta
+---@class Barotrauma.Particles.ParticleEmitterProperties : System.Object
+---`Field Private Instance`
+---@field angleMin System.Single
+---`Field Private Instance`
+---@field angleMax System.Single
+---`Field Private Static`
+---@field MinValue System.Single
+---`Field Private Static`
+---@field MaxValue System.Single
+---`Getter Public Instance Virtual`
+---@field Name System.String
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field AngleMinRad System.Single
+---`Getter Public Instance`
+---<br/>`Setter Private Instance`
+---@field AngleMaxRad System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field AngleMin System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field AngleMax System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field DistanceMin System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field DistanceMax System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field VelocityMin System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field VelocityMax System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field ScaleMin System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field ScaleMax System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field ScaleMultiplier Microsoft.Xna.Framework.Vector2
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field EmitInterval System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field ParticleAmount System.Int32
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field ParticlesPerSecond System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field EmitAcrossRayInterval System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field InitialDelay System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field HighQualityCollisionDetection System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field CopyEntityAngle System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field CopyEntityDir System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field CopyTargetAngle System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field CopyParentParticleScale System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field ColorMultiplier Microsoft.Xna.Framework.Color
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field LifeTimeMultiplier System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field UseTracerPoints System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field DrawOrder Barotrauma.Particles.ParticleDrawOrder
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field Angle System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field Distance System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field Velocity System.Single
+---`Getter Public Instance Virtual`
+---@field SerializableProperties (System.Collections.Generic.Dictionary*1Barotrauma*Identifier*1Barotrauma*SerializableProperty)|({[Barotrauma.Identifier]:(Barotrauma.SerializableProperty)})
+_G['ParticleEmitterProperties'] = {}
+
+---`Constructor Public Instance`
+---@param element System.Xml.Linq.XElement
+---@return Barotrauma.Particles.ParticleEmitterProperties
+_G['ParticleEmitterProperties'] = function(element) end
+
+---`Constructor Public Instance`
+---@param element System.Xml.Linq.XElement
+---@return Barotrauma.Particles.ParticleEmitterProperties
+_G['ParticleEmitterProperties'].__new = function(element) end
+

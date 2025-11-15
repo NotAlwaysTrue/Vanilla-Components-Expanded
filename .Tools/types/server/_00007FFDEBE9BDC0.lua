@@ -1,0 +1,28 @@
+---@meta
+---@class Barotrauma.PropertyConditional.ConditionType : System.Enum
+---`Field Public Static`
+---@field PropertyValueOrAffliction Barotrauma.PropertyConditional.ConditionType
+---`Field Public Static`
+---@field SkillRequirement Barotrauma.PropertyConditional.ConditionType
+---`Field Public Static`
+---@field Name Barotrauma.PropertyConditional.ConditionType
+---`Field Public Static`
+---@field SpeciesName Barotrauma.PropertyConditional.ConditionType
+---`Field Public Static`
+---@field SpeciesGroup Barotrauma.PropertyConditional.ConditionType
+---`Field Public Static`
+---@field HasTag Barotrauma.PropertyConditional.ConditionType
+---`Field Public Static`
+---@field HasStatusTag Barotrauma.PropertyConditional.ConditionType
+---`Field Public Static`
+---@field HasSpecifierTag Barotrauma.PropertyConditional.ConditionType
+---`Field Public Static`
+---@field EntityType Barotrauma.PropertyConditional.ConditionType
+---`Field Public Static`
+---@field LimbType Barotrauma.PropertyConditional.ConditionType
+---`Field Public Static`
+---@field WorldHostility Barotrauma.PropertyConditional.ConditionType
+---`Field Public Static`
+---@field LevelDifficulty Barotrauma.PropertyConditional.ConditionType
+_G['PropertyConditional']['ConditionType'] = {}
+

@@ -1,0 +1,80 @@
+---@meta
+---@class Barotrauma.Items.Components.ButtonTerminal : Barotrauma.Items.Components.ItemComponent
+---`Field Private Instance`
+---@field requiredSignalCount System.Int32
+---`Field Private Instance`
+---@field buttonSignalDefinitions (System.Collections.Generic.IReadOnlyList*1System*String)|(System.String[])
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field Signals (System.String-arr)|(System.String[])
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field ActivatingItems System.String
+---`Getter Private Instance`
+---<br/>`Setter Private Instance`
+---@field Container Barotrauma.Items.Components.ItemContainer
+---`Getter Private Instance`
+---<br/>`Setter Private Instance`
+---@field ActivatingItemPrefabs (System.Collections.Generic.HashSet*1Barotrauma*ItemPrefab)|(Barotrauma.ItemPrefab[])
+---`Getter Private Instance`
+---@field IsActivated System.Boolean
+_G['Components']['ButtonTerminal'] = {}
+
+---`Method Public Instance Virtual`
+---@param msg Barotrauma.Networking.IReadMessage
+---@param c Barotrauma.Networking.Client
+_G['Components']['ButtonTerminal'].ServerEventRead = function(msg, c) end
+
+---`Method Public Instance Virtual`
+---@param msg Barotrauma.Networking.IWriteMessage
+---@param c Barotrauma.Networking.Client
+---@param extraData? Barotrauma.Networking.NetEntityEvent.IData
+_G['Components']['ButtonTerminal'].ServerEventWrite = function(msg, c, extraData) end
+
+---`Method Public Instance Virtual`
+_G['Components']['ButtonTerminal'].OnItemLoaded = function() end
+
+---`Method Public Instance Virtual`
+---@param deltaTime System.Single
+---@param cam Barotrauma.Camera
+_G['Components']['ButtonTerminal'].Update = function(deltaTime, cam) end
+
+---`Method Private Instance`
+_G['Components']['ButtonTerminal'].LoadSignals = function() end
+
+---`Method Private Instance`
+_G['Components']['ButtonTerminal'].LoadActivatingItems = function() end
+
+---`Method Public Instance Virtual`
+_G['Components']['ButtonTerminal'].Reset = function() end
+
+---`Method Private Instance`
+---@param signalIndex System.Int32
+---@param sender Barotrauma.Character
+---@param ignoreState? System.Boolean
+---@param overrideSignal? System.String
+---@return System.Boolean
+_G['Components']['ButtonTerminal'].SendSignal = function(signalIndex, sender, ignoreState, overrideSignal) end
+
+---`Method Public Instance Virtual`
+---@param data Barotrauma.Networking.NetEntityEvent.IData
+---@return System.Boolean
+_G['Components']['ButtonTerminal'].ValidateEventData = function(data) end
+
+---`Method Private Instance`
+---@param msg Barotrauma.Networking.IWriteMessage
+---@param extraData Barotrauma.Networking.NetEntityEvent.IData
+_G['Components']['ButtonTerminal'].Write = function(msg, extraData) end
+
+---`Constructor Public Instance`
+---@param item Barotrauma.Item
+---@param element Barotrauma.ContentXElement
+---@return Barotrauma.Items.Components.ButtonTerminal
+_G['Components']['ButtonTerminal'] = function(item, element) end
+
+---`Constructor Public Instance`
+---@param item Barotrauma.Item
+---@param element Barotrauma.ContentXElement
+---@return Barotrauma.Items.Components.ButtonTerminal
+_G['Components']['ButtonTerminal'].__new = function(item, element) end
+

@@ -1,0 +1,22 @@
+---@meta
+---@class FarseerPhysics.Collision.ReferenceFace : System.ValueType
+---`Field Public Instance`
+---@field i1 System.Int32
+---`Field Public Instance`
+---@field i2 System.Int32
+---`Field Public Instance`
+---@field v1 Microsoft.Xna.Framework.Vector2
+---`Field Public Instance`
+---@field v2 Microsoft.Xna.Framework.Vector2
+---`Field Public Instance`
+---@field normal Microsoft.Xna.Framework.Vector2
+---`Field Public Instance`
+---@field sideNormal1 Microsoft.Xna.Framework.Vector2
+---`Field Public Instance`
+---@field sideOffset1 System.Single
+---`Field Public Instance`
+---@field sideNormal2 Microsoft.Xna.Framework.Vector2
+---`Field Public Instance`
+---@field sideOffset2 System.Single
+_G['FarseerPhysics']['Collision']['ReferenceFace'] = {}
+

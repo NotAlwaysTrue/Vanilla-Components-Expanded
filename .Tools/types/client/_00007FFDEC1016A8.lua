@@ -1,0 +1,225 @@
+---@meta
+---@class Barotrauma.Items.Components.RepairTool : Barotrauma.Items.Components.ItemComponent
+---`Field Private Instance`
+---@field particleEmitters (System.Collections.Generic.List*1Barotrauma*Particles*ParticleEmitter)|(Barotrauma.Particles.ParticleEmitter[])
+---`Field Private Instance`
+---@field particleEmitterHitStructure (System.Collections.Generic.List*1Barotrauma*Particles*ParticleEmitter)|(Barotrauma.Particles.ParticleEmitter[])
+---`Field Private Instance`
+---@field particleEmitterHitCharacter (System.Collections.Generic.List*1Barotrauma*Particles*ParticleEmitter)|(Barotrauma.Particles.ParticleEmitter[])
+---`Field Private Instance`
+---@field particleEmitterHitItem (System.Collections.Generic.List*1System*ValueTuple*2Barotrauma*RelatedItem*2Barotrauma*Particles*ParticleEmitter)|(System.ValueTuple*1Barotrauma*RelatedItem*1Barotrauma*Particles*ParticleEmitter[])
+---`Field Private Instance`
+---@field prevProgressBarState System.Single
+---`Field Private Instance`
+---@field prevProgressBarTarget Barotrauma.Item
+---`Field Private Instance`
+---@field fixableEntities (System.Collections.Generic.HashSet*1Barotrauma*Identifier)|(Barotrauma.Identifier[])
+---`Field Private Instance`
+---@field nonFixableEntities (System.Collections.Generic.HashSet*1Barotrauma*Identifier)|(Barotrauma.Identifier[])
+---`Field Private Instance`
+---@field pickedPosition Microsoft.Xna.Framework.Vector2
+---`Field Private Instance`
+---@field activeTimer System.Single
+---`Field Private Instance`
+---@field debugRayStartPos Microsoft.Xna.Framework.Vector2
+---`Field Private Instance`
+---@field debugRayEndPos Microsoft.Xna.Framework.Vector2
+---`Field Private Instance`
+---@field ignoredBodies (System.Collections.Generic.List*1FarseerPhysics*Dynamics*Body)|(FarseerPhysics.Dynamics.Body[])
+---`Field Private Instance`
+---@field hitCharacters (System.Collections.Generic.HashSet*1Barotrauma*Character)|(Barotrauma.Character[])
+---`Field Private Instance`
+---@field fireSourcesInRange (System.Collections.Generic.List*1Barotrauma*FireSource)|(Barotrauma.FireSource[])
+---`Field Private Instance`
+---@field sinTime System.Single
+---`Field Private Instance`
+---@field repairTimer System.Single
+---`Field Private Instance`
+---@field previousGap Barotrauma.Gap
+---`Field Private Instance`
+---@field repairTimeOut System.Single
+---`Field Private Static`
+---@field hitBodies (System.Collections.Generic.List*1FarseerPhysics*Dynamics*Body)|(FarseerPhysics.Dynamics.Body[])
+---`Field Private Static`
+---@field currentTargets (System.Collections.Generic.List*1Barotrauma*ISerializableEntity)|(Barotrauma.ISerializableEntity[])
+---`Getter Public Instance Virtual`
+---@field DrawSize Microsoft.Xna.Framework.Vector2
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field UsableIn Barotrauma.Items.Components.RepairTool.UseEnvironment
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field Range System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field Spread System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field UnskilledSpread System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field StructureFixAmount System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field FireDamage System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field LevelWallFixAmount System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field ExtinguishAmount System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field WaterAmount System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field BarrelPos Microsoft.Xna.Framework.Vector2
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field RepairThroughWalls System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field RepairMultiple System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field RepairMultipleWalls System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field RepairThroughHoles System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field MaxOverlappingWallDist System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field DeattachSpeed System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field HitItems System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field HitBrokenDoors System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field IgnoreCharacters System.Boolean
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field FireProbability System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field TargetForce System.Single
+---`Getter Public Instance`
+---<br/>`Setter Public Instance`
+---@field BarrelRotation System.Single
+---`Getter Public Instance`
+---@field TransformedBarrelPos Microsoft.Xna.Framework.Vector2
+_G['Components']['RepairTool'] = {}
+
+---`Method Private Instance`
+---@param emitter Barotrauma.Particles.ParticleEmitter
+---@param deltaTime System.Single
+---@param simPosition Microsoft.Xna.Framework.Vector2
+---@param targetSub Barotrauma.Submarine
+_G['Components']['RepairTool'].EmitParticle = function(emitter, deltaTime, simPosition, targetSub) end
+
+---`Method Public Instance Virtual`
+---@param spriteBatch Microsoft.Xna.Framework.Graphics.SpriteBatch
+---@param editing System.Boolean
+---@param itemDepth? System.Single
+---@param overrideColor? System.Nullable*1Microsoft*Xna*Framework*Color
+_G['Components']['RepairTool'].Draw = function(spriteBatch, editing, itemDepth, overrideColor) end
+
+---`Method Private Instance`
+---@param element Barotrauma.ContentXElement
+_G['Components']['RepairTool'].InitProjSpecific = function(element) end
+
+---`Method Public Instance Virtual`
+---@param deltaTime System.Single
+---@param cam Barotrauma.Camera
+_G['Components']['RepairTool'].Update = function(deltaTime, cam) end
+
+---`Method Public Instance Virtual`
+---@param deltaTime System.Single
+---@param character? Barotrauma.Character
+---@return System.Boolean
+_G['Components']['RepairTool'].Use = function(deltaTime, character) end
+
+---`Method Private Instance`
+---@param deltaTime System.Single
+---@param raystart Microsoft.Xna.Framework.Vector2
+_G['Components']['RepairTool'].UseProjSpecific = function(deltaTime, raystart) end
+
+---`Method Private Instance`
+---@param rayStart Microsoft.Xna.Framework.Vector2
+---@param rayEnd Microsoft.Xna.Framework.Vector2
+---@param deltaTime System.Single
+---@param user Barotrauma.Character
+---@param degreeOfSuccess System.Single
+---@param ignoredBodies (System.Collections.Generic.List*1FarseerPhysics*Dynamics*Body)|(FarseerPhysics.Dynamics.Body[])
+_G['Components']['RepairTool'].Repair = function(rayStart, rayEnd, deltaTime, user, degreeOfSuccess, ignoredBodies) end
+
+---`Method Private Instance`
+---@param user Barotrauma.Character
+---@param hitPosition Microsoft.Xna.Framework.Vector2
+---@param deltaTime System.Single
+---@param degreeOfSuccess System.Single
+---@param targetBody FarseerPhysics.Dynamics.Body
+---@return System.Boolean
+_G['Components']['RepairTool'].FixBody = function(user, hitPosition, deltaTime, degreeOfSuccess, targetBody) end
+
+---`Method Private Instance`
+---@param user Barotrauma.Character
+---@param deltaTime System.Single
+---@param targetStructure Barotrauma.Structure
+---@param sectionIndex System.Int32
+_G['Components']['RepairTool'].FixStructureProjSpecific = function(user, deltaTime, targetStructure, sectionIndex) end
+
+---`Method Private Instance`
+---@param user Barotrauma.Character
+---@param deltaTime System.Single
+---@param targetCharacter Barotrauma.Character
+_G['Components']['RepairTool'].FixCharacterProjSpecific = function(user, deltaTime, targetCharacter) end
+
+---`Method Private Instance`
+---@param user Barotrauma.Character
+---@param deltaTime System.Single
+---@param targetItem Barotrauma.Item
+---@param showProgressBar System.Boolean
+_G['Components']['RepairTool'].FixItemProjSpecific = function(user, deltaTime, targetItem, showProgressBar) end
+
+---`Method Public Instance Virtual`
+---@param deltaTime System.Single
+---@param character Barotrauma.Character
+---@param objective Barotrauma.AIObjectiveOperateItem
+---@return System.Boolean
+_G['Components']['RepairTool'].CrewAIOperate = function(deltaTime, character, objective) end
+
+---`Method Private Instance`
+---@param user Barotrauma.Character
+---@param deltaTime System.Single
+---@param actionType Barotrauma.ActionType
+---@param targetItem? Barotrauma.Item
+---@param character? Barotrauma.Character
+---@param limb? Barotrauma.Limb
+---@param structure? Barotrauma.Structure
+_G['Components']['RepairTool'].ApplyStatusEffectsOnTarget = function(user, deltaTime, actionType, targetItem, character, limb, structure) end
+
+---`Constructor Public Instance`
+---@overload fun(item:Barotrauma.Item, element:Barotrauma.ContentXElement):Barotrauma.Items.Components.RepairTool
+---@return Barotrauma.Items.Components.RepairTool
+_G['Components']['RepairTool'] = function() end
+
+---`Constructor Public Instance`
+---@overload fun(item:Barotrauma.Item, element:Barotrauma.ContentXElement):Barotrauma.Items.Components.RepairTool
+---@return Barotrauma.Items.Components.RepairTool
+_G['Components']['RepairTool'].__new = function() end
+
+---`Constructor Private Static`
+---@overload fun(item:Barotrauma.Item, element:Barotrauma.ContentXElement):Barotrauma.Items.Components.RepairTool
+---@return Barotrauma.Items.Components.RepairTool
+_G['Components']['RepairTool'] = function() end
+
+---`Constructor Private Static`
+---@overload fun(item:Barotrauma.Item, element:Barotrauma.ContentXElement):Barotrauma.Items.Components.RepairTool
+---@return Barotrauma.Items.Components.RepairTool
+_G['Components']['RepairTool'].__new = function() end
+
