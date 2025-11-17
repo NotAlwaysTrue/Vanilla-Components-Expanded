@@ -14,9 +14,9 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "E:\\SteamLibrary\\steamapps\\common\\Barotrauma\\LocalMods\\Vanilla Components Expanded\\.AssemblyCSharpSource\\SwitchableRangedWeapon\\ClientProject\\LinuxClient.csproj",
+      "projectUniqueName": "E:\\SteamLibrary\\steamapps\\common\\Barotrauma\\LocalMods\\Vanilla Components Expanded\\.AssemblyCSharpSource\\SwitchableRangedWeapon\\ClientProject\\WindowsClient.csproj",
       "projectName": "SwitchableRangedWeapon",
-      "projectPath": "E:\\SteamLibrary\\steamapps\\common\\Barotrauma\\LocalMods\\Vanilla Components Expanded\\.AssemblyCSharpSource\\SwitchableRangedWeapon\\ClientProject\\LinuxClient.csproj",
+      "projectPath": "E:\\SteamLibrary\\steamapps\\common\\Barotrauma\\LocalMods\\Vanilla Components Expanded\\.AssemblyCSharpSource\\SwitchableRangedWeapon\\ClientProject\\WindowsClient.csproj",
       "packagesPath": "C:\\Users\\21368\\.nuget\\packages\\",
       "outputPath": "E:\\SteamLibrary\\steamapps\\common\\Barotrauma\\LocalMods\\Vanilla Components Expanded\\.AssemblyCSharpSource\\SwitchableRangedWeapon\\ClientProject\\obj\\",
       "projectStyle": "PackageReference",

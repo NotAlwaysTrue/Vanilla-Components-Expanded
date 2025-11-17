@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "EOFxAxEdr9M=",
+  "dgSpecHash": "DhUobQ9fPtc=",
   "success": true,
-  "projectFilePath": "E:\\SteamLibrary\\steamapps\\common\\Barotrauma\\LocalMods\\Vanilla Components Expanded\\.AssemblyCSharpSource\\SwitchableRangedWeapon\\ClientProject\\LinuxClient.csproj",
+  "projectFilePath": "E:\\SteamLibrary\\steamapps\\common\\Barotrauma\\LocalMods\\Vanilla Components Expanded\\.AssemblyCSharpSource\\SwitchableRangedWeapon\\ClientProject\\WindowsClient.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }
