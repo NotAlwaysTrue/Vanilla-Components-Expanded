@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SwitchableRangedWeapon")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4d9359592ac70a1be3ac533a770ef285705c894a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c869a97acc970f8d79396db6f26d7500eb2cfcbf")]
 [assembly: System.Reflection.AssemblyProductAttribute("SwitchableRangedWeapon")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SwitchableRangedWeapon")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

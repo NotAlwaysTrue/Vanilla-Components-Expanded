@@ -14,7 +14,7 @@
           "Farseer.NetStandard": "3.5.0.0",
           "Lidgren.NetStandard": "2012.1.7.0",
           "Mono.Cecil": "0.11.5.0",
-          "MonoGame.Framework.Linux.NetStandard": "3.7.0.0",
+          "MonoGame.Framework.MacOS.NetStandard": "3.7.0.0",
           "MonoMod.Utils": "25.0.8.0",
           "MoonSharp.Interpreter": "2.0.0.0",
           "XNATypes": "1.0.0.0"
@@ -71,9 +71,9 @@
           }
         }
       },
-      "MonoGame.Framework.Linux.NetStandard/3.7.0.0": {
+      "MonoGame.Framework.MacOS.NetStandard/3.7.0.0": {
         "runtime": {
-          "MonoGame.Framework.Linux.NetStandard.dll": {
+          "MonoGame.Framework.MacOS.NetStandard.dll": {
             "assemblyVersion": "3.7.0.0",
             "fileVersion": "3.7.0.0"
           }
@@ -157,7 +157,7 @@
       "serviceable": false,
       "sha512": ""
     },
-    "MonoGame.Framework.Linux.NetStandard/3.7.0.0": {
+    "MonoGame.Framework.MacOS.NetStandard/3.7.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""

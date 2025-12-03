@@ -87,6 +87,11 @@ namespace Barotrauma.Items.Components
             */
         }
 
+        partial void LaunchProjSpecific()
+        {
+            base.LaunchProjSpecific();
+        }
+
         public override void DrawHUD(SpriteBatch spriteBatch, Character character)
         {
             base.DrawHUD(spriteBatch, character);
