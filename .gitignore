@@ -1,0 +1,5 @@
+.AssemblyCSharpSource/**/bin
+.AssemblyCSharpSource/**/obj
+.AssemblyCSharpSource/**/**.user
+.AssemblyCSharpSource/**/launchSettings.json
+.vs
