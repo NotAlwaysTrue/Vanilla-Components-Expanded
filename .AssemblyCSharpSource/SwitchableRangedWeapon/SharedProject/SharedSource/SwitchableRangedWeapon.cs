@@ -28,6 +28,8 @@ namespace Barotrauma.Items.Components
 
         private bool triggerreleased = true;
 
+        private bool domagcheck = true;
+
         private IList<Identifier> switchableProjectiles;
 
         private IList<FireMode> switchableFiremodes;
@@ -44,6 +46,19 @@ namespace Barotrauma.Items.Components
         {
             get { return currentselected; }
             set { currentselected = (value <= (maxprojectileselectable - 1)) ? value : 0; }
+        }
+
+        [Serialize(true, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        public bool checkMagCondition
+        {
+            get
+            {
+                return domagcheck;
+            }
+            set
+            {
+                domagcheck = value;
+            }
         }
 
         [InGameEditable, Serialize(true, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
@@ -256,7 +271,15 @@ namespace Barotrauma.Items.Components
                 {
                     if (containedItem == null) { continue; }
                     Projectile projectile = containedItem.GetComponent<Projectile>();
-                    if (IsSelectedProjectile(projectile)) { return projectile; }
+                    // Note: it will be necessary to rework this section. Currently a temp measure.
+                    if (IsSelectedProjectile(projectile)) 
+                    {
+                        if (projectile.item.Container.Condition > 0 || !checkMagCondition)
+                        {
+                            return projectile;
+                        }
+                        return null;
+                    }
 
                     //projectile not found, see if the contained item contains projectiles
                     var containedSubItems = containedItem.OwnInventory?.AllItemsMod;
@@ -271,8 +294,13 @@ namespace Barotrauma.Items.Components
                         {
                             subItem.GetComponent<ItemContainer>()?.Item.ApplyStatusEffects(ActionType.OnUse, 1.0f);
                         }
-                        if (IsSelectedProjectile(subProjectile)) { 
-                            return subProjectile; 
+                        // Note: it will be necessary to rework this section. Currently a temp measure.
+                        if (IsSelectedProjectile(subProjectile)) {
+                            if (subProjectile.item.Container.Condition > 0 || !checkMagCondition)
+                            {
+                                return subProjectile;
+                            }
+                            return null;
                         }
                     }
                 }

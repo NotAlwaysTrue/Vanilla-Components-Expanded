@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Afflictions>
+  <!--Placeholder, doesn't do anything but make player download this-->
+  <Affliction identifier="VCE_PLACEHOLDER" ShowBarInHealthMenu="false" maxstrength="1" Stackable="false"/>
+</Afflictions>
