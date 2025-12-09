@@ -119,13 +119,14 @@ namespace Barotrauma.Items.Components
         public override void UpdateHUDComponentSpecific(Character character, float deltaTime, Camera cam)
         {
             base.UpdateHUDComponentSpecific(character, deltaTime, cam);
+            //await Task.Run(() => UpdateUserInput(character));
             UpdateUserInput(character);
         }
 
         private bool previousshootkeystat = false;
         private void UpdateUserInput(Character character)
         {
-            if (character == null) return;
+            if (character == null || Character.Controlled != character) { return; }
 
             if (PlayerInput.KeyUp(InputType.Shoot) && (PlayerInput.KeyDown(InputType.Shoot) != previousshootkeystat))
             {
@@ -144,8 +145,8 @@ namespace Barotrauma.Items.Components
                 currentProjectileSelected += 1;
                 GameMain.Client?.CreateEntityEvent(this.Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentProjectileSelected".ToIdentifier()], this));
             }
-            //TextManager.Get()
             previousshootkeystat = PlayerInput.KeyDown(InputType.Shoot);
+            return;
         }
     }
 }
