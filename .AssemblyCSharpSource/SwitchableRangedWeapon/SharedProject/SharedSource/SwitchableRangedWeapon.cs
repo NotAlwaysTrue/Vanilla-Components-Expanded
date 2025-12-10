@@ -285,7 +285,11 @@ namespace Barotrauma.Items.Components
             {
                 int slotIndex = switchableSlots.ElementAt(currentselected);
                 Item slotItem = itemInv.GetItemAt(slotIndex);
-                if (slotItem?.GetComponent<Projectile>() == null && slotItem?.ownInventory != null)
+                if (slotItem?.GetComponent<Projectile>() != null)
+                {
+                    return slotItem.GetComponent<Projectile>();
+                }
+                else if (slotItem?.ownInventory != null)
                 {
                     IEnumerable<Item> containedItems = slotItem.ownInventory.GetAllItems(false);
                     projectileitem = containedItems.FirstOrDefault(i => i.GetComponent<Projectile>() != null);
@@ -293,7 +297,6 @@ namespace Barotrauma.Items.Components
                     if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
                     return projectileitem.GetComponent<Projectile>();
                 }
-                return null;
             }
 
             if (switchableProjectiles.Any())
