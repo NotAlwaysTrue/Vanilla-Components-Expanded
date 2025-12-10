@@ -32,6 +32,8 @@ namespace Barotrauma.Items.Components
 
         private IList<Identifier> switchableProjectiles;
 
+        private IList<int> switchableSlots;
+
         private IList<FireMode> switchableFiremodes;
 
         [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
@@ -96,14 +98,26 @@ namespace Barotrauma.Items.Components
             : base(item, element)
         {
             switchableProjectiles = element.GetAttributeIdentifierArray(nameof(switchableProjectiles), Array.Empty<Identifier>());
+            switchableSlots = element.GetAttributeIntArray(nameof(switchableSlots), Array.Empty<int>());
             IList<string> switchableFiremodesStr = element.GetAttributeStringArray(nameof(switchableFiremodes), Array.Empty<string>());
-            switchableFiremodes = WriteFiremode(switchableFiremodesStr, item);
-            maxprojectileselectable = switchableProjectiles.Count();
+            switchableFiremodes = WriteFiremode(switchableFiremodesStr);
+            if (switchableSlots.Any())
+            {
+                maxprojectileselectable = switchableSlots.Count();
+            }
+            else if (switchableProjectiles.Any())
+            {
+                maxprojectileselectable = switchableProjectiles.Count();
+            }
+            else
+            {
+                maxprojectileselectable = 1;
+            }
             maxfiremodeselectable = switchableFiremodes.Count();
             InitProjSpecific(element);
         }
 
-        private IList<FireMode> WriteFiremode(IList<string> FireModeStr, Item item)
+        private IList<FireMode> WriteFiremode(IList<string> FireModeStr)
         {
             if(FireModeStr == Array.Empty<string>())
             {
@@ -119,7 +133,7 @@ namespace Barotrauma.Items.Components
                 }
                 else
                 {
-                    DebugConsole.AddWarning($"Invalid FireMode {FM} found in {item.Name}");
+                    DebugConsole.AddWarning($"Invalid FireMode {FM} found in {this.item.Name}");
                 }
             }
             return TempFireMode;
@@ -265,55 +279,33 @@ namespace Barotrauma.Items.Components
 
         public new Projectile FindProjectile(bool triggerOnUseOnContainers = false)
         {
-            foreach (ItemContainer container in item.GetComponents<ItemContainer>())
+            Inventory itemInv = item.ownInventory;
+            Item projectileitem;
+            if (switchableSlots.Any())
             {
-                foreach (Item containedItem in container.Inventory.AllItemsMod)
+                int slotIndex = switchableSlots.ElementAt(currentselected);
+                Item slotItem = itemInv.GetItemAt(slotIndex);
+                if (slotItem?.GetComponent<Projectile>() == null && slotItem?.ownInventory != null)
                 {
-                    if (containedItem == null) { continue; }
-                    Projectile projectile = containedItem.GetComponent<Projectile>();
-                    // Note: it will be necessary to rework this section. Currently a temp measure.
-                    if (IsSelectedProjectile(projectile)) 
-                    {
-                        if (projectile.item.Container.Condition > 0 || !checkMagCondition)
-                        {
-                            return projectile;
-                        }
-                        return null;
-                    }
-
-                    //projectile not found, see if the contained item contains projectiles
-                    var containedSubItems = containedItem.OwnInventory?.AllItemsMod;
-                    if (containedSubItems == null) { continue; }
-                    foreach (Item subItem in containedSubItems)
-                    {
-                        if (subItem == null) { continue; }
-                        Projectile subProjectile = subItem.GetComponent<Projectile>();
-                        //apply OnUse statuseffects to the container in case it has to react to it somehow
-                        //(play a sound, spawn more projectiles, reduce condition...)
-                        if (triggerOnUseOnContainers && subItem.Condition > 0.0f)
-                        {
-                            subItem.GetComponent<ItemContainer>()?.Item.ApplyStatusEffects(ActionType.OnUse, 1.0f);
-                        }
-                        // Note: it will be necessary to rework this section. Currently a temp measure.
-                        if (IsSelectedProjectile(subProjectile)) {
-                            if (subProjectile.item.Container.Condition > 0 || !checkMagCondition)
-                            {
-                                return subProjectile;
-                            }
-                            return null;
-                        }
-                    }
+                    IEnumerable<Item> containedItems = slotItem.ownInventory.GetAllItems(false);
+                    projectileitem = containedItems.FirstOrDefault(i => i.GetComponent<Projectile>() != null);
+                    if (projectileitem == null) { return null; }
+                    if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
+                    return projectileitem.GetComponent<Projectile>();
                 }
+                return null;
             }
-            return null;
-        }
 
-        public bool IsSelectedProjectile(Projectile projectile)
-        {
-            if (projectile?.Item == null) { return false; }
-            if (!switchableProjectiles.Any()) { return true; }
-            if (switchableProjectiles.ElementAt(currentselected) == projectile.Item.Prefab.Identifier || projectile.Item.HasTag(switchableProjectiles.ElementAt(currentselected))) { return true; }
-            return false;
+            if (switchableProjectiles.Any())
+            {
+                Identifier targetTagOrID = switchableProjectiles.ElementAt(currentselected);
+                projectileitem = itemInv.FindItem(i => ((i.HasTag(targetTagOrID) || i.Prefab.Identifier == targetTagOrID) && i.GetComponent<Projectile>() != null), true);
+                if (projectileitem == null) { return null; }
+                if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
+                return projectileitem.GetComponent<Projectile>();
+            }
+
+            return null;
         }
 
         partial void LaunchProjSpecific();

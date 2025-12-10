@@ -101,16 +101,35 @@ namespace Barotrauma.Items.Components
             Vector2 FireModePos = new Vector2(crosshairPos.X - 60, crosshairPos.Y - 80);
             Vector2 SelectedPos = new Vector2(crosshairPos.X + 40, crosshairPos.Y - 80);
 
-            if (switchableFiremodes.Count > 1)
+            if (maxfiremodeselectable > 1)
             {
                 string localtag = switchableFiremodes.ElementAt(currentfiremode).ToString();
                 LocalizedString localstr = TextManager.Get(localtag).Fallback(localtag);
                 GUI.DrawString(spriteBatch, FireModePos, localstr, TextColor, forceUpperCase: ForceUpperCase.Yes);
             }
 
-            if (switchableProjectiles.Count > 1)
+            if (maxprojectileselectable > 1)
             {
-                string localtag = switchableProjectiles.ElementAt(currentselected).ToString();
+                string localtag = null;
+                if (switchableSlots.Any())
+                {
+                    switch(currentselected)
+                    {
+                        case 0:
+                            localtag = "firemode.primary";
+                            break;
+                        case 1:
+                            localtag = "firemode.secondary";
+                            break;
+                        default:
+                            localtag = "firemode.misc";
+                            break;
+                    }
+                }
+                else if (switchableProjectiles.Any())
+                {
+                    localtag = switchableProjectiles.ElementAt(currentselected).ToString();
+                }
                 LocalizedString localstr = TextManager.Get(localtag).Fallback(localtag);
                 GUI.DrawString(spriteBatch, SelectedPos, localstr, TextColor, forceUpperCase: ForceUpperCase.Yes);
             }

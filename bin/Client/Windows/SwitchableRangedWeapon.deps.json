@@ -9,7 +9,7 @@
       "SwitchableRangedWeapon/1.0.0": {
         "dependencies": {
           "0Harmony": "2.14.0.0",
-          "Barotrauma": "1.10.7.2",
+          "Barotrauma": "1.11.4.1",
           "BarotraumaCore": "1.0.0.0",
           "Farseer.NetStandard": "3.5.0.0",
           "Lidgren.NetStandard": "2012.1.7.0",
@@ -31,11 +31,11 @@
           }
         }
       },
-      "Barotrauma/1.10.7.2": {
+      "Barotrauma/1.11.4.1": {
         "runtime": {
           "Barotrauma.dll": {
-            "assemblyVersion": "1.10.7.2",
-            "fileVersion": "1.10.7.2"
+            "assemblyVersion": "1.11.4.1",
+            "fileVersion": "1.11.4.1"
           }
         }
       },
@@ -132,7 +132,7 @@
       "serviceable": false,
       "sha512": ""
     },
-    "Barotrauma/1.10.7.2": {
+    "Barotrauma/1.11.4.1": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""

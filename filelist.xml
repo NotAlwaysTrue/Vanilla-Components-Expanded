@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<contentpackage name="Vanilla Components Expanded" modversion="1.0.4" corepackage="False" steamworkshopid="3606054332" gameversion="1.11.4.1">
+<contentpackage name="Vanilla Components Expanded" modversion="1.1.0" corepackage="False" steamworkshopid="3606054332" gameversion="1.11.4.1">
   <Other file="%ModDir%/bin/Client/Linux/SwitchableRangedWeapon.deps.json" />
   <Other file="%ModDir%/bin/Client/Linux/SwitchableRangedWeapon.dll" />
   <Other file="%ModDir%/bin/Client/OSX/SwitchableRangedWeapon.deps.json" />

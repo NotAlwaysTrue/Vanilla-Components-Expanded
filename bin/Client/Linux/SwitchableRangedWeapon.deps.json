@@ -9,12 +9,12 @@
       "SwitchableRangedWeapon/1.0.0": {
         "dependencies": {
           "0Harmony": "2.14.0.0",
-          "Barotrauma": "1.10.7.2",
+          "Barotrauma": "1.11.4.1",
           "BarotraumaCore": "1.0.0.0",
           "Farseer.NetStandard": "3.5.0.0",
           "Lidgren.NetStandard": "2012.1.7.0",
           "Mono.Cecil": "0.11.5.0",
-          "MonoGame.Framework.Linux.NetStandard": "3.7.0.0",
+          "MonoGame.Framework.MacOS.NetStandard": "3.7.0.0",
           "MonoMod.Utils": "25.0.8.0",
           "MoonSharp.Interpreter": "2.0.0.0",
           "XNATypes": "1.0.0.0"
@@ -31,11 +31,11 @@
           }
         }
       },
-      "Barotrauma/1.10.7.2": {
+      "Barotrauma/1.11.4.1": {
         "runtime": {
           "Barotrauma.dll": {
-            "assemblyVersion": "1.10.7.2",
-            "fileVersion": "1.10.7.2"
+            "assemblyVersion": "1.11.4.1",
+            "fileVersion": "1.11.4.1"
           }
         }
       },
@@ -71,9 +71,9 @@
           }
         }
       },
-      "MonoGame.Framework.Linux.NetStandard/3.7.0.0": {
+      "MonoGame.Framework.MacOS.NetStandard/3.7.0.0": {
         "runtime": {
-          "MonoGame.Framework.Linux.NetStandard.dll": {
+          "MonoGame.Framework.MacOS.NetStandard.dll": {
             "assemblyVersion": "3.7.0.0",
             "fileVersion": "3.7.0.0"
           }
@@ -132,7 +132,7 @@
       "serviceable": false,
       "sha512": ""
     },
-    "Barotrauma/1.10.7.2": {
+    "Barotrauma/1.11.4.1": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
@@ -157,7 +157,7 @@
       "serviceable": false,
       "sha512": ""
     },
-    "MonoGame.Framework.Linux.NetStandard/3.7.0.0": {
+    "MonoGame.Framework.MacOS.NetStandard/3.7.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
