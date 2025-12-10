@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace Barotrauma.Items.Components
 {
-    partial class SwitchableRangedWeapon : RangedWeapon
+    public partial class SwitchableRangedWeapon : RangedWeapon
     {
 
         private Keys modeswitchkey, firemodeswitchkey;
