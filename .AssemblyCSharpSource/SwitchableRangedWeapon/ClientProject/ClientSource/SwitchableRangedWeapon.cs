@@ -95,8 +95,8 @@ namespace Barotrauma.Items.Components
         public override void DrawHUD(SpriteBatch spriteBatch, Character character)
         {
             base.DrawHUD(spriteBatch, character);
-            if (character == null || !character.IsKeyDown(InputType.Aim) || !character.CanAim) { return; }
 
+            if (character == null || !character.IsKeyDown(InputType.Aim) || !character.CanAim || (character.ViewTarget is Item item && item.Prefab.FocusOnSelected) || !character.HeldItems.Contains(base.item)) { return; }
             Color TextColor = Color.White;
             Vector2 FireModePos = new Vector2(crosshairPos.X - 60, crosshairPos.Y - 80);
             Vector2 SelectedPos = new Vector2(crosshairPos.X + 40, crosshairPos.Y - 80);
