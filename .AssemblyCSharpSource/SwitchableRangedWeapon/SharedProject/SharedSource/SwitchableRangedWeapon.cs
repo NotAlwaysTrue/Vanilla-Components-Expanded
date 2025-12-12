@@ -14,6 +14,8 @@ namespace Barotrauma.Items.Components
 {
     public partial class SwitchableRangedWeapon : RangedWeapon
     {
+        public float BotReloadTimer { get; private set; }
+
         private int currentselected = 0;
 
         private int currentfiremode = 0;
@@ -25,6 +27,8 @@ namespace Barotrauma.Items.Components
         private int roundsshot = 0;
 
         private float burstreload;
+
+        private float botreload;
 
         private bool triggerreleased = true;
 
@@ -94,6 +98,13 @@ namespace Barotrauma.Items.Components
             set { burstreload = Math.Max(value, 0.0f); }
         }
 
+        [InGameEditable, Serialize(0.1f, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        public float BotReload
+        {
+            get { return botreload; }
+            set { botreload = Math.Max(value, 0.0f); }
+        }
+
         public SwitchableRangedWeapon(Item item, ContentXElement element)
             : base(item, element)
         {
@@ -143,7 +154,8 @@ namespace Barotrauma.Items.Components
 
         public override bool Use(float deltaTime, Character? character = null)
         {
-            switch(switchableFiremodes[currentfiremode])
+            UpdateBotInput(deltaTime, character);
+            switch (switchableFiremodes[currentfiremode])
             {
                 case FireMode.Safe:
                     return false;
@@ -271,6 +283,8 @@ namespace Barotrauma.Items.Components
 
             LaunchProjSpecific();
 
+            //TODO: Add random time multiplier for Bots
+            BotReloadTimer = (botreload / (1 + character?.GetStatValue(StatTypes.RangedAttackSpeed) ?? 0));
             triggerreleased = false;
             roundsshot += 1;
 
@@ -311,8 +325,23 @@ namespace Barotrauma.Items.Components
             return null;
         }
 
-        partial void LaunchProjSpecific();
+        public void UpdateBotInput(float deltaTime, Character? character)
+        {
+            BotReloadTimer -= deltaTime;
 
+            if (BotReloadTimer < 0.0f)
+            {
+                BotReloadTimer = 0.0f;
+            }
+
+            if (character == null) { return; }
+            if(!character.IsBot) { return; }
+            if(BotReloadTimer <= 0)
+            {
+                triggerReleased = true;
+            }
+        }
+        partial void LaunchProjSpecific();
 
     }
     class AbilityRangedWeapon : AbilityObject, IAbilityItem
