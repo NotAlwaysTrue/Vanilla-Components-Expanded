@@ -1,14 +1,6 @@
 using Barotrauma.Abilities;
 using Barotrauma.Networking;
-using FarseerPhysics;
-using FarseerPhysics.Dynamics;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
 
 namespace Barotrauma.Items.Components
 {
@@ -125,6 +117,7 @@ namespace Barotrauma.Items.Components
                 maxprojectileselectable = 1;
             }
             maxfiremodeselectable = switchableFiremodes.Count();
+            BotReload = element.GetAttributeFloat(nameof(switchableProjectiles), MathHelper.Lerp(reload, reload*4, 1-reload));
             InitProjSpecific(element);
         }
 

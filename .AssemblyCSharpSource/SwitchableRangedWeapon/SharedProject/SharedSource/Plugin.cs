@@ -1,11 +1,5 @@
 ﻿using Barotrauma;
-using Barotrauma.Items.Components;
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text;
 
 [assembly: IgnoresAccessChecksTo("Barotrauma")]
 [assembly: IgnoresAccessChecksTo("DedicatedServer")]
