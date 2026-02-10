@@ -39,7 +39,7 @@ namespace Barotrauma.Items.Components
             set { currentfiremode = (value <= (maxfiremodeselectable - 1) && value >= 0) ? value : 0; }
         }
 
-        [InGameEditable,Serialize(0, IsPropertySaveable.Yes,alwaysUseInstanceValues:true)]
+        [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int currentProjectileSelected
         {
             get { return currentselected; }
@@ -68,7 +68,7 @@ namespace Barotrauma.Items.Components
             }
             set
             {
-                if(value)
+                if (value)
                 {
                     roundsshot = 0;
                 }
@@ -117,21 +117,21 @@ namespace Barotrauma.Items.Components
                 maxprojectileselectable = 1;
             }
             maxfiremodeselectable = switchableFiremodes.Count();
-            BotReload = element.GetAttributeFloat(nameof(switchableProjectiles), MathHelper.Lerp(reload, reload*4, 1-reload));
+            BotReload = element.GetAttributeFloat(nameof(switchableProjectiles), MathHelper.Lerp(reload, reload * 4, 1 - reload));
             InitProjSpecific(element);
         }
 
         private IList<FireMode> WriteFiremode(IList<string> FireModeStr)
         {
-            if(FireModeStr == Array.Empty<string>())
+            if (FireModeStr == Array.Empty<string>())
             {
                 return new List<FireMode>() { FireMode.Auto };
             }
             IList<FireMode> TempFireMode = new List<FireMode>();
             foreach (string FM in FireModeStr)
             {
-                bool success = Enum.TryParse(FM ,true ,out FireMode fireMode);
-                if(success)
+                bool success = Enum.TryParse(FM, true, out FireMode fireMode);
+                if (success)
                 {
                     TempFireMode.Add(fireMode);
                 }
@@ -153,7 +153,7 @@ namespace Barotrauma.Items.Components
                 case FireMode.Safe:
                     return false;
                 case FireMode.Semi:
-                    if(roundsshot >= 1)
+                    if (roundsshot >= 1)
                     {
                         return false;
                     }
@@ -221,7 +221,7 @@ namespace Barotrauma.Items.Components
             for (int i = 0; i < ProjectileCount; i++)
             {
                 Projectile projectile = FindProjectile(triggerOnUseOnContainers: true);
-                if (projectile == null) { return false;  }
+                if (projectile == null) { return false; }
                 Vector2 barrelPos = TransformedBarrelPos + item.body.SimPosition;
                 float rotation = (Item.body.Dir == 1.0f) ? Item.body.Rotation : Item.body.Rotation - MathHelper.Pi;
                 float spread = GetSpread(character) * projectile.GetSpreadFromPool();
@@ -328,8 +328,8 @@ namespace Barotrauma.Items.Components
             }
 
             if (character == null) { return; }
-            if(!character.IsBot) { return; }
-            if(BotReloadTimer <= 0)
+            if (!character.IsBot) { return; }
+            if (BotReloadTimer <= 0)
             {
                 triggerReleased = true;
             }
