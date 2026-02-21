@@ -158,9 +158,9 @@ Hook.Patch("Kilo","Barotrauma.Character", "DamageLimb", function(instance, ptabl
     if targetlimb == nil then return end
     local afflictions = ptable["afflictions"]
 
-    -- Yeah, WTF why penetration is a userdate???
+    -- if something already put something into it, which will change the type of it
+    -- then just return because we assume something had done something on that already.
     if type(ptable["penetration"]) ~= "number" then 
-        ptable.PreventExecution = true
         return
     end
 
