@@ -229,7 +229,7 @@ Hook.Patch("Kilo","Barotrauma.Character", "DamageLimb", function(instance, ptabl
     end
     --Note: Basically we are doing what we did again.
     if executecloth and clothdata.protectionarea[targetlimb.type] then
-        damagemultiplier,penetrationlevel,continue =  Deep_Lua.Main.PlateMain(clothdata,outercloth,penetrationlevel,damagemultiplier,clothaffliction,targetcharacter,targetlimb)
+        damagemultiplier,penetrationlevel,continue =  VCE.ArmorSystem.PlateMain(clothdata,outercloth,penetrationlevel,damagemultiplier,clothaffliction,targetcharacter,targetlimb)
         ptable.PreventExecution = not continue
         if not continue then return end
     end
