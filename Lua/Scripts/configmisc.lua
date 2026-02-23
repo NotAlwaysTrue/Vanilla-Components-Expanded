@@ -5,13 +5,11 @@ local function calculateHash(configtable)
         if type(config) == "table" then
             if config.level == nil then return nil end
             count = 1 + count
-            localhash = config.level + localhash * count
+            localhash = (config.level + localhash * count) / 65
         end
     end
     return localhash
 end
-
-local hash = calculateHash(VCE.ArmorConfigs)
 
 -- WARN: YOU SHOULD MAKE SURE YOUR CONFIG IS CORRECT BEFORE LOADING INTO MAIN CONFIG!
 function VCE.ArmorSystem.AddtoMain(configtable)
@@ -26,9 +24,12 @@ function VCE.ArmorSystem.AddtoMain(configtable)
         end
         ::goodend::                     --Green Light. All clear to go. NO VALIDATION CHECK.
         VCE.ArmorConfigs[id] = config
+        if CLIENT and config.RicochetSoundPath then
+            VCE.LoadedSounds[id] = Game.SoundManager.LoadSound(config.RicochetSoundPath)
+        end
         ::loopend::                     --Red Light. Next.
     end
-    hash = calculateHash(configtable)
+    hash = calculateHash(VCE.ArmorConfigs)
 end
 
 

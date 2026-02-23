@@ -38,6 +38,9 @@ VCE.ArmorConfigs = {
             [LimbType.LeftFoot] = true,
             [LimbType.RightFoot] = true,
         },
+        
+        RicochetSoundPath = VCE.Path .. "/Sounds/BRUH.ogg",               --Path for ricochet sounds. Only necessary for items that ricochet probability above 0
+        SoundRange = 100,
 
         --Masked Helmet Specific
         isHelmet = false,                           --Define whether this is a masked helmet, if true use masked helmet specific code

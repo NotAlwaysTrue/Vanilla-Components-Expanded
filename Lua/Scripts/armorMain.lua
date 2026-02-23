@@ -1,8 +1,4 @@
-VCE.ArmorSystem = {}
-
-if not Game.IsMultiplayer then
-    local RicochetSound = Game.SoundManager.LoadSound(VCE.Path .. "/ricochet.ogg")
-end
+if VCE.ArmorSystem == nil then VCE.ArmorSystem = {} end
 
 -- Limb convertion stuff
 local limbtoslot = {
@@ -90,6 +86,7 @@ function VCE.ArmorSystem.PlateMain(data,item,penlevel,damagemultiplier,afflictio
         continue = false
         if Game.IsMultiplayer then
             local message = Networking.Start("PlayRicochetSound")
+            message.WriteString(item.Prefab.Identifier)
             message.WriteDouble(item.WorldPosition.X)
             message.WriteDouble(item.WorldPosition.Y)
             --for client in Client.ClientList do
@@ -101,7 +98,9 @@ function VCE.ArmorSystem.PlateMain(data,item,penlevel,damagemultiplier,afflictio
             end
         end
         if not Game.IsMultiplayer then
-            SoundPlayer.PlaySound(RicochetSound, item.WorldPosition, 1, 5000, 1)
+            local RicochetSound = VCE.LoadedSounds[item.Prefab.Identifier.Value] or VCE.LoadedSounds.DefaultSound
+            local Range = VCE.ArmorConfigs[item.Prefab.Identifier.Value].SoundRange or 1000
+            SoundPlayer.PlaySound(RicochetSound, Vector2(item.WorldPosition.X, item.WorldPosition.Y), 1, Range, 1)
         end
         return 0, 0, continue
     end
@@ -160,9 +159,7 @@ Hook.Patch("Kilo","Barotrauma.Character", "DamageLimb", function(instance, ptabl
 
     -- if something already put something into it, which will change the type of it
     -- then just return because we assume something had done something on that already.
-    if type(ptable["penetration"]) ~= "number" then 
-        return
-    end
+    if type(ptable["penetration"]) ~= "number" then return end
 
     local penetrationlevel = math.floor((ptable["penetration"]+0.00001)*10)
     local targetcharacter = targetlimb.character
