@@ -11,6 +11,8 @@ local function calculateHash(configtable)
     return localhash
 end
 
+local hash
+
 -- WARN: YOU SHOULD MAKE SURE YOUR CONFIG IS CORRECT BEFORE LOADING INTO MAIN CONFIG!
 function VCE.ArmorSystem.AddtoMain(configtable)
     for id,config in pairs(configtable) do
