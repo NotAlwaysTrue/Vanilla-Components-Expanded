@@ -4,38 +4,39 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <Libs>..\..\..\.Tools/Refs</Libs>
     </PropertyGroup>
 
     <ItemGroup>
       <Reference Include="0Harmony">
-        <HintPath>..\..\..\.Tools\Refs\0Harmony.dll</HintPath>
+        <HintPath>$(Libs)\0Harmony.dll</HintPath>
       </Reference>
       <Reference Include="Barotrauma">
-        <HintPath>..\..\..\.Tools\Refs\Linux\Barotrauma.dll</HintPath>
+        <HintPath>$(Libs)\Linux\Barotrauma.dll</HintPath>
       </Reference>
       <Reference Include="BarotraumaCore">
-        <HintPath>..\..\..\.Tools\Refs\Linux\BarotraumaCore.dll</HintPath>
+        <HintPath>$(Libs)\Linux\BarotraumaCore.dll</HintPath>
       </Reference>
       <Reference Include="Farseer.NetStandard">
-        <HintPath>..\..\..\.Tools\Refs\Farseer.NetStandard.dll</HintPath>
+        <HintPath>$(Libs)\Farseer.NetStandard.dll</HintPath>
       </Reference>
       <Reference Include="Lidgren.NetStandard">
-        <HintPath>..\..\..\.Tools\Refs\Lidgren.NetStandard.dll</HintPath>
+        <HintPath>$(Libs)\Lidgren.NetStandard.dll</HintPath>
       </Reference>
       <Reference Include="Mono.Cecil">
-        <HintPath>..\..\..\.Tools\Refs\Mono.Cecil.dll</HintPath>
+        <HintPath>$(Libs)\Mono.Cecil.dll</HintPath>
       </Reference>
       <Reference Include="MonoGame.Framework.Linux.NetStandard">
-        <HintPath>..\..\..\.Tools\Refs\MonoGame.Framework.Linux.NetStandard.dll</HintPath>
+        <HintPath>$(Libs)\MonoGame.Framework.Linux.NetStandard.dll</HintPath>
       </Reference>
       <Reference Include="MonoMod.Utils">
-        <HintPath>..\..\..\.Tools\Refs\MonoMod.Utils.dll</HintPath>
+        <HintPath>$(Libs)\MonoMod.Utils.dll</HintPath>
       </Reference>
       <Reference Include="MoonSharp.Interpreter">
-        <HintPath>..\..\..\.Tools\Refs\MoonSharp.Interpreter.dll</HintPath>
+        <HintPath>$(Libs)\MoonSharp.Interpreter.dll</HintPath>
       </Reference>
       <Reference Include="XNATypes">
-        <HintPath>..\..\..\.Tools\Refs\XNATypes.dll</HintPath>
+        <HintPath>$(Libs)\XNATypes.dll</HintPath>
       </Reference>
     </ItemGroup>
 

@@ -122,6 +122,8 @@ namespace Barotrauma.Items.Components
                     localtag = switchableProjectiles.ElementAt(currentselected).ToString();
                 }
                 LocalizedString localstr = TextManager.Get(localtag).Fallback(localtag);
+                LocalizedString modNum = TextManager.Get(currentselected.ToString());
+                localstr.Replace("[ModeNum]", modNum);
                 GUI.DrawString(spriteBatch, SelectedPos, localstr, TextColor, forceUpperCase: ForceUpperCase.Yes);
             }
         }

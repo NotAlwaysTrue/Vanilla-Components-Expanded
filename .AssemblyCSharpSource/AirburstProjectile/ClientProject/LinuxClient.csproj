@@ -4,39 +4,38 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <Libs>..\..\..\.Tools/Refs</Libs>
     </PropertyGroup>
 
     <ItemGroup>
       <Reference Include="0Harmony">
-        <HintPath>$(Libs)\0Harmony.dll</HintPath>
+        <HintPath>..\..\..\.Tools\Refs\0Harmony.dll</HintPath>
       </Reference>
-      <Reference Include="DedicatedServer">
-        <HintPath>$(Libs)\Linux\DedicatedServer.dll</HintPath>
+      <Reference Include="Barotrauma">
+        <HintPath>..\..\..\.Tools\Refs\Linux\Barotrauma.dll</HintPath>
       </Reference>
       <Reference Include="BarotraumaCore">
-        <HintPath>$(Libs)\Linux\BarotraumaCore.dll</HintPath>
+        <HintPath>..\..\..\.Tools\Refs\Linux\BarotraumaCore.dll</HintPath>
       </Reference>
       <Reference Include="Farseer.NetStandard">
-        <HintPath>$(Libs)\Farseer.NetStandard.dll</HintPath>
+        <HintPath>..\..\..\.Tools\Refs\Farseer.NetStandard.dll</HintPath>
       </Reference>
       <Reference Include="Lidgren.NetStandard">
-        <HintPath>$(Libs)\Lidgren.NetStandard.dll</HintPath>
+        <HintPath>..\..\..\.Tools\Refs\Lidgren.NetStandard.dll</HintPath>
       </Reference>
       <Reference Include="Mono.Cecil">
-        <HintPath>$(Libs)\Mono.Cecil.dll</HintPath>
+        <HintPath>..\..\..\.Tools\Refs\Mono.Cecil.dll</HintPath>
       </Reference>
       <Reference Include="MonoGame.Framework.Linux.NetStandard">
-        <HintPath>$(Libs)\MonoGame.Framework.Linux.NetStandard.dll</HintPath>
+        <HintPath>..\..\..\.Tools\Refs\MonoGame.Framework.Linux.NetStandard.dll</HintPath>
       </Reference>
       <Reference Include="MonoMod.Utils">
-        <HintPath>$(Libs)\MonoMod.Utils.dll</HintPath>
+        <HintPath>..\..\..\.Tools\Refs\MonoMod.Utils.dll</HintPath>
       </Reference>
       <Reference Include="MoonSharp.Interpreter">
-        <HintPath>$(Libs)\MoonSharp.Interpreter.dll</HintPath>
+        <HintPath>..\..\..\.Tools\Refs\MoonSharp.Interpreter.dll</HintPath>
       </Reference>
       <Reference Include="XNATypes">
-        <HintPath>$(Libs)\XNATypes.dll</HintPath>
+        <HintPath>..\..\..\.Tools\Refs\XNATypes.dll</HintPath>
       </Reference>
     </ItemGroup>
 
@@ -50,11 +49,11 @@
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-      <DefineConstants>TRACE;SERVER;LINUX</DefineConstants>
+      <DefineConstants>TRACE;CLIENT;LINUX</DefineConstants>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-      <DefineConstants>TRACE;SERVER;LINUX</DefineConstants>
+      <DefineConstants>TRACE;CLIENT;LINUX</DefineConstants>
     </PropertyGroup>
 
     <Target Name="CopyFiles" AfterTargets="Build">
@@ -62,8 +61,8 @@
             <Assemblies Include="$(TargetDir)$(TargetName).dll" />
             <DepsFiles Include="$(TargetDir)$(TargetName).deps.json" />
         </ItemGroup>
-        <Copy SourceFiles="@(Assemblies)" DestinationFiles="$(ModDeployDir)bin\Server\Linux\$(TargetName).dll" />
-        <Copy SourceFiles="@(DepsFiles)" DestinationFiles="$(ModDeployDir)bin\Server\Linux\$(TargetName).deps.json" />
+        <Copy SourceFiles="@(Assemblies)" DestinationFiles="$(ModDeployDir)bin\Client\Linux\$(TargetName).dll" />
+        <Copy SourceFiles="@(DepsFiles)" DestinationFiles="$(ModDeployDir)bin\Client\Linux\$(TargetName).deps.json" />
     </Target>
-
+    
 </Project>
