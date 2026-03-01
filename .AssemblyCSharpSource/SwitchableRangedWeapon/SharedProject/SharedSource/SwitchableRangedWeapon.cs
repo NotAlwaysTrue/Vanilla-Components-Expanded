@@ -299,12 +299,14 @@ namespace Barotrauma.Items.Components
                 else if (slotItem?.ownInventory != null)
                 {
                     IEnumerable<Item> containedItems = slotItem.ownInventory.GetAllItems(false);
-                    projectileitem = containedItems.FirstOrDefault(i => i.GetComponent<Projectile>() != null);
+                    projectileitem = containedItems?.FirstOrDefault(i => i.GetComponent<Projectile>() != null);
                     if (projectileitem == null) { return null; }
                     if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
                     return projectileitem.GetComponent<Projectile>();
                 }
             }
+
+            // Legacy
 
             if (switchableProjectiles.Any())
             {

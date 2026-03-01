@@ -1,3 +1,5 @@
+if VCE.ArmorSystem == nil then VCE.ArmorSystem = {} end
+
 local function calculateHash(configtable)
     local count = 0
     local localhash = 0

@@ -6,7 +6,7 @@ VCE.HF = {
     end,
 
     DoChance = function(probability)
-        local probability = Deep_Lua.HF.clamp(probability,0,1) * 100
+        local probability = VCE.HF.clamp(probability,0,1) * 100
         if probability - math.random(1,100) >= 0 then return true end
         return false
     end,
