@@ -1,8 +1,6 @@
-﻿using Barotrauma;
-
-namespace Deep_SwitchableRangedWeapon
+﻿namespace SRW
 {
-    public partial class SRW : IAssemblyPlugin
+    public partial class SwitchableRangedWeaponPlugin : IAssemblyPlugin
     {
         // Client-specific code
     }

@@ -1,53 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-    <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <Libs>..\..\..\.Tools/Refs</Libs>
-    </PropertyGroup>
-
-    <ItemGroup>
-      <Reference Include="0Harmony">
-        <HintPath>$(Libs)\0Harmony.dll</HintPath>
-      </Reference>
-      <Reference Include="Barotrauma">
-        <HintPath>$(Libs)\OSX\Barotrauma.dll</HintPath>
-      </Reference>
-      <Reference Include="BarotraumaCore">
-        <HintPath>$(Libs)\OSX\BarotraumaCore.dll</HintPath>
-      </Reference>
-      <Reference Include="Farseer.NetStandard">
-        <HintPath>$(Libs)\Farseer.NetStandard.dll</HintPath>
-      </Reference>
-      <Reference Include="Lidgren.NetStandard">
-        <HintPath>$(Libs)\Lidgren.NetStandard.dll</HintPath>
-      </Reference>
-      <Reference Include="Mono.Cecil">
-        <HintPath>$(Libs)\Mono.Cecil.dll</HintPath>
-      </Reference>
-      <Reference Include="MonoGame.Framework.MacOS.NetStandard">
-        <HintPath>$(Libs)\MonoGame.Framework.MacOS.NetStandard.dll</HintPath>
-      </Reference>
-      <Reference Include="MonoMod.Utils">
-        <HintPath>$(Libs)\MonoMod.Utils.dll</HintPath>
-      </Reference>
-      <Reference Include="MoonSharp.Interpreter">
-        <HintPath>$(Libs)\MoonSharp.Interpreter.dll</HintPath>
-      </Reference>
-      <Reference Include="XNATypes">
-        <HintPath>$(Libs)\XNATypes.dll</HintPath>
-      </Reference>
-    </ItemGroup>
+  <PropertyGroup>
+    <Libs>..\..\..\.Tools/Refs</Libs>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Barotrauma">
+      <HintPath>$(Libs)\OSX\Barotrauma.dll</HintPath>
+    </Reference>
+    <Reference Include="BarotraumaCore">
+      <HintPath>$(Libs)\OSX\BarotraumaCore.dll</HintPath>
+    </Reference>
+    <Reference Include="MonoGame.Framework.MacOS.NetStandard">
+      <HintPath>$(Libs)\MonoGame.Framework.MacOS.NetStandard.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 
   <Import Project="..\SharedProject\SharedProject.projitems" Label="Shared" />
   <Import Project="../Build.props"/>
-
-  <PropertyGroup>
-    <RootNamespace>$(SolutionName.Replace(" ", "_"))</RootNamespace>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateDocumentationFile>False</GenerateDocumentationFile>
-  </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DefineConstants>TRACE;OSX;CLIENT</DefineConstants>

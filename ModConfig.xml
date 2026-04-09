@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ModConfig>
+    <Assembly file="%ModDir%/bin/Client/Linux/SwitchableRangedWeapon.dll" Target="Client" Platform="Linux"/>
+    <Assembly file="%ModDir%/bin/Client/OSX/SwitchableRangedWeapon.dll" Target="Client" Platform="OSX"/>
+    <Assembly file="%ModDir%/bin/Client/Windows/SwitchableRangedWeapon.dll" Target="Client" Platform="Windows"/>
+
+    <Assembly file="%ModDir%/bin/Server/Linux/SwitchableRangedWeapon.dll" Target="Server" Platform="Linux"/>
+    <Assembly file="%ModDir%/bin/Server/OSX/SwitchableRangedWeapon.dll" Target="Server" Platform="OSX"/>
+    <Assembly file="%ModDir%/bin/Server/Windows/SwitchableRangedWeapon.dll" Target="Server" Platform="Windows"/>
+    
+    <!-- This is a sample config setup, change/delete it as needed. -->
+    <!--
+    <Config File="%ModDir%/Config/SettingsClient.xml" Target="Client" />
+    <Config File="%ModDir%/Config/SettingsShared.xml"  />
+    <Config File="%ModDir%/Config/SettingsServer.xml" Target="Server" />
+    -->
+</ModConfig>
