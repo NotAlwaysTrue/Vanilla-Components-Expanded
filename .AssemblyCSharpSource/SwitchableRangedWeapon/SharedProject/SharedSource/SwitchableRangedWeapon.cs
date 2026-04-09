@@ -1,8 +1,10 @@
+using Barotrauma;
 using Barotrauma.Abilities;
+using Barotrauma.Items.Components;
 using Barotrauma.Networking;
 using Microsoft.Xna.Framework;
 
-namespace Barotrauma.Items.Components
+namespace SRW
 {
     public partial class SwitchableRangedWeapon : RangedWeapon
     {
@@ -12,7 +14,7 @@ namespace Barotrauma.Items.Components
 
         private int currentfiremode = 0;
 
-        private int maxprojectileselectable = 1;
+        private int maxselectable = 1;
 
         private int maxfiremodeselectable = 1;
 
@@ -32,18 +34,18 @@ namespace Barotrauma.Items.Components
 
         private IList<FireMode> switchableFiremodes;
 
-        [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        [Editable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int currentFireModeSelected
         {
             get { return currentfiremode; }
             set { currentfiremode = (value <= (maxfiremodeselectable - 1) && value >= 0) ? value : 0; }
         }
 
-        [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        [Editable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int currentProjectileSelected
         {
             get { return currentselected; }
-            set { currentselected = (value <= (maxprojectileselectable - 1)) ? value : 0; }
+            set { currentselected = (value <= (maxselectable - 1)) ? value : 0; }
         }
 
         [Serialize(true, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
@@ -59,7 +61,7 @@ namespace Barotrauma.Items.Components
             }
         }
 
-        [InGameEditable, Serialize(true, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        [Editable, Serialize(true, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public bool triggerReleased
         {
             get
@@ -76,21 +78,21 @@ namespace Barotrauma.Items.Components
             }
         }
 
-        [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        [Editable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int shotsPerBurst
         {
             get;
             set;
         }
 
-        [InGameEditable, Serialize(0.0f, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        [Editable, Serialize(0.0f, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public float burstReload
         {
             get { return burstreload; }
             set { burstreload = Math.Max(value, 0.0f); }
         }
 
-        [InGameEditable, Serialize(0.1f, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        [Editable, Serialize(0.1f, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public float BotReload
         {
             get { return botreload; }
@@ -106,15 +108,15 @@ namespace Barotrauma.Items.Components
             switchableFiremodes = WriteFiremode(switchableFiremodesStr);
             if (switchableSlots.Any())
             {
-                maxprojectileselectable = switchableSlots.Count();
+                maxselectable = switchableSlots.Count();
             }
             else if (switchableProjectiles.Any())
             {
-                maxprojectileselectable = switchableProjectiles.Count();
+                maxselectable = switchableProjectiles.Count();
             }
             else
             {
-                maxprojectileselectable = 1;
+                maxselectable = 1;
             }
             maxfiremodeselectable = switchableFiremodes.Count();
             BotReload = element.GetAttributeFloat(nameof(switchableProjectiles), MathHelper.Lerp(reload, reload * 4, 1 - reload));
@@ -287,10 +289,10 @@ namespace Barotrauma.Items.Components
         public new Projectile FindProjectile(bool triggerOnUseOnContainers = false)
         {
             Inventory itemInv = item.ownInventory;
-            Item projectileitem;
-            if (switchableSlots.Any())
+            Item projectileitem = null;
+            if (switchableSlots.Any() || !switchableProjectiles.Any())
             {
-                int slotIndex = switchableSlots.ElementAt(currentselected);
+                int slotIndex = currentselected > switchableSlots.Count() ? switchableSlots[currentselected] : 0;
                 Item slotItem = itemInv.GetItemAt(slotIndex);
                 if (slotItem?.GetComponent<Projectile>() != null)
                 {
@@ -298,8 +300,14 @@ namespace Barotrauma.Items.Components
                 }
                 else if (slotItem?.ownInventory != null)
                 {
-                    IEnumerable<Item> containedItems = slotItem.ownInventory.GetAllItems(false);
-                    projectileitem = containedItems?.FirstOrDefault(i => i.GetComponent<Projectile>() != null);
+                    foreach(var item in slotItem.ownInventory.GetAllItems(false))
+                    {
+                        if (item.GetComponent<Projectile>() != null)
+                        {
+                            projectileitem = item;
+                            break;
+                        }
+                    }
                     if (projectileitem == null) { return null; }
                     if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
                     return projectileitem.GetComponent<Projectile>();
@@ -310,7 +318,7 @@ namespace Barotrauma.Items.Components
 
             if (switchableProjectiles.Any())
             {
-                Identifier targetTagOrID = switchableProjectiles.ElementAt(currentselected);
+                Identifier targetTagOrID = switchableProjectiles[currentselected];
                 projectileitem = itemInv.FindItem(i => ((i.HasTag(targetTagOrID) || i.Prefab.Identifier == targetTagOrID) && i.GetComponent<Projectile>() != null), true);
                 if (projectileitem == null) { return null; }
                 if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }

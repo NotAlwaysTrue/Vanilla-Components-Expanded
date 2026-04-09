@@ -1,16 +1,4 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<contentpackage name="Vanilla Components Expanded" modversion="1.2.3" corepackage="False" steamworkshopid="3606054332" gameversion="1.11.5.0">
-  <Other file="%ModDir%/bin/Client/Linux/SwitchableRangedWeapon.deps.json" />
-  <Other file="%ModDir%/bin/Client/Linux/SwitchableRangedWeapon.dll" />
-  <Other file="%ModDir%/bin/Client/OSX/SwitchableRangedWeapon.deps.json" />
-  <Other file="%ModDir%/bin/Client/OSX/SwitchableRangedWeapon.dll" />
-  <Other file="%ModDir%/bin/Client/Windows/SwitchableRangedWeapon.deps.json" />
-  <Other file="%ModDir%/bin/Client/Windows/SwitchableRangedWeapon.dll" />
-  <Other file="%ModDir%/bin/Server/Linux/SwitchableRangedWeapon.deps.json" />
-  <Other file="%ModDir%/bin/Server/Linux/SwitchableRangedWeapon.dll" />
-  <Other file="%ModDir%/bin/Server/OSX/SwitchableRangedWeapon.deps.json" />
-  <Other file="%ModDir%/bin/Server/OSX/SwitchableRangedWeapon.dll" />
-  <Other file="%ModDir%/bin/Server/Windows/SwitchableRangedWeapon.deps.json" />
-  <Other file="%ModDir%/bin/Server/Windows/SwitchableRangedWeapon.dll" />
+<contentpackage name="Vanilla Components Expanded" modversion="1.3.0" corepackage="False" steamworkshopid="3606054332" gameversion="1.12.6.2">
   <Afflictions file="%ModDir%/XML/Afflictions.xml" />
 </contentpackage>

@@ -1,29 +1,34 @@
-﻿using Barotrauma;
-using System.Runtime.CompilerServices;
-
-[assembly: IgnoresAccessChecksTo("Barotrauma")]
-[assembly: IgnoresAccessChecksTo("DedicatedServer")]
-[assembly: IgnoresAccessChecksTo("BarotraumaCore")]
-
-namespace Deep_SwitchableRangedWeapon
+﻿namespace SRW
 {
-    public partial class SRW : IAssemblyPlugin
+    public partial class SwitchableRangedWeaponPlugin : IAssemblyPlugin
     {
+        // These are automatically assigned by the plugin service after the Constructor is called
+        public IConfigService ConfigService { get; set; }
+        public IPluginManagementService PluginService { get; set; }
+        public ILoggerService LoggerService { get; set; }
+        
         public void Initialize()
         {
+            // When your plugin is loading, use this instead of the constructor for code relying on
+            // the services above.
+            
+            // Put any code here that does not rely on other plugins.
         }
 
         public void OnLoadCompleted()
         {
+            // After all plugins have loaded
+            // Put code that interacts with other plugins here.
         }
 
         public void PreInitPatching()
         {
+            //Called right after the constructor
         }
 
         public void Dispose()
         {
-
+            // Cleanup your plugin!
         }
     }
 }

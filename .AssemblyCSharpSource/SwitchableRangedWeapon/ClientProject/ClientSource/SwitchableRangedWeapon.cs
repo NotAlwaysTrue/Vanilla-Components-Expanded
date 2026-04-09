@@ -1,9 +1,10 @@
 ﻿using Barotrauma;
+using Barotrauma.Items.Components;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
-namespace Barotrauma.Items.Components
+namespace SRW
 {
     public partial class SwitchableRangedWeapon : RangedWeapon
     {
@@ -99,7 +100,7 @@ namespace Barotrauma.Items.Components
                 GUI.DrawString(spriteBatch, FireModePos, localstr, TextColor, forceUpperCase: ForceUpperCase.Yes);
             }
 
-            if (maxprojectileselectable > 1)
+            if (maxselectable > 1)
             {
                 string localtag = null;
                 if (switchableSlots.Any())
