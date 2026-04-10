@@ -7,7 +7,10 @@
     <Assembly file="%ModDir%/bin/Server/Linux/SwitchableRangedWeapon.dll" Target="Server" Platform="Linux"/>
     <Assembly file="%ModDir%/bin/Server/OSX/SwitchableRangedWeapon.dll" Target="Server" Platform="OSX"/>
     <Assembly file="%ModDir%/bin/Server/Windows/SwitchableRangedWeapon.dll" Target="Server" Platform="Windows"/>
-    
+
+    <Lua File="%ModDir%/Lua/Autorun/init.lua" IsAutorun="true"/>
+    <Lua File="%ModDir%/Lua/Autorun/LuaReg.lua" IsAutorun="true"/>
+
     <!-- This is a sample config setup, change/delete it as needed. -->
     <!--
     <Config File="%ModDir%/Config/SettingsClient.xml" Target="Client" />

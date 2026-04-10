@@ -34,14 +34,14 @@ namespace SRW
 
         private IList<FireMode> switchableFiremodes;
 
-        [Editable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int currentFireModeSelected
         {
             get { return currentfiremode; }
             set { currentfiremode = (value <= (maxfiremodeselectable - 1) && value >= 0) ? value : 0; }
         }
 
-        [Editable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int currentProjectileSelected
         {
             get { return currentselected; }
@@ -61,7 +61,7 @@ namespace SRW
             }
         }
 
-        [Editable, Serialize(true, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        [InGameEditable, Serialize(true, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public bool triggerReleased
         {
             get
@@ -292,7 +292,7 @@ namespace SRW
             Item projectileitem = null;
             if (switchableSlots.Any() || !switchableProjectiles.Any())
             {
-                int slotIndex = currentselected > switchableSlots.Count() ? switchableSlots[currentselected] : 0;
+                int slotIndex = currentselected < switchableSlots.Count ? switchableSlots[currentselected] : 0;
                 Item slotItem = itemInv.GetItemAt(slotIndex);
                 if (slotItem?.GetComponent<Projectile>() != null)
                 {

@@ -1,5 +1,3 @@
-if VCE.ArmorSystem == nil then VCE.ArmorSystem = {} end
-
 -- Limb convertion stuff
 local limbtoslot = {
     [LimbType.Head] = {InvSlotType.Head,0},
