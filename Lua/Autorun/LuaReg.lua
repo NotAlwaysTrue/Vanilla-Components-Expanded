@@ -1,1 +1,3 @@
-LuaUserData.RegisterType("SRW.SwitchableRangedWeapon")
+Timer.Wait(function()
+    LuaUserData.RegisterType("SRW.SwitchableRangedWeapon")
+end,10)
