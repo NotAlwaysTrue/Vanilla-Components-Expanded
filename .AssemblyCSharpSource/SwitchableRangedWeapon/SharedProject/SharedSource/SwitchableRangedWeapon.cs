@@ -38,7 +38,11 @@ namespace SRW
         public int currentFireModeSelected
         {
             get { return currentfiremode; }
-            set { currentfiremode = (value <= (maxfiremodeselectable - 1) && value >= 0) ? value : 0; }
+            set 
+            { 
+                currentfiremode = (value <= (maxfiremodeselectable - 1) && value >= 0) ? value : 0;
+                triggerReleased = true;
+            }
         }
 
         [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
