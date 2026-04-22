@@ -11,10 +11,6 @@ namespace SRW
 
         private Keys modeswitchkey, firemodeswitchkey;
 
-        private bool updating = false;
-
-        //protected IList<Sprite> FireModeIndicator, ProjectileIndicator;
-
         [Serialize("F", IsPropertySaveable.No)]
         public string switchKey
         {
@@ -59,24 +55,6 @@ namespace SRW
         {
             switchKey = rangedWeaponElement.GetAttributeString(nameof(modeswitchkey), "F");
             fireModeswitchKey = rangedWeaponElement.GetAttributeString(nameof(firemodeswitchkey), "B");
-            /*
-            foreach (var subElement in rangedWeaponElement.Elements())
-            {
-                Sprite tempsprite;
-                float scale = subElement.GetAttributeFloat(nameof(scale), 1f);
-                string textureDir = GetTextureDirectory(subElement);
-                tempsprite = new Sprite(subElement, path: textureDir, sourceRectScale: scale);
-                switch (subElement.Name.ToString().ToLowerInvariant())
-                {
-                    case "FireModeIndicator":
-                        FireModeIndicator.Add(tempsprite);
-                        break;
-                    case "ProjectileIndicator":
-                        ProjectileIndicator.Add(tempsprite);
-                        break;
-                }
-            }
-            */
         }
 
         partial void LaunchProjSpecific()
