@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="English" nowhitespace="false" translatedname="English">
+  <Vanilla_Components_Expanded.SRW_ModeSwitchKey.DisplayName>Mode Switch Key</Vanilla_Components_Expanded.SRW_ModeSwitchKey.DisplayName>
+  <Vanilla_Components_Expanded.SRW_ModeSwitchKey.ToolTip>Set Mode Switch Key</Vanilla_Components_Expanded.SRW_ModeSwitchKey.ToolTip>
+  <Vanilla_Components_Expanded.SRW_ModeSwitchKey.DisplayCategory>SwitchableRangedWeapon</Vanilla_Components_Expanded.SRW_ModeSwitchKey.DisplayCategory>
+  <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayName>Fire Mode Switch Key</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayName>
+  <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.ToolTip>Set Fire Mode Switch Key</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.ToolTip>
+  <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayCategory>SwitchableRangedWeapon</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayCategory>
+</infotexts>

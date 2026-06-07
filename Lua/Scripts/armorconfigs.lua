@@ -39,6 +39,7 @@ VCE.ArmorConfigs = {
             [LimbType.RightFoot] = true,
         },
         
+        PlaySound = true,                           -- Only will function if set to false and will only affact sounds
         RicochetSoundPath = VCE.Path .. "/Sounds/BRUH.ogg",               --Path for ricochet sounds. Only necessary for items that ricochet probability above 0
         SoundRange = 100,
 

@@ -8,54 +8,8 @@ namespace SRW
 {
     public partial class SwitchableRangedWeapon : RangedWeapon
     {
-
-        private Keys modeswitchkey, firemodeswitchkey;
-
-        [Serialize("F", IsPropertySaveable.No)]
-        public string switchKey
-        {
-            get
-            {
-                return ((char)modeswitchkey).ToString();
-            }
-            set
-            {
-                object Key;
-                bool success = Enum.TryParse(typeof(Keys), value, out Key);
-                modeswitchkey = success ? (Keys)Key : Keys.F;
-                if (!success)
-                {
-                    DebugConsole.AddWarning($"Invalid {nameof(modeswitchkey)} configuration at {item.Name}: {value} is not supported! Using F as default.",
-                    item.Prefab.ContentPackage);
-                }
-            }
-        }
-
-        public string fireModeswitchKey
-        {
-            get
-            {
-                return ((char)modeswitchkey).ToString();
-            }
-            set
-            {
-                object Key;
-                bool success = Enum.TryParse(typeof(Keys), value, out Key);
-                firemodeswitchkey = success ? (Keys)Key : Keys.B;
-                if (!success)
-                {
-                    DebugConsole.AddWarning($"Invalid {nameof(modeswitchkey)} configuration at {item.Name}: {value} is not supported! Using F as default.",
-                    item.Prefab.ContentPackage);
-                }
-            }
-        }
-
-
-        partial void InitProjSpecific(ContentXElement rangedWeaponElement)
-        {
-            switchKey = rangedWeaponElement.GetAttributeString(nameof(modeswitchkey), "F");
-            fireModeswitchKey = rangedWeaponElement.GetAttributeString(nameof(firemodeswitchkey), "B");
-        }
+        public KeyOrMouse ModeSwitchKey => SwitchableRangedWeaponPlugin.Instance.SwitchKey;
+        public KeyOrMouse fireModeswitchKey => SwitchableRangedWeaponPlugin.Instance.FireModeSwitchKey;
 
         partial void LaunchProjSpecific()
         {
@@ -81,7 +35,7 @@ namespace SRW
             if (maxselectable > 1)
             {
                 string localtag = null;
-                if (switchableSlots.Any())
+                if (switchableSlots.Count != 0)
                 {
                     switch(currentselected)
                     {
@@ -96,7 +50,7 @@ namespace SRW
                             break;
                     }
                 }
-                else if (switchableProjectiles.Any())
+                else if (switchableProjectiles.Count != 0)
                 {
                     localtag = switchableProjectiles.ElementAt(currentselected).ToString();
                 }
@@ -122,19 +76,19 @@ namespace SRW
             if (PlayerInput.KeyUp(InputType.Shoot) && (PlayerInput.KeyDown(InputType.Shoot) != previousshootkeystat))
             {
                 triggerReleased = true;
-                GameMain.Client?.CreateEntityEvent(this.Item, new Item.ChangePropertyEventData(this.SerializableProperties["triggerReleased".ToIdentifier()], this));
+                GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["triggerReleased".ToIdentifier()], this), true);
             }
 
-            if (PlayerInput.KeyHit(firemodeswitchkey))
+            if (fireModeswitchKey.IsHit())
             {
                 currentFireModeSelected += 1;
-                GameMain.Client?.CreateEntityEvent(this.Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentFireModeSelected".ToIdentifier()], this));
+                GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentFireModeSelected".ToIdentifier()], this));
             }
 
-            if (PlayerInput.KeyHit(modeswitchkey))
+            if (ModeSwitchKey.IsHit())
             {
                 currentProjectileSelected += 1;
-                GameMain.Client?.CreateEntityEvent(this.Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentProjectileSelected".ToIdentifier()], this));
+                GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentProjectileSelected".ToIdentifier()], this));
             }
             previousshootkeystat = PlayerInput.KeyDown(InputType.Shoot);
             return;

@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<infotexts language="Simplified Chinese" nowhitespace="false" translatedname="中文(简体)">
+  <Vanilla_Components_Expanded.SRW_ModeSwitchKey.DisplayName>模式切换按键</Vanilla_Components_Expanded.SRW_ModeSwitchKey.DisplayName>
+  <Vanilla_Components_Expanded.SRW_ModeSwitchKey.ToolTip>设置模式切换按键</Vanilla_Components_Expanded.SRW_ModeSwitchKey.ToolTip>
+  <Vanilla_Components_Expanded.SRW_ModeSwitchKey.DisplayCategory>SwitchableRangedWeapon</Vanilla_Components_Expanded.SRW_ModeSwitchKey.DisplayCategory>
+  <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayName>射击模式切换按键</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayName>
+  <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.ToolTip>设置射击模式切换按键</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.ToolTip>
+  <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayCategory>SwitchableRangedWeapon</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayCategory>
+</infotexts>

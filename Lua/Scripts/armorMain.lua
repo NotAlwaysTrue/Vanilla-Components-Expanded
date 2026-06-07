@@ -95,7 +95,7 @@ function VCE.ArmorSystem.PlateMain(data,item,penlevel,damagemultiplier,afflictio
                 Networking.Send(message, client.Connection)
             end
         end
-        if not Game.IsMultiplayer then
+        if not Game.IsMultiplayer and VCE.ArmorConfigs[item.Prefab.Identifier.Value].PlaySound ~= false then
             local RicochetSound = VCE.LoadedSounds[item.Prefab.Identifier.Value] or VCE.LoadedSounds.DefaultSound
             local Range = VCE.ArmorConfigs[item.Prefab.Identifier.Value].SoundRange or 1000
             SoundPlayer.PlaySound(RicochetSound, Vector2(item.WorldPosition.X, item.WorldPosition.Y), 1, Range, 1)

@@ -6,13 +6,20 @@
         public IConfigService ConfigService { get; set; }
         public IPluginManagementService PluginService { get; set; }
         public ILoggerService LoggerService { get; set; }
-        
+        public IPluginManagementService LuaCsPluginService { get; set; }
+
+        public ContentPackage Package { get; private set; }
+
+        public static SwitchableRangedWeaponPlugin Instance { get; private set; }
+
+        partial void Initializeclient();
+
         public void Initialize()
         {
-            // When your plugin is loading, use this instead of the constructor for code relying on
-            // the services above.
-            
-            // Put any code here that does not rely on other plugins.
+            LuaCsPluginService.TryGetPackageForPlugin<SwitchableRangedWeaponPlugin>(out ContentPackage _result);
+            Package = _result;
+            Initializeclient();
+            Instance = this;
         }
 
         public void OnLoadCompleted()

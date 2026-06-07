@@ -28,21 +28,17 @@ namespace SRW
 
         private bool domagcheck = true;
 
-        private IList<Identifier> switchableProjectiles;
+        private List<Identifier> switchableProjectiles;
 
-        private IList<int> switchableSlots;
+        private List<int> switchableSlots;
 
-        private IList<FireMode> switchableFiremodes;
+        private List<FireMode> switchableFiremodes;
 
         [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int currentFireModeSelected
         {
             get { return currentfiremode; }
-            set 
-            { 
-                currentfiremode = (value <= (maxfiremodeselectable - 1) && value >= 0) ? value : 0;
-                triggerReleased = true;
-            }
+            set { currentfiremode = (value <= (maxfiremodeselectable - 1) && value >= 0) ? value : 0; }
         }
 
         [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
@@ -82,6 +78,7 @@ namespace SRW
             }
         }
 
+
         [Editable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int shotsPerBurst
         {
@@ -106,34 +103,34 @@ namespace SRW
         public SwitchableRangedWeapon(Item item, ContentXElement element)
             : base(item, element)
         {
-            switchableProjectiles = element.GetAttributeIdentifierArray(nameof(switchableProjectiles), Array.Empty<Identifier>());
-            switchableSlots = element.GetAttributeIntArray(nameof(switchableSlots), Array.Empty<int>());
-            IList<string> switchableFiremodesStr = element.GetAttributeStringArray(nameof(switchableFiremodes), Array.Empty<string>());
+            switchableProjectiles = element.GetAttributeIdentifierArray(nameof(switchableProjectiles), Array.Empty<Identifier>()).ToList();
+            switchableSlots = element.GetAttributeIntArray(nameof(switchableSlots), Array.Empty<int>()).ToList();
+            List<string> switchableFiremodesStr = element.GetAttributeStringArray(nameof(switchableFiremodes), Array.Empty<string>()).ToList();
             switchableFiremodes = WriteFiremode(switchableFiremodesStr);
-            if (switchableSlots.Any())
+            if (switchableSlots.Count != 0)
             {
-                maxselectable = switchableSlots.Count();
+                maxselectable = switchableSlots.Count;
             }
-            else if (switchableProjectiles.Any())
+            else if (switchableProjectiles.Count != 0)
             {
-                maxselectable = switchableProjectiles.Count();
+                maxselectable = switchableProjectiles.Count;
             }
             else
             {
                 maxselectable = 1;
             }
             maxfiremodeselectable = switchableFiremodes.Count();
-            BotReload = element.GetAttributeFloat(nameof(switchableProjectiles), MathHelper.Lerp(reload, reload * 4, 1 - reload));
+            BotReload = element.GetAttributeFloat(nameof(BotReload), MathHelper.Lerp(reload, reload * 4, 1 - reload));
             InitProjSpecific(element);
         }
 
-        private IList<FireMode> WriteFiremode(IList<string> FireModeStr)
+        private List<FireMode> WriteFiremode(List<string> FireModeStr)
         {
-            if (FireModeStr == Array.Empty<string>())
+            if (FireModeStr.Count == 0)
             {
-                return new List<FireMode>() { FireMode.Auto };
+                return [FireMode.Auto];
             }
-            IList<FireMode> TempFireMode = new List<FireMode>();
+            List<FireMode> TempFireMode = new List<FireMode>();
             foreach (string FM in FireModeStr)
             {
                 bool success = Enum.TryParse(FM, true, out FireMode fireMode);
@@ -227,6 +224,7 @@ namespace SRW
             for (int i = 0; i < ProjectileCount; i++)
             {
                 Projectile projectile = FindProjectile(triggerOnUseOnContainers: true);
+                Projectile tproj = projectile;
                 if (projectile == null) { return false; }
                 Vector2 barrelPos = TransformedBarrelPos + item.body.SimPosition;
                 float rotation = (Item.body.Dir == 1.0f) ? Item.body.Rotation : Item.body.Rotation - MathHelper.Pi;
@@ -294,7 +292,7 @@ namespace SRW
         {
             Inventory itemInv = item.ownInventory;
             Item projectileitem = null;
-            if (switchableSlots.Any() || !switchableProjectiles.Any())
+            if (switchableSlots.Count > 0 || switchableProjectiles.Count == 0)
             {
                 int slotIndex = currentselected < switchableSlots.Count ? switchableSlots[currentselected] : 0;
                 Item slotItem = itemInv.GetItemAt(slotIndex);
@@ -320,7 +318,7 @@ namespace SRW
 
             // Legacy
 
-            if (switchableProjectiles.Any())
+            if (switchableProjectiles.Count != 0)
             {
                 Identifier targetTagOrID = switchableProjectiles[currentselected];
                 projectileitem = itemInv.FindItem(i => ((i.HasTag(targetTagOrID) || i.Prefab.Identifier == targetTagOrID) && i.GetComponent<Projectile>() != null), true);
@@ -350,13 +348,5 @@ namespace SRW
         }
         partial void LaunchProjSpecific();
 
-    }
-    class AbilityRangedWeapon : AbilityObject, IAbilityItem
-    {
-        public AbilityRangedWeapon(Item item)
-        {
-            Item = item;
-        }
-        public Item Item { get; set; }
     }
 }
