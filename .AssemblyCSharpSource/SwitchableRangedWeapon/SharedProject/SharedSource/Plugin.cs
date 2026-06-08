@@ -24,8 +24,9 @@
 
         public void OnLoadCompleted()
         {
-            // After all plugins have loaded
-            // Put code that interacts with other plugins here.
+            FieldInfo servicesproviderfield = typeof(LuaCsSetup).GetField("_servicesProvider", BindingFlags.NonPublic | BindingFlags.Instance);
+            ((IServicesProvider)servicesproviderfield.GetValue(LuaCsSetup.Instance)).TryGetService(out ILuaUserDataService LuaUserDataService);
+            LuaUserDataService.RegisterType(typeof(SwitchableRangedWeapon).FullName);
         }
 
         public void PreInitPatching()

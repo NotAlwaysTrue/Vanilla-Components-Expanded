@@ -1,8 +1,5 @@
-using Barotrauma;
-using Barotrauma.Abilities;
 using Barotrauma.Items.Components;
 using Barotrauma.Networking;
-using Microsoft.Xna.Framework;
 
 namespace SRW
 {
@@ -120,7 +117,7 @@ namespace SRW
                 maxselectable = 1;
             }
             maxfiremodeselectable = switchableFiremodes.Count();
-            BotReload = element.GetAttributeFloat(nameof(BotReload), MathHelper.Lerp(reload, reload * 4, 1 - reload));
+            botreload = element.GetAttributeFloat(nameof(botreload), MathHelper.Lerp(reload, reload * 4, 1 - reload));
             InitProjSpecific(element);
         }
 
@@ -150,19 +147,19 @@ namespace SRW
 
         public override bool Use(float deltaTime, Character? character = null)
         {
-            UpdateBotInput(deltaTime, character);
+            bool shouldbotshoot = ShouldBotShoot(deltaTime, character);
             switch (switchableFiremodes[currentfiremode])
             {
                 case FireMode.Safe:
                     return false;
                 case FireMode.Semi:
-                    if (roundsshot >= 1)
+                    if (roundsshot >= 1 || !shouldbotshoot)
                     {
                         return false;
                     }
                     break;
                 case FireMode.Burst:
-                    if (roundsshot >= shotsPerBurst)
+                    if (roundsshot >= shotsPerBurst || !shouldbotshoot)
                     {
                         return false;
                     }
@@ -330,21 +327,20 @@ namespace SRW
             return null;
         }
 
-        public void UpdateBotInput(float deltaTime, Character? character)
+        public bool ShouldBotShoot(float deltaTime, Character? character)
         {
             BotReloadTimer -= deltaTime;
 
-            if (BotReloadTimer < 0.0f)
-            {
-                BotReloadTimer = 0.0f;
-            }
+            if (character == null) { return false; }
+            if (!character.IsBot) { return true; }
 
-            if (character == null) { return; }
-            if (!character.IsBot) { return; }
             if (BotReloadTimer <= 0)
             {
+                BotReloadTimer = 0;
                 triggerReleased = true;
+                return true;
             }
+            return false;
         }
         partial void LaunchProjSpecific();
 

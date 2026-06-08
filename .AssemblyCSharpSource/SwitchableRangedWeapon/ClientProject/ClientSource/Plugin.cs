@@ -28,8 +28,8 @@ namespace SRW
         {
             ConfigService.TryGetConfig(Package, "SRW_ModeSwitchKey", out ISettingControl _control);
             switchkey = _control;
-            ConfigService.TryGetConfig(Package, "SRW_FireModeSwitchKey", out _control);
-            firemodeswitchkey = _control;
+            ConfigService.TryGetConfig(Package, "SRW_FireModeSwitchKey", out ISettingControl _firemodecontrol);
+            firemodeswitchkey = _firemodecontrol;
         }
     }
 }

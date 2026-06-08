@@ -1,4 +1,4 @@
-namespace Barotrauma
+namespace SRW
 {
     public enum FireMode
     {

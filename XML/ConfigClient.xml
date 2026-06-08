@@ -2,6 +2,6 @@
 <Configuration>
   <Settings>
     <Setting Name="SRW_ModeSwitchKey" Type="control" Value="F" />
-    <Setting Name="SRW_FireModeSwitchKey" Type="control" Value="X" />
+    <Setting Name="SRW_FireModeSwitchKey" Type="control" Value="B" />
   </Settings>
 </Configuration>
