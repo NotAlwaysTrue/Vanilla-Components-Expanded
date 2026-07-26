@@ -226,8 +226,11 @@ namespace SRW
             for (int i = 0; i < ProjectileCount; i++)
             {
                 Projectile projectile = FindProjectile(triggerOnUseOnContainers: true);
-                Projectile tproj = projectile;
-                if (projectile == null) { return false; }
+                if (projectile == null)
+                {
+                    LastProjectile = null;
+                    continue;
+                }
                 Vector2 barrelPos = TransformedBarrelPos + item.body.SimPosition;
                 float rotation = (Item.body.Dir == 1.0f) ? Item.body.Rotation : Item.body.Rotation - MathHelper.Pi;
                 float spread = GetSpread(character) * projectile.GetSpreadFromPool();
