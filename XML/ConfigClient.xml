@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <Settings>
+    <Setting Name="SRW_ModeSwitchKey" Type="control" Value="F" />
+    <Setting Name="SRW_FireModeSwitchKey" Type="control" Value="B" />
+  </Settings>
+</Configuration>

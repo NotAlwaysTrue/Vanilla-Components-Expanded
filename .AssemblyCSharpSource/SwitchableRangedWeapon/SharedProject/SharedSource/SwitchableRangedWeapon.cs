@@ -1,19 +1,12 @@
-using Barotrauma.Abilities;
+using Barotrauma.Items.Components;
 using Barotrauma.Networking;
-using FarseerPhysics;
-using FarseerPhysics.Dynamics;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
 
-namespace Barotrauma.Items.Components
+namespace SRW
 {
     public partial class SwitchableRangedWeapon : RangedWeapon
     {
+        public float BotReloadTimer { get; private set; }
+
         private int currentselected = 0;
         public int CurrentSelected
         {
@@ -24,7 +17,7 @@ namespace Barotrauma.Items.Components
 
         private int currentfiremode = 0;
 
-        private int maxprojectileselectable = 1;
+        private int maxselectable = 1;
 
         private int maxfiremodeselectable = 1;
 
@@ -32,15 +25,17 @@ namespace Barotrauma.Items.Components
 
         private float burstreload;
 
+        private float botreload;
+
         private bool triggerreleased = true;
 
         private bool domagcheck = true;
 
-        private IList<Identifier> switchableProjectiles;
+        private List<Identifier> switchableProjectiles;
 
-        private IList<int> switchableSlots;
+        private List<int> switchableSlots;
 
-        private IList<FireMode> switchableFiremodes;
+        private List<FireMode> switchableFiremodes;
 
         [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int currentFireModeSelected
@@ -49,11 +44,11 @@ namespace Barotrauma.Items.Components
             set { currentfiremode = (value <= (maxfiremodeselectable - 1) && value >= 0) ? value : 0; }
         }
 
-        [InGameEditable,Serialize(0, IsPropertySaveable.Yes,alwaysUseInstanceValues:true)]
+        [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int currentProjectileSelected
         {
             get { return currentselected; }
-            set { currentselected = (value <= (maxprojectileselectable - 1)) ? value : 0; }
+            set { currentselected = (value <= (maxselectable - 1)) ? value : 0; }
         }
 
         [Serialize(true, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
@@ -78,7 +73,7 @@ namespace Barotrauma.Items.Components
             }
             set
             {
-                if(value)
+                if (value)
                 {
                     roundsshot = 0;
                 }
@@ -86,54 +81,63 @@ namespace Barotrauma.Items.Components
             }
         }
 
-        [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+
+        [Editable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int shotsPerBurst
         {
             get;
             set;
         }
 
-        [InGameEditable, Serialize(0.0f, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        [Editable, Serialize(0.0f, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public float burstReload
         {
             get { return burstreload; }
             set { burstreload = Math.Max(value, 0.0f); }
         }
 
+        [Editable, Serialize(0.1f, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        public float BotReload
+        {
+            get { return botreload; }
+            set { botreload = Math.Max(value, 0.0f); }
+        }
+
         public SwitchableRangedWeapon(Item item, ContentXElement element)
             : base(item, element)
         {
-            switchableProjectiles = element.GetAttributeIdentifierArray(nameof(switchableProjectiles), Array.Empty<Identifier>());
-            switchableSlots = element.GetAttributeIntArray(nameof(switchableSlots), Array.Empty<int>());
-            IList<string> switchableFiremodesStr = element.GetAttributeStringArray(nameof(switchableFiremodes), Array.Empty<string>());
+            switchableProjectiles = element.GetAttributeIdentifierArray(nameof(switchableProjectiles), Array.Empty<Identifier>()).ToList();
+            switchableSlots = element.GetAttributeIntArray(nameof(switchableSlots), Array.Empty<int>()).ToList();
+            List<string> switchableFiremodesStr = element.GetAttributeStringArray(nameof(switchableFiremodes), Array.Empty<string>()).ToList();
             switchableFiremodes = WriteFiremode(switchableFiremodesStr);
-            if (switchableSlots.Any())
+            if (switchableSlots.Count != 0)
             {
-                maxprojectileselectable = switchableSlots.Count();
+                maxselectable = switchableSlots.Count;
             }
-            else if (switchableProjectiles.Any())
+            else if (switchableProjectiles.Count != 0)
             {
-                maxprojectileselectable = switchableProjectiles.Count();
+                maxselectable = switchableProjectiles.Count;
             }
             else
             {
-                maxprojectileselectable = 1;
+                maxselectable = 1;
             }
             maxfiremodeselectable = switchableFiremodes.Count();
+            botreload = element.GetAttributeFloat(nameof(botreload), MathHelper.Lerp(reload, reload * 4, 1 - reload));
             InitProjSpecific(element);
         }
 
-        private IList<FireMode> WriteFiremode(IList<string> FireModeStr)
+        private List<FireMode> WriteFiremode(List<string> FireModeStr)
         {
-            if(FireModeStr == Array.Empty<string>())
+            if (FireModeStr.Count == 0)
             {
-                return new List<FireMode>() { FireMode.Auto };
+                return [FireMode.Auto];
             }
-            IList<FireMode> TempFireMode = new List<FireMode>();
+            List<FireMode> TempFireMode = new List<FireMode>();
             foreach (string FM in FireModeStr)
             {
-                bool success = Enum.TryParse(FM ,true ,out FireMode fireMode);
-                if(success)
+                bool success = Enum.TryParse(FM, true, out FireMode fireMode);
+                if (success)
                 {
                     TempFireMode.Add(fireMode);
                 }
@@ -149,18 +153,19 @@ namespace Barotrauma.Items.Components
 
         public override bool Use(float deltaTime, Character? character = null)
         {
-            switch(switchableFiremodes[currentfiremode])
+            bool shouldbotshoot = ShouldBotShoot(deltaTime, character);
+            switch (switchableFiremodes[currentfiremode])
             {
                 case FireMode.Safe:
                     return false;
                 case FireMode.Semi:
-                    if(roundsshot >= 1)
+                    if (roundsshot >= 1 || !shouldbotshoot)
                     {
                         return false;
                     }
                     break;
                 case FireMode.Burst:
-                    if (roundsshot >= shotsPerBurst)
+                    if (roundsshot >= shotsPerBurst || !shouldbotshoot)
                     {
                         return false;
                     }
@@ -222,7 +227,8 @@ namespace Barotrauma.Items.Components
             for (int i = 0; i < ProjectileCount; i++)
             {
                 Projectile projectile = FindProjectile(triggerOnUseOnContainers: true);
-                if (projectile == null) { return false;  }
+                Projectile tproj = projectile;
+                if (projectile == null) { return false; }
                 Vector2 barrelPos = TransformedBarrelPos + item.body.SimPosition;
                 float rotation = (Item.body.Dir == 1.0f) ? Item.body.Rotation : Item.body.Rotation - MathHelper.Pi;
                 float spread = GetSpread(character) * projectile.GetSpreadFromPool();
@@ -277,6 +283,8 @@ namespace Barotrauma.Items.Components
 
             LaunchProjSpecific();
 
+            //TODO: Add random time multiplier for Bots
+            BotReloadTimer = (botreload / (1 + character?.GetStatValue(StatTypes.RangedAttackSpeed) ?? 0));
             triggerreleased = false;
             roundsshot += 1;
 
@@ -286,10 +294,10 @@ namespace Barotrauma.Items.Components
         public new Projectile FindProjectile(bool triggerOnUseOnContainers = false)
         {
             Inventory itemInv = item.ownInventory;
-            Item projectileitem;
-            if (switchableSlots.Any())
+            Item projectileitem = null;
+            if (switchableSlots.Count > 0 || switchableProjectiles.Count == 0)
             {
-                int slotIndex = switchableSlots.ElementAt(currentselected);
+                int slotIndex = currentselected < switchableSlots.Count ? switchableSlots[currentselected] : 0;
                 Item slotItem = itemInv.GetItemAt(slotIndex);
                 if (slotItem?.GetComponent<Projectile>() != null)
                 {
@@ -297,17 +305,25 @@ namespace Barotrauma.Items.Components
                 }
                 else if (slotItem?.ownInventory != null)
                 {
-                    IEnumerable<Item> containedItems = slotItem.ownInventory.GetAllItems(false);
-                    projectileitem = containedItems.FirstOrDefault(i => i.GetComponent<Projectile>() != null);
+                    foreach(var item in slotItem.ownInventory.GetAllItems(false))
+                    {
+                        if (item.GetComponent<Projectile>() != null)
+                        {
+                            projectileitem = item;
+                            break;
+                        }
+                    }
                     if (projectileitem == null) { return null; }
                     if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
                     return projectileitem.GetComponent<Projectile>();
                 }
             }
 
-            if (switchableProjectiles.Any())
+            // Legacy
+
+            if (switchableProjectiles.Count != 0)
             {
-                Identifier targetTagOrID = switchableProjectiles.ElementAt(currentselected);
+                Identifier targetTagOrID = switchableProjectiles[currentselected];
                 projectileitem = itemInv.FindItem(i => ((i.HasTag(targetTagOrID) || i.Prefab.Identifier == targetTagOrID) && i.GetComponent<Projectile>() != null), true);
                 if (projectileitem == null) { return null; }
                 if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
@@ -317,16 +333,22 @@ namespace Barotrauma.Items.Components
             return null;
         }
 
+        public bool ShouldBotShoot(float deltaTime, Character? character)
+        {
+            BotReloadTimer -= deltaTime;
+
+            if (character == null) { return false; }
+            if (!character.IsBot) { return true; }
+
+            if (BotReloadTimer <= 0)
+            {
+                BotReloadTimer = 0;
+                triggerReleased = true;
+                return true;
+            }
+            return false;
+        }
         partial void LaunchProjSpecific();
 
-
-    }
-    class AbilityRangedWeapon : AbilityObject, IAbilityItem
-    {
-        public AbilityRangedWeapon(Item item)
-        {
-            Item = item;
-        }
-        public Item Item { get; set; }
     }
 }

@@ -1,1 +1,0 @@
-LuaUserData.RegisterType("Barotrauma.Items.Components.SwitchableRangedWeapon")

@@ -1,13 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Barotrauma;
-
-namespace Deep_SwitchableRangedWeapon
+﻿namespace SRW
 {
-    public partial class SRW : IAssemblyPlugin
+    public partial class SwitchableRangedWeaponPlugin : IAssemblyPlugin
     {
         // Server-specific code
     }
