@@ -76,8 +76,7 @@ namespace SRW
             if (PlayerInput.KeyUp(InputType.Shoot) && (PlayerInput.KeyDown(InputType.Shoot) != previousshootkeystat))
             {
                 triggerReleased = true;
-                // 服务器通过 Shared 代码中 Use() 的 IsKeyHit(InputType.Shoot) 检测扳机按下并重置 roundsshot
-                // 不再发送 ChangePropertyEventData，避免服务器回传广播在不可预测时间点到达客户端导致首发卡顿
+                GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["triggerReleased".ToIdentifier()], this), true);
             }
 
             if (character.IsKeyDown(InputType.Aim) && fireModeswitchKey.IsHit())
