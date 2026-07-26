@@ -80,13 +80,13 @@ namespace SRW
                 // 不再发送 ChangePropertyEventData，避免服务器回传广播在不可预测时间点到达客户端导致首发卡顿
             }
 
-            if (fireModeswitchKey.IsHit())
+            if (character.IsKeyDown(InputType.Aim) && fireModeswitchKey.IsHit())
             {
                 currentFireModeSelected += 1;
                 GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentFireModeSelected".ToIdentifier()], this));
             }
 
-            if (ModeSwitchKey.IsHit())
+            if (character.IsKeyDown(InputType.Aim) && ModeSwitchKey.IsHit())
             {
                 currentProjectileSelected += 1;
                 GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentProjectileSelected".ToIdentifier()], this));
