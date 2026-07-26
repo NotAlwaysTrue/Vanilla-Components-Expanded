@@ -8,12 +8,6 @@ namespace SRW
         public float BotReloadTimer { get; private set; }
 
         private int currentselected = 0;
-        public int CurrentSelected
-        {
-            get { return currentselected; }
-            set { currentselected = value; }
-        }
-
 
         private int currentfiremode = 0;
 
@@ -151,8 +145,15 @@ namespace SRW
 
         partial void InitProjSpecific(ContentXElement rangedWeaponElement);
 
-        public override bool Use(float deltaTime, Character? character = null)
+        public override bool Use(float deltaTime, Character character = null)
         {
+            // 扳机按下瞬间重置射击计数，替代 triggerReleased 的 ChangePropertyEventData 网络同步
+            // 服务器与客户端均通过 IsKeyHit(InputType.Shoot) 本地检测，消除属性广播导致的多人模式首发卡顿
+            if (character != null && character.IsKeyHit(InputType.Shoot))
+            {
+                roundsshot = 0;
+            }
+
             bool shouldbotshoot = ShouldBotShoot(deltaTime, character);
             switch (switchableFiremodes[currentfiremode])
             {
