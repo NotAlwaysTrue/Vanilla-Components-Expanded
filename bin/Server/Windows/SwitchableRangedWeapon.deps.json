@@ -26,8 +26,7 @@
       },
       "FluentResults/3.16.0": {
         "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "2.1.1",
-          "System.Threading.Tasks.Extensions": "4.5.4"
+          "Microsoft.Extensions.Logging.Abstractions": "2.1.1"
         },
         "runtime": {
           "lib/netstandard2.1/FluentResults.dll": {
@@ -38,9 +37,7 @@
       },
       "HarmonyX/2.16.0": {
         "dependencies": {
-          "MonoMod.RuntimeDetour": "25.3.3",
-          "System.Reflection.Emit": "4.7.0",
-          "System.Text.Json": "5.0.2"
+          "MonoMod.RuntimeDetour": "25.3.3"
         },
         "runtime": {
           "lib/netstandard2.0/0Harmony.dll": {
@@ -158,9 +155,6 @@
           }
         }
       },
-      "System.Reflection.Emit/4.7.0": {},
-      "System.Text.Json/5.0.2": {},
-      "System.Threading.Tasks.Extensions/4.5.4": {},
       "BarotraumaCore/1.0.0.0": {
         "runtime": {
           "BarotraumaCore.dll": {
@@ -301,27 +295,6 @@
       "sha512": "sha512-pqpqeK8xQGggExhr4tesVgJkjdn+9HQAO0QgrYV2hFjE3y90okzk1kQMntMiUOGfV7FrCUfKPaVvPBD4IANqKg==",
       "path": "oneof/3.0.271",
       "hashPath": "oneof.3.0.271.nupkg.sha512"
-    },
-    "System.Reflection.Emit/4.7.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-VR4kk8XLKebQ4MZuKuIni/7oh+QGFmZW3qORd1GvBq/8026OpW501SzT/oypwiQl4TvT8ErnReh/NzY9u+C6wQ==",
-      "path": "system.reflection.emit/4.7.0",
-      "hashPath": "system.reflection.emit.4.7.0.nupkg.sha512"
-    },
-    "System.Text.Json/5.0.2": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-I47dVIGiV6SfAyppphxqupertT/5oZkYLDCX6vC3HpOI4ZLjyoKAreUoem2ie6G0RbRuFrlqz/PcTQjfb2DOfQ==",
-      "path": "system.text.json/5.0.2",
-      "hashPath": "system.text.json.5.0.2.nupkg.sha512"
-    },
-    "System.Threading.Tasks.Extensions/4.5.4": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-zteT+G8xuGu6mS+mzDzYXbzS7rd3K6Fjb9RiZlYlJPam2/hU7JCBZBVEcywNuR+oZ1ncTvc/cq0faRr3P01OVg==",
-      "path": "system.threading.tasks.extensions/4.5.4",
-      "hashPath": "system.threading.tasks.extensions.4.5.4.nupkg.sha512"
     },
     "BarotraumaCore/1.0.0.0": {
       "type": "reference",

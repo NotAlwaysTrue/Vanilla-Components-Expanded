@@ -8,6 +8,11 @@ namespace SRW
         public float BotReloadTimer { get; private set; }
 
         private int currentselected = 0;
+        public int CurrentSelected
+        {
+            get { return currentselected; }
+            set { currentselected = value; }
+        }
 
         private int currentfiremode = 0;
 
