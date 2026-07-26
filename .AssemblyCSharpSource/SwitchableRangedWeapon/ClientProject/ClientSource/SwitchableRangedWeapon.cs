@@ -79,13 +79,13 @@ namespace SRW
                 GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["triggerReleased".ToIdentifier()], this), true);
             }
 
-            if (fireModeswitchKey.IsHit())
+            if (character.IsKeyDown(InputType.Aim) && fireModeswitchKey.IsHit())
             {
                 currentFireModeSelected += 1;
                 GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentFireModeSelected".ToIdentifier()], this));
             }
 
-            if (ModeSwitchKey.IsHit())
+            if (character.IsKeyDown(InputType.Aim) && ModeSwitchKey.IsHit())
             {
                 currentProjectileSelected += 1;
                 GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentProjectileSelected".ToIdentifier()], this));
