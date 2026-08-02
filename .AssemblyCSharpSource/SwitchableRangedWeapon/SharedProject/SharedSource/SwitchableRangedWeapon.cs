@@ -175,6 +175,7 @@ namespace SRW
             if (character == null || character.Removed) { return false; }
             if ((item.RequireAimToUse && !character.IsKeyDown(InputType.Aim)) || ReloadTimer > 0.0f) { return false; }
             if (currentChargeTime < MaxChargeTime) { return false; }
+            if (FindProjectile() == null) { LastProjectile = null; return false; }
 
             IsActive = true;
 
