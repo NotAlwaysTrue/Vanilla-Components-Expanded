@@ -304,6 +304,7 @@ namespace SRW
                 Item slotItem = itemInv.GetItemAt(slotIndex);
                 if (slotItem?.GetComponent<Projectile>() != null)
                 {
+                    if (slotItem.Condition <= 0 && checkMagCondition) { return null; }
                     return slotItem.GetComponent<Projectile>();
                 }
                 else if (slotItem?.ownInventory != null)
@@ -317,7 +318,7 @@ namespace SRW
                         }
                     }
                     if (projectileitem == null) { return null; }
-                    if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
+                    if ((projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0) && checkMagCondition) { return null; }
                     return projectileitem.GetComponent<Projectile>();
                 }
             }
@@ -329,7 +330,7 @@ namespace SRW
                 Identifier targetTagOrID = switchableProjectiles[currentselected];
                 projectileitem = itemInv.FindItem(i => ((i.HasTag(targetTagOrID) || i.Prefab.Identifier == targetTagOrID) && i.GetComponent<Projectile>() != null), true);
                 if (projectileitem == null) { return null; }
-                if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
+                if ((projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0) && checkMagCondition) { return null; }
                 return projectileitem.GetComponent<Projectile>();
             }
 
