@@ -73,7 +73,7 @@ function VCE.ArmorSystem.PlateMain(data,item,penlevel,damagemultiplier,afflictio
 
     if data.enablecorrection == true and data.correctionaffliction ~= nil then              --Corrections
         local prefab = AfflictionPrefab.Prefabs[data.correctionaffliction]
-        local strength = affliction.Strength * data.correctionmultiplier * damagemultiplier
+        local strength = affliction.Strength * data.correctionmultiplier * damagemultiplier * char.MaxVitality / 100
         local correctaffliction = prefab.Instantiate(strength, nil)
         char.CharacterHealth.ApplyAffliction(limb,correctaffliction,true,false,false)
     end
