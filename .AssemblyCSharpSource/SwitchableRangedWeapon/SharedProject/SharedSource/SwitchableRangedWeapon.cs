@@ -5,7 +5,7 @@ namespace SRW
 {
     public partial class SwitchableRangedWeapon : RangedWeapon
     {
-        public float BotReloadTimer { get; private set; }
+        public float BotReloadTimer { get; protected set; }
 
         private int currentselected = 0;
         public int CurrentSelected
@@ -20,7 +20,7 @@ namespace SRW
 
         private int maxfiremodeselectable = 1;
 
-        private int roundsshot = 0;
+        protected int roundsshot = 0;
 
         private float burstreload;
 
@@ -32,11 +32,11 @@ namespace SRW
 
         private float projectilespreadmodifier = 0;
 
-        private List<Identifier> switchableProjectiles;
+        protected List<Identifier> switchableProjectiles;
 
-        private List<int> switchableSlots;
+        protected List<int> switchableSlots;
 
-        private List<FireMode> switchableFiremodes;
+        protected List<FireMode> switchableFiremodes;
 
         [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int currentFireModeSelected
@@ -110,6 +110,7 @@ namespace SRW
             get { return botreload; }
             set { botreload = Math.Max(value, 0.0f); }
         }
+
 
         public SwitchableRangedWeapon(Item item, ContentXElement element)
             : base(item, element)

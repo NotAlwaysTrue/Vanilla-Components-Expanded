@@ -64,11 +64,12 @@ end
 
 function VCE.ArmorSystem.PlateMain(data,item,penlevel,damagemultiplier,affliction,char,limb)
     local continue = true
-
     if data.isHelmet and item.GetComponentString("LightComponent").IsOn then                --If target is a masked helmet and mask was raised
         return damagemultiplier, penlevel, continue                                         --We are out, mask raised = no protection
     end
     
+    if data.clamppen then penlevel = VCE.HF.clamp(penlevel, 0, 1) end
+
     local ricochet = VCE.HF.DoChance(data.ricochetchance)                                          --Roll the dice
 
     if data.enablecorrection == true and data.correctionaffliction ~= nil then              --Corrections
@@ -78,7 +79,11 @@ function VCE.ArmorSystem.PlateMain(data,item,penlevel,damagemultiplier,afflictio
         char.CharacterHealth.ApplyAffliction(limb,correctaffliction,true,false,false)
     end
 
-    if penlevel - data.level >= 2 then ricochet = false end                                 --Overwhelming pen, no ricochet :)
+    if data.forcepenlvl ~= nil then
+        if penlevel - data.level >= data.forcepenlvl then ricochet = false end
+    else
+        if penlevel - data.level >= 2 then ricochet = false end                             --Overwhelming pen, no ricochet :)
+    end
 
     if ricochet then                                                                        --Jackpot
         continue = false

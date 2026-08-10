@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework.Input;
 
 namespace SRW
 {
-    public partial class SwitchableRangedWeapon : RangedWeapon
+    public partial class SwitchableRangedWeapon
     {
         public KeyOrMouse ModeSwitchKey => SwitchableRangedWeaponPlugin.Instance.SwitchKey;
         public KeyOrMouse fireModeswitchKey => SwitchableRangedWeaponPlugin.Instance.FireModeSwitchKey;

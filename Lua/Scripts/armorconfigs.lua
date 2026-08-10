@@ -43,9 +43,11 @@ VCE.ArmorConfigs = {
         RicochetSoundPath = VCE.Path .. "/Sounds/BRUH.ogg",               --Path for ricochet sounds. Only necessary for items that ricochet probability above 0
         SoundRange = 100,
 
-        --Masked Helmet Specific
+        --Optional parameters
         isHelmet = false,                           --Define whether this is a masked helmet, if true use masked helmet specific code
                                                     --Use this ONLY when you want to define a helmet with a mask. Otherwise keep this false, = a standard armor for your head.
+        forcepenoverride = 2,                       --Override force pen caculation, see "overwhelming pen" for more info
+        clamppen = false,                           --Whether max/min pen for this armor will be clamped between 0-1
 
         --Custom stuff, only work if type "custom"
         customexpression = function(item,affliction,data)         --expression to caculate plate damage
@@ -61,7 +63,7 @@ VCE.ArmorConfigs = {
     },
 }
 -- penlevel = floor(pen*10)
--- overwhelming pen : penlevel - level >= 2
+-- overwhelming pen : penlevel - level >= 2 / penlevel - level >= forcepenoverride(if forcepenlvl defined)
 -- Non-pen correction: correctionaffliction = targetaffliction * correctionmultiplier
 
 -- composite armor condition = condition - (gunshotwound / 20 or 1(min)) * (maxcondition / maxhits)
@@ -78,4 +80,3 @@ Timer.Wait(function()
      VCE.ArmorSystem.AddtoMain(yourconfigtable)
 end,10)
 ]]
-
