@@ -318,7 +318,8 @@ namespace SRW
                         }
                     }
                     if (projectileitem == null) { return null; }
-                    if ((projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0) && checkMagCondition) { return null; }
+                    if (projectileitem.Container == null) { return null; }
+                    if (checkMagCondition && (projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0)) { return null; }
                     return projectileitem.GetComponent<Projectile>();
                 }
             }
@@ -330,7 +331,8 @@ namespace SRW
                 Identifier targetTagOrID = switchableProjectiles[currentselected];
                 projectileitem = itemInv.FindItem(i => ((i.HasTag(targetTagOrID) || i.Prefab.Identifier == targetTagOrID) && i.GetComponent<Projectile>() != null), true);
                 if (projectileitem == null) { return null; }
-                if ((projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0) && checkMagCondition) { return null; }
+                if (projectileitem.Container == null) { return null; }
+                if (checkMagCondition && (projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0)) { return null; }
                 return projectileitem.GetComponent<Projectile>();
             }
 
