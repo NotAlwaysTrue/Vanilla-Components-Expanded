@@ -30,6 +30,8 @@ namespace SRW
 
         private bool domagcheck = true;
 
+        private float projectilespreadmodifier = 0;
+
         private List<Identifier> switchableProjectiles;
 
         private List<int> switchableSlots;
@@ -41,6 +43,13 @@ namespace SRW
         {
             get { return currentfiremode; }
             set { currentfiremode = (value <= (maxfiremodeselectable - 1) && value >= 0) ? value : 0; }
+        }
+
+        [InGameEditable, Serialize(0.0f, IsPropertySaveable.No, alwaysUseInstanceValues: true)]
+        public float ProjectileSpreadModifier
+        {
+            get { return projectilespreadmodifier; }
+            set { projectilespreadmodifier = value; }
         }
 
         [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
@@ -231,6 +240,7 @@ namespace SRW
                     LastProjectile = null;
                     continue;
                 }
+                projectile.Spread += ProjectileSpreadModifier;
                 Vector2 barrelPos = TransformedBarrelPos + item.body.SimPosition;
                 float rotation = (Item.body.Dir == 1.0f) ? Item.body.Rotation : Item.body.Rotation - MathHelper.Pi;
                 float spread = GetSpread(character) * projectile.GetSpreadFromPool();
