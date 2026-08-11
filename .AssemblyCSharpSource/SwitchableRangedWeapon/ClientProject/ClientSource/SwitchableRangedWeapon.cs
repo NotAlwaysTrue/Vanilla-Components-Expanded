@@ -1,8 +1,4 @@
-using Barotrauma;
-using Barotrauma.Items.Components;
-using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
 namespace SRW
 {
@@ -37,7 +33,7 @@ namespace SRW
                 string localtag = null;
                 if (switchableSlots.Count != 0)
                 {
-                    switch(currentselected)
+                    switch (currentselected)
                     {
                         case 0:
                             localtag = "firemode.primary";
