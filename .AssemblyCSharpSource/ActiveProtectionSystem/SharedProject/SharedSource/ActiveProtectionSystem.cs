@@ -163,6 +163,7 @@ namespace ActiveProtectionSystem
             if (!functionininventory && Item.IsContained) { return; }
             foreach (Item target in Projectiles.ToDictionary().Keys)
             {
+                if (LastCheckedTargets.TryGetValue(Item, out bool __)) { continue; }
                 if (target.Removed || target.IsContained) { continue; }
                 if ((target.WorldPosition - Item.WorldPosition).Length() > range) { continue; }
                 float targetsize = target.body.GetSize().Length();
