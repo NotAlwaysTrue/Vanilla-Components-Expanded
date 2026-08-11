@@ -77,8 +77,8 @@ function VCE.ArmorSystem.PlateMain(data,item,penlevel,damagemultiplier,afflictio
         char.CharacterHealth.ApplyAffliction(limb,correctaffliction,true,false,false)
     end
 
-    if data.forcepenlvl ~= nil then
-        if penlevel - data.level >= data.forcepenlvl then ricochet = false end
+    if data.forcepenoverride ~= nil then
+        if penlevel - data.level >= data.forcepenoverride then ricochet = false end
     else
         if penlevel - data.level >= 2 then ricochet = false end                             --Overwhelming pen, no ricochet :)
     end
