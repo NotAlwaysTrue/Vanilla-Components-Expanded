@@ -3,4 +3,5 @@
   <Afflictions file="%ModDir%/XML/Afflictions.xml" />
   <Text file="%ModDir%/XML/Chinese.xml" />
   <Text file="%ModDir%/XML/English.xml" />
+  <Item file="%ModDir%/XML/Items.xml" />
 </contentpackage>
