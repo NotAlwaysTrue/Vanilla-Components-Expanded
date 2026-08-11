@@ -1,12 +1,8 @@
-﻿using Barotrauma;
-using Barotrauma.Items.Components;
-using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
 namespace SRW
 {
-    public partial class SwitchableRangedWeapon : RangedWeapon
+    public partial class SwitchableRangedWeapon
     {
         public KeyOrMouse ModeSwitchKey => SwitchableRangedWeaponPlugin.Instance.SwitchKey;
         public KeyOrMouse fireModeswitchKey => SwitchableRangedWeaponPlugin.Instance.FireModeSwitchKey;
@@ -37,7 +33,7 @@ namespace SRW
                 string localtag = null;
                 if (switchableSlots.Count != 0)
                 {
-                    switch(currentselected)
+                    switch (currentselected)
                     {
                         case 0:
                             localtag = "firemode.primary";
@@ -79,13 +75,13 @@ namespace SRW
                 GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["triggerReleased".ToIdentifier()], this), true);
             }
 
-            if (fireModeswitchKey.IsHit())
+            if (character.IsKeyDown(InputType.Aim) && fireModeswitchKey.IsHit())
             {
                 currentFireModeSelected += 1;
                 GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentFireModeSelected".ToIdentifier()], this));
             }
 
-            if (ModeSwitchKey.IsHit())
+            if (character.IsKeyDown(InputType.Aim) && ModeSwitchKey.IsHit())
             {
                 currentProjectileSelected += 1;
                 GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentProjectileSelected".ToIdentifier()], this));

@@ -1,5 +1,7 @@
 -- WARN: YOU SHOULD MAKE SURE YOUR CONFIG IS CORRECT BEFORE LOADING INTO MAIN CONFIG!
-function VCE.ArmorSystem.AddtoMain(configtable)
+---@param configtable table
+---@return void
+VCE.ArmorSystem.AddtoMain = function(configtable)
     if configtable == nil then return end
     for id,config in pairs(configtable) do
         if VCE.ArmorConfigs[id] == nil then goto goodend end

@@ -5,9 +5,14 @@ namespace SRW
 {
     public partial class SwitchableRangedWeapon : RangedWeapon
     {
-        public float BotReloadTimer { get; private set; }
+        public float BotReloadTimer { get; protected set; }
 
         private int currentselected = 0;
+        public int CurrentSelected
+        {
+            get { return currentselected; }
+            set { currentselected = value; }
+        }
 
         private int currentfiremode = 0;
 
@@ -15,7 +20,7 @@ namespace SRW
 
         private int maxfiremodeselectable = 1;
 
-        private int roundsshot = 0;
+        protected int roundsshot = 0;
 
         private float burstreload;
 
@@ -25,17 +30,26 @@ namespace SRW
 
         private bool domagcheck = true;
 
-        private List<Identifier> switchableProjectiles;
+        private float projectilespreadmodifier = 0;
 
-        private List<int> switchableSlots;
+        protected List<Identifier> switchableProjectiles;
 
-        private List<FireMode> switchableFiremodes;
+        protected List<int> switchableSlots;
+
+        protected List<FireMode> switchableFiremodes;
 
         [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int currentFireModeSelected
         {
             get { return currentfiremode; }
             set { currentfiremode = (value <= (maxfiremodeselectable - 1) && value >= 0) ? value : 0; }
+        }
+
+        [InGameEditable, Serialize(0.0f, IsPropertySaveable.No, alwaysUseInstanceValues: true)]
+        public float ProjectileSpreadModifier
+        {
+            get { return projectilespreadmodifier; }
+            set { projectilespreadmodifier = value; }
         }
 
         [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
@@ -96,6 +110,7 @@ namespace SRW
             get { return botreload; }
             set { botreload = Math.Max(value, 0.0f); }
         }
+
 
         public SwitchableRangedWeapon(Item item, ContentXElement element)
             : base(item, element)
@@ -221,8 +236,12 @@ namespace SRW
             for (int i = 0; i < ProjectileCount; i++)
             {
                 Projectile projectile = FindProjectile(triggerOnUseOnContainers: true);
-                Projectile tproj = projectile;
-                if (projectile == null) { return false; }
+                if (projectile == null)
+                {
+                    LastProjectile = null;
+                    break;
+                }
+                projectile.Spread += ProjectileSpreadModifier;
                 Vector2 barrelPos = TransformedBarrelPos + item.body.SimPosition;
                 float rotation = (Item.body.Dir == 1.0f) ? Item.body.Rotation : Item.body.Rotation - MathHelper.Pi;
                 float spread = GetSpread(character) * projectile.GetSpreadFromPool();

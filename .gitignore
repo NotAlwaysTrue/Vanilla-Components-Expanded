@@ -3,3 +3,4 @@
 .AssemblyCSharpSource/**/**.user
 .AssemblyCSharpSource/**/launchSettings.json
 .vs
+.codegraph
