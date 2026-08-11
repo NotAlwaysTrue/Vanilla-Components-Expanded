@@ -6,6 +6,7 @@ namespace ActiveProtectionSystem
     {
         public static Dictionary<Item, bool> Projectiles = [];
 
+        private Explosion explosion;
         private float maxspeed;
         private float minspeed;
         private Vector2 minsize;
@@ -17,7 +18,10 @@ namespace ActiveProtectionSystem
         private bool useonintercept;
         private bool removeonintercept;
         private bool functionininventory;
+        private bool interceptonlyapproaching;
+        private bool createexplosiononintercept;
         private bool isOn;
+        private Dictionary<Item,bool> LastCheckedTargets = [];
 
         [Serialize(100f, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public float Range
@@ -63,14 +67,12 @@ namespace ActiveProtectionSystem
             set { maxmass = value; }
         }
 
-        [Serialize(null, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public Vector2 MinSize
         {
             get { return minsize; }
             set { minsize = value; }
         }
 
-        [Serialize(null, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public Vector2 MaxSize
         {
             get { return maxsize; }
@@ -98,7 +100,7 @@ namespace ActiveProtectionSystem
             set { removeonintercept = value; }
         }
 
-        [Editable, Serialize(false, IsPropertySaveable.Yes, description: "Is the light currently on.", alwaysUseInstanceValues: true)]
+        [Editable, Serialize(false, IsPropertySaveable.Yes, description: "Is the device currently on.", alwaysUseInstanceValues: true)]
         public bool IsOn
         {
             get { return isOn; }
@@ -109,51 +111,97 @@ namespace ActiveProtectionSystem
             }
         }
 
+        [Editable, Serialize(true, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        public bool InterceptOnlyApproaching
+        {
+            get { return interceptonlyapproaching; }
+            set { interceptonlyapproaching = value; }
+        }
+
+        [Editable, Serialize(false, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        public bool CreateExplosionsOnIntercept
+        {
+            get { return createexplosiononintercept; }
+            set { createexplosiononintercept = value; }
+        }
+
 
         public ActiveProtectionSystem(Item item, ContentXElement element)
             : base(item, element)
         {
-            maxspeed = element.GetAttributeFloat("maxspeed", 100);
+            maxspeed = element.GetAttributeFloat("maxspeed", 0);
             minspeed = element.GetAttributeFloat("minspeed", 100);
             minsize = element.GetAttributeVector2("minsize", new Vector2(0, 0));
-            maxsize = element.GetAttributeVector2("maxsize", new Vector2(0, 0));
-            minmass = element.GetAttributeFloat("minmass", 100);
+            maxsize = element.GetAttributeVector2("maxsize", new Vector2(1000, 1000));
+            minmass = element.GetAttributeFloat("minmass", 0);
             maxmass = element.GetAttributeFloat("maxmass", 100);
             range = element.GetAttributeFloat("range", 100);
             probility = element.GetAttributeFloat("probility", 1);
             useonintercept = element.GetAttributeBool("useonintercept", false);
             removeonintercept = element.GetAttributeBool("removeonintercept", false);
             functionininventory = element.GetAttributeBool("functionininventory", false);
+            interceptonlyapproaching = element.GetAttributeBool("interceptonlyapproaching", true);
+            createexplosiononintercept = element.GetAttributeBool("createexplosiononintercept", false);
+
+            foreach (var subElement in element.Elements())
+            {
+                switch (subElement.Name.ToString().ToLowerInvariant())
+                {
+                    case "explosion":
+                        explosion = new Explosion(subElement, Item.ToString());
+                        break;
+                }
+            }
         }
 
         public override void Update(float deltaTime, Camera cam)
         {
             base.Update(deltaTime, cam);
+            if (LastCheckedTargets.Count > 10) { LastCheckedTargets.Clear(); }
+            if (Item.Condition <= 0) { return; }
             if (!IsOn) { return; }
             if (!functionininventory && Item.IsContained) { return; }
-            foreach (Item target in Projectiles.Keys)
+            foreach (Item target in Projectiles.ToDictionary().Keys)
             {
                 if (target.Removed || target.IsContained) { continue; }
                 if ((target.WorldPosition - Item.WorldPosition).Length() > range) { continue; }
                 float targetsize = target.body.GetSize().Length();
-                if (targetsize < minsize.Length() || targetsize > minsize.Length()) { continue; }
+                if (targetsize < minsize.Length() || targetsize > maxsize.Length()) { continue; }
                 if (target.Speed < minspeed || target.Speed > maxspeed) { continue; }
-                if (target.body.Mass < MinMass || target.body.Mass > minmass) { continue; }
+                if (target.body.Mass < MinMass || target.body.Mass > MaxMass) { continue; }
+                if (!IsApproaching(target.WorldPosition, target.body.LinearVelocity, Item.WorldPosition, Item.body.LinearVelocity) && interceptonlyapproaching) { continue; }
                 if (Submarine.CheckVisibility(item.SimPosition, target.SimPosition) != null) { continue; }
 
+                LastCheckedTargets.Add(target, true);
+
+                Item.Use(deltaTime);
+
+                if (createexplosiononintercept)
+                {
+                    explosion?.Explode(target.WorldPosition, Item);
+                }
+
                 if (Rand.GetRNG(Rand.RandSync.ServerAndClient).NextSingle() > probility) { continue; }
+
                 if (useonintercept)
                 {
                     target.Use(deltaTime);
                 }
+
                 target.Condition = 0;
                 if (removeonintercept)
                 {
                     EntitySpawner.Spawner.AddItemToRemoveQueue(target);
                 }
-
-                Use(deltaTime);
             }
+        }
+
+        private bool IsApproaching(Vector2 posA, Vector2 velA, Vector2 posB, Vector2 velB)
+        {
+            Vector2 relPos = posB - posA;
+            Vector2 relVel = velB - velA;
+
+            return Vector2.Dot(relPos, relVel) < 0;
         }
     }
 }

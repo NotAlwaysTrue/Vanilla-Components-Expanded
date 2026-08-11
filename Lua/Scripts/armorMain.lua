@@ -67,8 +67,6 @@ function VCE.ArmorSystem.PlateMain(data,item,penlevel,damagemultiplier,afflictio
     if data.isHelmet and item.GetComponentString("LightComponent").IsOn then                --If target is a masked helmet and mask was raised
         return damagemultiplier, penlevel, continue                                         --We are out, mask raised = no protection
     end
-    
-    if data.clamppen then penlevel = VCE.HF.clamp(penlevel, 0, 1) end
 
     local ricochet = VCE.HF.DoChance(data.ricochetchance)                                          --Roll the dice
 
@@ -197,6 +195,11 @@ Hook.Patch("Kilo","Barotrauma.Character", "DamageLimb", function(instance, ptabl
 
     if outertargetid == "Any" then executecloth = true end                                                      --Force override in "Any" case
     if innertargetid == "Any" then executeplate = true end
+
+    if clothdata.clamppen or platedata.clamppen then 
+        ptable["penetration"] = Single(math.clamp(ptable["penetration"],0,1))
+        penetrationlevel = math.clamp(penetrationlevel,0,10)
+    end
 
     --let's find out if it is a valid attack
     for i in afflictions do

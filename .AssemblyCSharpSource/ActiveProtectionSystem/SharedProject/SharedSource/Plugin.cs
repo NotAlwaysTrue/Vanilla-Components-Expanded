@@ -12,12 +12,15 @@ namespace ActiveProtectionSystem
 
         private Harmony harmony;
 
+        public static ActiveProtectionSystemPlugin Instance;
         public void Initialize()
         {
+            Instance = this;
             harmony = new Harmony("VCE.APS");
             harmony.PatchAll();
 
             EventService.Subscribe<IEventItemRemoved>(OnItemRemovedEvent.Instance);
+            EventService.Subscribe<IEventRoundEnded>(OnRoundEndEvent.Instance);
         }
 
         public void OnLoadCompleted()
