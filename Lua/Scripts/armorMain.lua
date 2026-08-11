@@ -162,6 +162,8 @@ Hook.Patch("Kilo","Barotrauma.Character", "DamageLimb", function(instance, ptabl
     -- then just return because we assume something had done something on that already.
     if type(ptable["penetration"]) ~= "number" then return end
 
+    local PEN = ptable["penetration"]
+
     local penetrationlevel = math.floor((ptable["penetration"]+0.00001)*10)
     local targetcharacter = targetlimb.character
     --if not targetcharacter.IsHuman then return end
@@ -196,11 +198,6 @@ Hook.Patch("Kilo","Barotrauma.Character", "DamageLimb", function(instance, ptabl
     if outertargetid == "Any" then executecloth = true end                                                      --Force override in "Any" case
     if innertargetid == "Any" then executeplate = true end
 
-    if clothdata.clamppen or platedata.clamppen then 
-        ptable["penetration"] = Single(math.clamp(ptable["penetration"],0,1))
-        penetrationlevel = math.clamp(penetrationlevel,0,10)
-    end
-
     --let's find out if it is a valid attack
     for i in afflictions do
         if clothdata ~= nil and not executecloth and (checkid(i.identifier.Value, outertargetid) or checkid(i.Prefab.AfflictionType.Value, outertargetid)) then
@@ -225,6 +222,17 @@ Hook.Patch("Kilo","Barotrauma.Character", "DamageLimb", function(instance, ptabl
 
     if not executecloth and not executeplate then return end                                                    --Did u mean run even if unnecessary?
     
+    if clothdata.clamppen then
+        PEN = math.clamp(ptable["penetration"],0,1)
+        penetrationlevel = math.clamp(penetrationlevel,0,10)
+    end
+    if platedata ~= nil then
+        if clothdata.clamppen then
+            PEN = math.clamp(ptable["penetration"],0,1)
+            penetrationlevel = math.clamp(penetrationlevel,0,10)
+        end
+    end
+
     local damagemultiplier = 1.0
     local continue = true
     --A "little" bit tooooooooooo long :(
@@ -242,8 +250,8 @@ Hook.Patch("Kilo","Barotrauma.Character", "DamageLimb", function(instance, ptabl
 
     --Damage stuffs
 
-    local decreasedpen = ptable["penetration"] - (penetrationlevel / 10)
-    ptable["penetration"] = Single(ptable["penetration"] + 0.00001 - decreasedpen)
+    local decreasedpen = PEN - (penetrationlevel / 10)
+    ptable["penetration"] = Single(PEN + 0.00001 - decreasedpen)
     ptable["damageMultiplier"] = Single(ptable["damageMultiplier"] * damagemultiplier)
 
 end, Hook.HookMethodType.Before)
