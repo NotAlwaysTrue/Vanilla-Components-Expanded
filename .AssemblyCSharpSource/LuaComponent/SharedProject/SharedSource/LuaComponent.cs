@@ -188,6 +188,7 @@ namespace VCE_LuaComponent
                 if (chunk == value) { return; }
                 Terminate();
                 chunk = value;
+                string safecode = CodeParser(chunk);
                 if (chunk.IsNullOrEmpty()) { return; }
 
 #if CLIENT
@@ -284,6 +285,12 @@ end", codeFriendlyName: null);
         }
 
         public LuaComponent(Item item, ContentXElement element) : base(item, element) { }
+
+        private string CodeParser(string code)
+        {
+            return code.Replace("Hook.Add", "LocalHook.Add")
+                       .Replace("Hook.Patch", "LocalHook.Patch");
+        }
 
         public class OutDescriptor : IUserDataDescriptor
         {

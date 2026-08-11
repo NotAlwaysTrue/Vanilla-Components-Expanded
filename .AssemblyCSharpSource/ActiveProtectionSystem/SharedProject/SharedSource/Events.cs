@@ -9,8 +9,7 @@ namespace ActiveProtectionSystem
         static void Postfix(Projectile __instance)
         {
             if (__instance.Hitscan) { return; }
-            ActiveProtectionSystem.Projectiles.Add(__instance.Item, true);
-            ActiveProtectionSystemPlugin.Instance.LoggerService.Log("Projectile added" + __instance.Item.ToString());
+            ActiveProtectionSystem.Projectiles.TryAdd(__instance.Item, true);
         }
     }
 
@@ -20,8 +19,7 @@ namespace ActiveProtectionSystem
         static void Postfix(Throwable __instance)
         {
             if (__instance.CurrentThrower == null) { return; }
-            ActiveProtectionSystem.Projectiles.Add(__instance.Item, true);
-            ActiveProtectionSystemPlugin.Instance.LoggerService.Log("Projectile added" + __instance.Item.ToString());
+            ActiveProtectionSystem.Projectiles.TryAdd(__instance.Item, true);
         }
     }
 
@@ -30,10 +28,7 @@ namespace ActiveProtectionSystem
         public static OnItemRemovedEvent Instance = new();
         public void OnItemRemoved(Item item)
         {
-            if(ActiveProtectionSystem.Projectiles.Remove(item))
-            {
-                ActiveProtectionSystemPlugin.Instance.LoggerService.Log("Projectile removed" + item.ToString());
-            }
+            ActiveProtectionSystem.Projectiles.Remove(item);
         }
     }
 
