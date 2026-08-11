@@ -239,7 +239,7 @@ namespace SRW
                 if (projectile == null)
                 {
                     LastProjectile = null;
-                    continue;
+                    break;
                 }
                 projectile.Spread += ProjectileSpreadModifier;
                 Vector2 barrelPos = TransformedBarrelPos + item.body.SimPosition;

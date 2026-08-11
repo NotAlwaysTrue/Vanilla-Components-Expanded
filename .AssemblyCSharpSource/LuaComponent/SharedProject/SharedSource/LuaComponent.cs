@@ -23,7 +23,7 @@ namespace VCE_LuaComponent
         private const string LOCAL_NAME_IS_SINGLEPLAYER = "isSingleplayer";
         private const string LOCAL_NAME_IS_MULTIPLAYER = "isMultiplayer";
         private const string LOCAL_NAME_GET_TOTAL_TIME = "GetTotalTime";
-        private const string LOCAL_NAME_LUA_COMP = "ruyiLua";
+        private const string LOCAL_NAME_LUA_COMP = "LuaComponent";
         private const string LOCAL_NAME_OUT = "out";
         private const string LOCAL_NAME_CLEAR = nameof(clear);
         private const string LOCAL_NAME_READ_MEMORY = nameof(readMemory);
@@ -198,39 +198,7 @@ namespace VCE_LuaComponent
 
                 try
                 {
-                    if (GameMain.NetworkMember?.IsClient ?? false)
-                    {
-                        // Sandboxing
-                        // The following modules are prohibited:
-                        // LoadMethods, The load methods: "load", "loadsafe", "loadfile", "loadfilesafe", "dofile" and "require"
-                        // IO, The methods of "io" and "file" packages
-                        // OS_System, The methods of "os" package excluding those listed for OS_Time
-                        script = new Script(CoreModules.Preset_SoftSandbox | CoreModules.Debug & (~(CoreModules.LoadMethods | CoreModules.IO | CoreModules.OS_System)));
-                        script.Options.DebugPrint = (string o) => LuaCsLogger.LogMessage(o);
-                        script.Options.CheckThreadAccess = false;
-
-                        if (Path.GetDirectoryName(item.Prefab?.ContentPackage?.Path) is string packagePath)
-                        {
-                            LuaScriptLoader scriptLoader = LuaComponentPlugin._instance.ScriptLoader as LuaScriptLoader;
-                            scriptLoader.ModulePaths = new string[] { };
-                            script.Options.ScriptLoader = scriptLoader;
-                            script.Globals["setmodulepaths"] = (Action<string[]>)(str => scriptLoader.ModulePaths = str);
-                            script.Globals["require"] = (Func<string, Table, DynValue>)new LuaRequire(script).Require;
-                            script.Globals["LuaUserData"] = LuaComponentPlugin._instance.SafeLuaUserDataService;
-
-                            string entryPath = Path.Combine(packagePath, "LuaComponent/Sandboxing/entry.lua");
-
-                            script.LoadFile(entryPath).Function.Call(Path.GetDirectoryName(Path.GetFullPath(entryPath)));
-
-                            script.Globals.Remove("setmodulepaths");
-                            script.Globals.Remove("require");
-                            script.Globals.Remove("LuaUserData");
-                        }
-                    }
-                    else
-                    {
-                        script = LuaCsSetup.Instance.Lua;
-                    }
+                    script = LuaCsSetup.Instance.Lua;
 
                     var initialize = script.DoString($@"
 return function(_)

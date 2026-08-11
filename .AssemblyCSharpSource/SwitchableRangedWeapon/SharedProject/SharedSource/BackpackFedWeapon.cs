@@ -27,7 +27,6 @@ namespace SRW
                     }
                     break;
             }
-
             tryingToCharge = true;
             if (character == null || character.Removed) { return false; }
             if ((item.RequireAimToUse && !character.IsKeyDown(InputType.Aim)) || ReloadTimer > 0.0f) { return false; }
@@ -79,15 +78,16 @@ namespace SRW
             {
                 ApplyStatusEffects(ActionType.OnFailure, 1.0f, character);
             }
-
+            bool shouldshoot = false;
             for (int i = 0; i < ProjectileCount; i++)
             {
                 Projectile projectile = FindProjectile(triggerOnUseOnContainers: true);
                 if (projectile == null)
                 {
                     LastProjectile = null;
-                    continue;
+                    break;
                 }
+                shouldshoot = true;
                 projectile.Spread += ProjectileSpreadModifier;
                 Vector2 barrelPos = TransformedBarrelPos + item.body.SimPosition;
                 float rotation = (Item.body.Dir == 1.0f) ? Item.body.Rotation : Item.body.Rotation - MathHelper.Pi;
@@ -141,6 +141,8 @@ namespace SRW
                 LastProjectile = projectile;
             }
 
+            if (!shouldshoot) { return false; }
+
             LaunchProjSpecific();
 
             //TODO: Add random time multiplier for Bots
@@ -168,8 +170,13 @@ namespace SRW
                 if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
                 return projectileitem.GetComponent<Projectile>();
             }
-
-            return null;
+            else
+            {
+                projectileitem = targetInv.FindItem(i => i.GetComponent<Projectile>() != null, false);
+                if (projectileitem == null) { return null; }
+                if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
+                return projectileitem.GetComponent<Projectile>();
+            }
         }
     }
 }

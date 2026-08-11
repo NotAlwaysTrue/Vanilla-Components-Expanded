@@ -8,6 +8,7 @@
     <Assembly file="%ModDir%/bin/Server/Linux/SwitchableRangedWeapon.dll" Target="Server" Platform="Linux"/>
     <Assembly file="%ModDir%/bin/Server/OSX/SwitchableRangedWeapon.dll" Target="Server" Platform="OSX"/>
     <Assembly file="%ModDir%/bin/Server/Windows/SwitchableRangedWeapon.dll" Target="Server" Platform="Windows"/>
+
     <!--APS-->
     <Assembly file="%ModDir%/bin/Client/Linux/APS.dll" Target="Client" Platform="Linux"/>
     <Assembly file="%ModDir%/bin/Client/OSX/APS.dll" Target="Client" Platform="OSX"/>
@@ -16,7 +17,8 @@
     <Assembly file="%ModDir%/bin/Server/Linux/APS.dll" Target="Server" Platform="Linux"/>
     <Assembly file="%ModDir%/bin/Server/OSX/APS.dll" Target="Server" Platform="OSX"/>
     <Assembly file="%ModDir%/bin/Server/Windows/APS.dll" Target="Server" Platform="Windows"/>
-    <!--APS-->
+    
+    <!--LuaComp-->
     <Assembly file="%ModDir%/bin/Client/Linux/LuaComponent.dll" Target="Client" Platform="Linux"/>
     <Assembly file="%ModDir%/bin/Client/OSX/LuaComponent.dll" Target="Client" Platform="OSX"/>
     <Assembly file="%ModDir%/bin/Client/Windows/LuaComponent.dll" Target="Client" Platform="Windows"/>
