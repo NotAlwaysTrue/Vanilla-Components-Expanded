@@ -311,7 +311,7 @@ namespace SRW
             if (switchableSlots.Count > 0 || switchableProjectiles.Count == 0)
             {
                 int slotIndex = currentselected < switchableSlots.Count ? switchableSlots[currentselected] : 0;
-                Item slotItem = itemInv.GetItemAt(slotIndex);
+                Item slotItem = itemInv?.GetItemAt(slotIndex);
                 if (slotItem?.GetComponent<Projectile>() != null)
                 {
                     return slotItem.GetComponent<Projectile>();
@@ -320,14 +320,14 @@ namespace SRW
                 {
                     foreach(var item in slotItem.ownInventory.GetAllItems(false))
                     {
-                        if (item.GetComponent<Projectile>() != null)
+                        if (item?.GetComponent<Projectile>() != null && item.Container != null)
                         {
                             projectileitem = item;
                             break;
                         }
                     }
                     if (projectileitem == null) { return null; }
-                    if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
+                    if ((projectileitem.Container?.Condition ?? 1f) <= 0 && checkMagCondition) { return null; }
                     return projectileitem.GetComponent<Projectile>();
                 }
             }
@@ -337,9 +337,9 @@ namespace SRW
             if (switchableProjectiles.Count != 0)
             {
                 Identifier targetTagOrID = switchableProjectiles[currentselected];
-                projectileitem = itemInv.FindItem(i => ((i.HasTag(targetTagOrID) || i.Prefab.Identifier == targetTagOrID) && i.GetComponent<Projectile>() != null), true);
+                projectileitem = itemInv?.FindItem(i => (i.HasTag(targetTagOrID) || i.Prefab.Identifier == targetTagOrID) && i.GetComponent<Projectile>() != null, true);
                 if (projectileitem == null) { return null; }
-                if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
+                if ((projectileitem.Container?.Condition ?? 1f) <= 0 && checkMagCondition) { return null; }
                 return projectileitem.GetComponent<Projectile>();
             }
 

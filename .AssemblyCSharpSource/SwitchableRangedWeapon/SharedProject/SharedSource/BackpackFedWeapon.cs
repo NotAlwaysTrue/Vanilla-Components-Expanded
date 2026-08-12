@@ -167,14 +167,14 @@ namespace SRW
                 Identifier targetTagOrID = switchableProjectiles[CurrentSelected];
                 projectileitem = targetInv.FindItem(i => ((i.HasTag(targetTagOrID) || i.Prefab.Identifier == targetTagOrID) && i.GetComponent<Projectile>() != null), false);
                 if (projectileitem == null) { return null; }
-                if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
+                if ((projectileitem.Container?.Condition ?? 1f) <= 0 && checkMagCondition) { return null; }
                 return projectileitem.GetComponent<Projectile>();
             }
             else
             {
                 projectileitem = targetInv.FindItem(i => i.GetComponent<Projectile>() != null, false);
                 if (projectileitem == null) { return null; }
-                if (projectileitem.Container.Condition <= 0 && checkMagCondition) { return null; }
+                if ((projectileitem.Container?.Condition ?? 1f) <= 0 && checkMagCondition) { return null; }
                 return projectileitem.GetComponent<Projectile>();
             }
         }

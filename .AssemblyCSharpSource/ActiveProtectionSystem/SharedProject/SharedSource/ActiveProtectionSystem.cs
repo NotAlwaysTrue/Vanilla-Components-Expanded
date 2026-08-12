@@ -163,7 +163,7 @@ namespace ActiveProtectionSystem
             if (!functionininventory && Item.IsContained) { return; }
             foreach (Item target in Projectiles.ToDictionary().Keys)
             {
-                if (LastCheckedTargets.TryGetValue(Item, out bool __)) { continue; }
+                if (LastCheckedTargets.TryGetValue(target, out bool __)) { continue; }
                 if (target.Removed || target.IsContained) { continue; }
                 if ((target.WorldPosition - Item.WorldPosition).Length() > range) { continue; }
                 float targetsize = target.body.GetSize().Length();
@@ -173,7 +173,7 @@ namespace ActiveProtectionSystem
                 if (!IsApproaching(target.WorldPosition, target.body.LinearVelocity, Item.WorldPosition, Item.body.LinearVelocity) && interceptonlyapproaching) { continue; }
                 if (Submarine.CheckVisibility(item.SimPosition, target.SimPosition) != null) { continue; }
 
-                LastCheckedTargets.Add(target, true);
+                LastCheckedTargets[target] = true;
 
                 Item.Use(deltaTime);
 

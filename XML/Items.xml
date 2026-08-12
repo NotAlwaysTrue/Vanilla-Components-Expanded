@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Items>
   <Item name="" identifier="vceluacomponent" category="Electrical" tags="" linkable="true" allowedlinks="structure,item" spritecolor="100,100,255,255" inventoryiconcolor="100,100,255,255" resizehorizontal="true" resizevertical="true">
-    <Sprite texture="Content/Items/Labels/labels.png" depth="0.850" sourcerect="4,100,28,24" />
+    <Sprite texture="%ModDir%/XML/LuaComp.png" depth="0.850" sourcerect="0,0,32,26" />
     <LuaComponent />
-    <ItemLabel text="Lua" ignorelocalization="true" textscale="0.5" textcolor="255,255,255,255" />
     <ConnectionPanel selectkey="Use" canbeselected="true" msg="ItemMsgRewireScrewdriver" hudpriority="10">
       <GuiFrame relativesize="0.2,0.75" anchor="Center" style="ConnectionPanel" />
       <RequiredItem items="screwdriver" type="Equipped" />
