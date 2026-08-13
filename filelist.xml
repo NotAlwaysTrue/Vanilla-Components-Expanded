@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<contentpackage name="Vanilla_Components_Expanded" modversion="1.3.7" corepackage="False" steamworkshopid="3606054332" gameversion="1.13.4.0">
+<contentpackage name="Vanilla_Components_Expanded" modversion="1.4.6" corepackage="False" steamworkshopid="3606054332" gameversion="1.13.4.0">
   <Afflictions file="%ModDir%/XML/Afflictions.xml" />
   <Text file="%ModDir%/XML/Chinese.xml" />
   <Text file="%ModDir%/XML/English.xml" />
+  <Item file="%ModDir%/XML/Items.xml" />
 </contentpackage>

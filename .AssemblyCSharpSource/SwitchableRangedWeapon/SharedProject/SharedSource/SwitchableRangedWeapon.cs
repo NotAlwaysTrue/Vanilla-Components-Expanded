@@ -5,7 +5,7 @@ namespace SRW
 {
     public partial class SwitchableRangedWeapon : RangedWeapon
     {
-        public float BotReloadTimer { get; private set; }
+        public float BotReloadTimer { get; protected set; }
 
         private int currentselected = 0;
         public int CurrentSelected
@@ -20,7 +20,7 @@ namespace SRW
 
         private int maxfiremodeselectable = 1;
 
-        private int roundsshot = 0;
+        protected int roundsshot = 0;
 
         private float burstreload;
 
@@ -30,17 +30,26 @@ namespace SRW
 
         private bool domagcheck = true;
 
-        private List<Identifier> switchableProjectiles;
+        private float projectilespreadmodifier = 0;
 
-        private List<int> switchableSlots;
+        protected List<Identifier> switchableProjectiles;
 
-        private List<FireMode> switchableFiremodes;
+        protected List<int> switchableSlots;
+
+        protected List<FireMode> switchableFiremodes;
 
         [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public int currentFireModeSelected
         {
             get { return currentfiremode; }
             set { currentfiremode = (value <= (maxfiremodeselectable - 1) && value >= 0) ? value : 0; }
+        }
+
+        [InGameEditable, Serialize(0.0f, IsPropertySaveable.No, alwaysUseInstanceValues: true)]
+        public float ProjectileSpreadModifier
+        {
+            get { return projectilespreadmodifier; }
+            set { projectilespreadmodifier = value; }
         }
 
         [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
@@ -101,6 +110,7 @@ namespace SRW
             get { return botreload; }
             set { botreload = Math.Max(value, 0.0f); }
         }
+
 
         public SwitchableRangedWeapon(Item item, ContentXElement element)
             : base(item, element)
@@ -230,8 +240,10 @@ namespace SRW
                 if (projectile == null)
                 {
                     LastProjectile = null;
-                    continue;
+                    return false;
                 }
+
+                projectile.Spread += ProjectileSpreadModifier;
                 Vector2 barrelPos = TransformedBarrelPos + item.body.SimPosition;
                 float rotation = (Item.body.Dir == 1.0f) ? Item.body.Rotation : Item.body.Rotation - MathHelper.Pi;
                 float spread = GetSpread(character) * projectile.GetSpreadFromPool();
@@ -301,7 +313,7 @@ namespace SRW
             if (switchableSlots.Count > 0 || switchableProjectiles.Count == 0)
             {
                 int slotIndex = currentselected < switchableSlots.Count ? switchableSlots[currentselected] : 0;
-                Item slotItem = itemInv.GetItemAt(slotIndex);
+                Item slotItem = itemInv?.GetItemAt(slotIndex);
                 if (slotItem?.GetComponent<Projectile>() != null)
                 {
                     if (slotItem.Condition <= 0 && checkMagCondition) { return null; }
@@ -311,7 +323,7 @@ namespace SRW
                 {
                     foreach(var item in slotItem.ownInventory.GetAllItems(false))
                     {
-                        if (item.GetComponent<Projectile>() != null)
+                        if (item?.GetComponent<Projectile>() != null && item.Container != null)
                         {
                             projectileitem = item;
                             break;
@@ -329,7 +341,7 @@ namespace SRW
             if (switchableProjectiles.Count != 0)
             {
                 Identifier targetTagOrID = switchableProjectiles[currentselected];
-                projectileitem = itemInv.FindItem(i => ((i.HasTag(targetTagOrID) || i.Prefab.Identifier == targetTagOrID) && i.GetComponent<Projectile>() != null), true);
+                projectileitem = itemInv?.FindItem(i => (i.HasTag(targetTagOrID) || i.Prefab.Identifier == targetTagOrID) && i.GetComponent<Projectile>() != null, true);
                 if (projectileitem == null) { return null; }
                 if (projectileitem.Container == null) { return null; }
                 if (checkMagCondition && (projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0)) { return null; }

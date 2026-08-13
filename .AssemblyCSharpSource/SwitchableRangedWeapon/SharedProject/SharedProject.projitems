@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\AssemblySettings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)sharedsource\BackpackFedWeapon.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\FIreModes.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\Plugin.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\SwitchableRangedWeapon.cs" />

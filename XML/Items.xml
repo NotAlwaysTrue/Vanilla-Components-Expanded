@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Items>
+  <Item name="" identifier="vceluacomponent" category="Electrical" tags="" linkable="true" allowedlinks="structure,item" spritecolor="100,100,255,255" inventoryiconcolor="100,100,255,255" resizehorizontal="true" resizevertical="true">
+    <Sprite texture="%ModDir%/XML/LuaComp.png" depth="0.850" sourcerect="0,0,32,26" />
+    <LuaComponent />
+    <ConnectionPanel selectkey="Use" canbeselected="true" msg="ItemMsgRewireScrewdriver" hudpriority="10">
+      <GuiFrame relativesize="0.2,0.75" anchor="Center" style="ConnectionPanel" />
+      <RequiredItem items="screwdriver" type="Equipped" />
+      <input name="signal_in1" displayname="connection.signalinx~[num]=1" />
+      <input name="signal_in2" displayname="connection.signalinx~[num]=2" />
+      <input name="signal_in3" displayname="connection.signalinx~[num]=3" />
+      <input name="signal_in4" displayname="connection.signalinx~[num]=4" />
+      <input name="signal_in5" displayname="connection.signalinx~[num]=5" />
+      <input name="signal_in6" displayname="connection.signalinx~[num]=6" />
+      <input name="signal_in7" displayname="connection.signalinx~[num]=7" />
+      <input name="signal_in8" displayname="connection.signalinx~[num]=8" />
+      <input name="signal_in9" displayname="connection.signalinx~[num]=9" />
+      <input name="signal_in10" displayname="connection.signalinx~[num]=10" />
+      <input name="signal_in11" displayname="connection.signalinx~[num]=11" />
+      <input name="signal_in12" displayname="connection.signalinx~[num]=12" />
+      <input name="signal_in13" displayname="connection.signalinx~[num]=13" />
+      <input name="signal_in14" displayname="connection.signalinx~[num]=14" />
+      <input name="signal_in15" displayname="connection.signalinx~[num]=15" />
+      <input name="signal_in16" displayname="connection.signalinx~[num]=16" />
+      <input name="signal_in17" displayname="connection.signalinx~[num]=17" />
+      <input name="signal_in18" displayname="connection.signalinx~[num]=18" />
+      <input name="signal_in19" displayname="connection.signalinx~[num]=19" />
+      <input name="signal_in20" displayname="connection.signalinx~[num]=20" />
+      <input name="signal_in21" displayname="connection.signalinx~[num]=21" />
+      <input name="signal_in22" displayname="connection.signalinx~[num]=22" />
+      <input name="signal_in23" displayname="connection.signalinx~[num]=23" />
+      <input name="signal_in24" displayname="connection.signalinx~[num]=24" />
+      <input name="signal_in25" displayname="connection.signalinx~[num]=25" />
+      <input name="signal_in26" displayname="connection.signalinx~[num]=26" />
+      <input name="signal_in27" displayname="connection.signalinx~[num]=27" />
+      <input name="signal_in28" displayname="connection.signalinx~[num]=28" />
+      <input name="signal_in29" displayname="connection.signalinx~[num]=29" />
+      <input name="signal_in30" displayname="connection.signalinx~[num]=30" />
+      <input name="signal_in31" displayname="connection.signalinx~[num]=31" />
+      <input name="signal_in32" displayname="connection.signalinx~[num]=32" />
+      <output name="signal_out1" displayname="connection.signaloutx~[num]=1" />
+      <output name="signal_out2" displayname="connection.signaloutx~[num]=2" />
+      <output name="signal_out3" displayname="connection.signaloutx~[num]=3" />
+      <output name="signal_out4" displayname="connection.signaloutx~[num]=4" />
+      <output name="signal_out5" displayname="connection.signaloutx~[num]=5" />
+      <output name="signal_out6" displayname="connection.signaloutx~[num]=6" />
+      <output name="signal_out7" displayname="connection.signaloutx~[num]=7" />
+      <output name="signal_out8" displayname="connection.signaloutx~[num]=8" />
+      <output name="signal_out9" displayname="connection.signaloutx~[num]=9" />
+      <output name="signal_out10" displayname="connection.signaloutx~[num]=10" />
+      <output name="signal_out11" displayname="connection.signaloutx~[num]=11" />
+      <output name="signal_out12" displayname="connection.signaloutx~[num]=12" />
+      <output name="signal_out13" displayname="connection.signaloutx~[num]=13" />
+      <output name="signal_out14" displayname="connection.signaloutx~[num]=14" />
+      <output name="signal_out15" displayname="connection.signaloutx~[num]=15" />
+      <output name="signal_out16" displayname="connection.signaloutx~[num]=16" />
+      <output name="signal_out17" displayname="connection.signaloutx~[num]=17" />
+      <output name="signal_out18" displayname="connection.signaloutx~[num]=18" />
+      <output name="signal_out19" displayname="connection.signaloutx~[num]=19" />
+      <output name="signal_out20" displayname="connection.signaloutx~[num]=20" />
+      <output name="signal_out21" displayname="connection.signaloutx~[num]=21" />
+      <output name="signal_out22" displayname="connection.signaloutx~[num]=22" />
+      <output name="signal_out23" displayname="connection.signaloutx~[num]=23" />
+      <output name="signal_out24" displayname="connection.signaloutx~[num]=24" />
+      <output name="signal_out25" displayname="connection.signaloutx~[num]=25" />
+      <output name="signal_out26" displayname="connection.signaloutx~[num]=26" />
+      <output name="signal_out27" displayname="connection.signaloutx~[num]=27" />
+      <output name="signal_out28" displayname="connection.signaloutx~[num]=28" />
+      <output name="signal_out29" displayname="connection.signaloutx~[num]=29" />
+      <output name="signal_out30" displayname="connection.signaloutx~[num]=30" />
+      <output name="signal_out31" displayname="connection.signaloutx~[num]=31" />
+      <output name="signal_out32" displayname="connection.signaloutx~[num]=32" />
+    </ConnectionPanel>
+  </Item>
+</Items>

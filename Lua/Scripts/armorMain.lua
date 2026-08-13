@@ -64,11 +64,10 @@ end
 
 function VCE.ArmorSystem.PlateMain(data,item,penlevel,damagemultiplier,affliction,char,limb)
     local continue = true
-
     if data.isHelmet and item.GetComponentString("LightComponent").IsOn then                --If target is a masked helmet and mask was raised
         return damagemultiplier, penlevel, continue                                         --We are out, mask raised = no protection
     end
-    
+
     local ricochet = VCE.HF.DoChance(data.ricochetchance)                                          --Roll the dice
 
     if data.enablecorrection == true and data.correctionaffliction ~= nil then              --Corrections
@@ -78,7 +77,11 @@ function VCE.ArmorSystem.PlateMain(data,item,penlevel,damagemultiplier,afflictio
         char.CharacterHealth.ApplyAffliction(limb,correctaffliction,true,false,false)
     end
 
-    if penlevel - data.level >= 2 then ricochet = false end                                 --Overwhelming pen, no ricochet :)
+    if data.forcepenoverride ~= nil then
+        if penlevel - data.level >= data.forcepenoverride then ricochet = false end
+    else
+        if penlevel - data.level >= 2 then ricochet = false end                             --Overwhelming pen, no ricochet :)
+    end
 
     if ricochet then                                                                        --Jackpot
         continue = false
@@ -159,6 +162,8 @@ Hook.Patch("Kilo","Barotrauma.Character", "DamageLimb", function(instance, ptabl
     -- then just return because we assume something had done something on that already.
     if type(ptable["penetration"]) ~= "number" then return end
 
+    local PEN = ptable["penetration"]
+
     local penetrationlevel = math.floor((ptable["penetration"]+0.00001)*10)
     local targetcharacter = targetlimb.character
     --if not targetcharacter.IsHuman then return end
@@ -217,6 +222,17 @@ Hook.Patch("Kilo","Barotrauma.Character", "DamageLimb", function(instance, ptabl
 
     if not executecloth and not executeplate then return end                                                    --Did u mean run even if unnecessary?
     
+    if clothdata.clamppen then
+        PEN = math.clamp(ptable["penetration"],0,1)
+        penetrationlevel = math.clamp(penetrationlevel,0,10)
+    end
+    if platedata ~= nil then
+        if clothdata.clamppen then
+            PEN = math.clamp(ptable["penetration"],0,1)
+            penetrationlevel = math.clamp(penetrationlevel,0,10)
+        end
+    end
+
     local damagemultiplier = 1.0
     local continue = true
     --A "little" bit tooooooooooo long :(
@@ -234,8 +250,8 @@ Hook.Patch("Kilo","Barotrauma.Character", "DamageLimb", function(instance, ptabl
 
     --Damage stuffs
 
-    local decreasedpen = ptable["penetration"] - (penetrationlevel / 10)
-    ptable["penetration"] = Single(ptable["penetration"] + 0.00001 - decreasedpen)
+    local decreasedpen = PEN - (penetrationlevel / 10)
+    ptable["penetration"] = Single(PEN + 0.00001 - decreasedpen)
     ptable["damageMultiplier"] = Single(ptable["damageMultiplier"] * damagemultiplier)
 
 end, Hook.HookMethodType.Before)
