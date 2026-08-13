@@ -239,8 +239,9 @@ namespace SRW
                 if (projectile == null)
                 {
                     LastProjectile = null;
-                    break;
+                    return false;
                 }
+
                 projectile.Spread += ProjectileSpreadModifier;
                 Vector2 barrelPos = TransformedBarrelPos + item.body.SimPosition;
                 float rotation = (Item.body.Dir == 1.0f) ? Item.body.Rotation : Item.body.Rotation - MathHelper.Pi;
