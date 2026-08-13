@@ -14,7 +14,7 @@ VCE.ArmorSystem.AddtoMain = function(configtable)
         end
         ::goodend::                     --Green Light. All clear to go. NO VALIDATION CHECK.
         VCE.ArmorConfigs[id] = config
-        if CLIENT and config.RicochetSoundPath then
+        if CLIENT and config.PlaySound then
             VCE.LoadedSounds[id] = Game.SoundManager.LoadSound(config.RicochetSoundPath)
         end
         ::loopend::                     --Red Light. Next.

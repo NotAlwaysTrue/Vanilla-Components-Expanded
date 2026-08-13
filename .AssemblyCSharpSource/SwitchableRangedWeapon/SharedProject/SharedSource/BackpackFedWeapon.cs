@@ -78,16 +78,16 @@ namespace SRW
             {
                 ApplyStatusEffects(ActionType.OnFailure, 1.0f, character);
             }
-            bool shouldshoot = false;
+
             for (int i = 0; i < ProjectileCount; i++)
             {
                 Projectile projectile = FindProjectile(triggerOnUseOnContainers: true);
                 if (projectile == null)
                 {
                     LastProjectile = null;
-                    break;
+                    return false;
                 }
-                shouldshoot = true;
+
                 projectile.Spread += ProjectileSpreadModifier;
                 Vector2 barrelPos = TransformedBarrelPos + item.body.SimPosition;
                 float rotation = (Item.body.Dir == 1.0f) ? Item.body.Rotation : Item.body.Rotation - MathHelper.Pi;
@@ -140,8 +140,6 @@ namespace SRW
                 Item.RemoveContained(projectile.Item);
                 LastProjectile = projectile;
             }
-
-            if (!shouldshoot) { return false; }
 
             LaunchProjSpecific();
 
