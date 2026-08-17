@@ -26,6 +26,7 @@ namespace SRW
                 }
                 Item targetItem = ParentInv.GetItemInLimbSlot(InvSlotType.Bag);
                 int maxbackpackindex = targetItem != null ? targetItem.OwnInventory.Capacity : 0;
+                maxbackpackindex = UseAllBackpackAvailable ? 1 : maxbackpackindex;
                 if (requiredBackPackID.Count >= 0 && !requiredBackPackID.Contains(targetItem.Prefab.Identifier))
                 {
                     maxbackpackindex = 0;
