@@ -227,7 +227,7 @@ Hook.Patch("Kilo","Barotrauma.Character", "DamageLimb", function(instance, ptabl
         penetrationlevel = math.clamp(penetrationlevel,0,10)
     end
     if platedata ~= nil then
-        if clothdata.clamppen then
+        if platedata.clamppen then
             PEN = math.clamp(ptable["penetration"],0,1)
             penetrationlevel = math.clamp(penetrationlevel,0,10)
         end

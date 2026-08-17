@@ -11,6 +11,7 @@ namespace SRW
         {
             base.LaunchProjSpecific();
         }
+        protected void BaseDrawHUD(SpriteBatch spriteBatch, Character character) => base.DrawHUD(spriteBatch, character);
 
         public override void DrawHUD(SpriteBatch spriteBatch, Character character)
         {
@@ -50,8 +51,8 @@ namespace SRW
                 {
                     localtag = switchableProjectiles.ElementAt(currentselected).ToString();
                 }
-                LocalizedString localstr = TextManager.Get(localtag).Fallback(localtag);
-                LocalizedString modNum = TextManager.Get(currentselected.ToString());
+                LocalizedString localstr = TextManager.Get("SwitchableWeapon." + localtag).Fallback(localtag);
+                LocalizedString modNum = TextManager.Get("SwitchableWeapon." + currentselected.ToString()).Fallback(currentselected.ToString());
                 localstr.Replace("[ModeNum]", modNum);
                 GUI.DrawString(spriteBatch, SelectedPos, localstr, TextColor, forceUpperCase: ForceUpperCase.Yes);
             }
@@ -60,12 +61,11 @@ namespace SRW
         public override void UpdateHUDComponentSpecific(Character character, float deltaTime, Camera cam)
         {
             base.UpdateHUDComponentSpecific(character, deltaTime, cam);
-            //await Task.Run(() => UpdateUserInput(character));
             UpdateUserInput(character);
         }
 
         private bool previousshootkeystat = false;
-        private void UpdateUserInput(Character character)
+        protected void UpdateUserInput(Character character)
         {
             if (character == null || Character.Controlled != character) { return; }
 

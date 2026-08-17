@@ -18,7 +18,7 @@ namespace SRW
 
         private int maxselectable = 1;
 
-        private int maxfiremodeselectable = 1;
+        protected int maxfiremodeselectable = 1;
 
         protected int roundsshot = 0;
 
@@ -329,8 +329,7 @@ namespace SRW
                             break;
                         }
                     }
-                    if (projectileitem == null) { return null; }
-                    if (projectileitem.Container == null) { return null; }
+                    if (projectileitem?.Container == null) { return null; }
                     if (checkMagCondition && (projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0)) { return null; }
                     return projectileitem.GetComponent<Projectile>();
                 }
@@ -342,8 +341,7 @@ namespace SRW
             {
                 Identifier targetTagOrID = switchableProjectiles[currentselected];
                 projectileitem = itemInv?.FindItem(i => (i.HasTag(targetTagOrID) || i.Prefab.Identifier == targetTagOrID) && i.GetComponent<Projectile>() != null, true);
-                if (projectileitem == null) { return null; }
-                if (projectileitem.Container == null) { return null; }
+                if (projectileitem?.Container == null) { return null; }
                 if (checkMagCondition && (projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0)) { return null; }
                 return projectileitem.GetComponent<Projectile>();
             }
