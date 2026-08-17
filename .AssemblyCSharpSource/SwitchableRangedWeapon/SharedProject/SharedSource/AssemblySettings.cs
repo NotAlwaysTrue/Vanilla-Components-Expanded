@@ -15,4 +15,4 @@ global using Microsoft.Xna.Framework;
 [assembly: IgnoresAccessChecksTo("BarotraumaCore")]
 [assembly: IgnoresAccessChecksTo("DedicatedServer")]
 
-namespace MyModName;
+namespace SRW;
