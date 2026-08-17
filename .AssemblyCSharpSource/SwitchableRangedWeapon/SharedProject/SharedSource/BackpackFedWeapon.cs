@@ -1,12 +1,15 @@
+using Barotrauma;
 using Barotrauma.Items.Components;
 using Barotrauma.Networking;
+using static Barotrauma.JobPrefab;
 
 namespace SRW
 {
     public partial class BackpackFedWeapon : SwitchableRangedWeapon
     {
-        private HashSet<Identifier> requiredBackPackID;
-        private List<int> allowedSelfContainerIndex;
+        private List<Identifier> allowedBackPackTags;
+        private List<Identifier> allowedProjectileTags;
+        private List<int> allowedSelfContainerIndex = [];
         private int currentslotindex;
 
         [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
@@ -19,18 +22,17 @@ namespace SRW
             set
             {
                 CharacterInventory ParentInv = item.ParentInventory as CharacterInventory;
-                if (ParentInv == null)
-                {
-                    currentslotindex = 0;
-                    return;
-                }
-                Item targetItem = ParentInv.GetItemInLimbSlot(InvSlotType.Bag);
-                int maxbackpackindex = targetItem != null ? targetItem.OwnInventory.Capacity : 0;
-                maxbackpackindex = UseAllBackpackAvailable ? 1 : maxbackpackindex;
-                if (requiredBackPackID.Count >= 0 && !requiredBackPackID.Contains(targetItem.Prefab.Identifier))
+                Item targetItem = ParentInv?.GetItemInLimbSlot(InvSlotType.Bag);
+                int maxbackpackindex;
+                if (targetItem == null || (allowedBackPackTags.Count >= 0 && !targetItem.HasTag(allowedBackPackTags)))
                 {
                     maxbackpackindex = 0;
                 }
+                else
+                {
+                    maxbackpackindex = targetItem.OwnInventory.Capacity;
+                }
+                maxbackpackindex = UseAllBackpackAvailable ? 1 : maxbackpackindex;
                 int slotindexmax = allowedSelfContainerIndex.Count + maxbackpackindex - 1;
                 currentslotindex = value > slotindexmax ? 0 : value;
             }
@@ -41,7 +43,8 @@ namespace SRW
 
         public BackpackFedWeapon(Item item, ContentXElement element) : base(item, element) 
         {
-            requiredBackPackID = element.GetAttributeIdentifierArray(nameof(requiredBackPackID), Array.Empty<Identifier>()).ToHashSet();
+            allowedBackPackTags = element.GetAttributeIdentifierArray(nameof(allowedBackPackTags), Array.Empty<Identifier>()).ToList();
+            allowedProjectileTags = element.GetAttributeIdentifierArray(nameof(allowedProjectileTags), Array.Empty<Identifier>()).ToList();
             allowedSelfContainerIndex = element.GetAttributeIntArray(nameof(allowedSelfContainerIndex), Array.Empty<int>()).ToList();
             UseAllBackpackAvailable = element.GetAttributeBool(nameof(UseAllBackpackAvailable), true);
             CurrentSlotIndex = 0;
@@ -195,63 +198,73 @@ namespace SRW
 
         public new Projectile FindProjectile(bool triggerOnUseOnContainers = false)
         {
-            CharacterInventory ParentInv = item.ParentInventory as CharacterInventory;
-            Item targetItem = ParentInv?.GetItemInLimbSlot(InvSlotType.Bag);
-            if (requiredBackPackID.Count >= 0 && !requiredBackPackID.Contains(targetItem.Prefab.Identifier)) { return null; }
-            ItemInventory targetInv = CurrentSlotIndex < allowedSelfContainerIndex.Count || targetItem == null ? item.OwnInventory : targetItem.OwnInventory;
+            ItemInventory targetInv;
+            if (CurrentSlotIndex < allowedSelfContainerIndex.Count)
+            {
+                targetInv = item.OwnInventory;
+            }
+            else
+            {
+                CharacterInventory ParentInv = item.ParentInventory as CharacterInventory;
+                Item targetItem = ParentInv?.GetItemInLimbSlot(InvSlotType.Bag);
+                if (targetItem == null) { return null; }
+                if (allowedBackPackTags.Count >= 0 && !targetItem.HasTag(allowedBackPackTags)) { return null; }
+                targetInv = targetItem.OwnInventory;
+            }
+
+            if (targetInv == null) { return null; }
+
             Item projectileitem = null;
             if (targetInv == item.OwnInventory)
             {
-                int slotIndex = CurrentSlotIndex;
-                Item slotItem = targetInv?.GetItemAt(slotIndex);
+                Item slotItem = targetInv.GetItemAt(CurrentSlotIndex);
                 if (slotItem?.GetComponent<Projectile>() != null)
                 {
-                    if (slotItem.Condition <= 0 && checkMagCondition) { return null; }
+                    if ((slotItem.Condition <= 0 && checkMagCondition) || (allowedProjectileTags.Count > 0 && !slotItem.HasTag(allowedProjectileTags))) { return null; }
                     return slotItem.GetComponent<Projectile>();
                 }
                 else if (slotItem?.ownInventory != null)
                 {
-                    foreach (var item in slotItem.ownInventory.GetAllItems(false))
+                    projectileitem = slotItem.ownInventory.FindItem(i => i.GetComponent<Projectile>() != null && i.Container != null && i.Condition > 0, true);
+                    if (projectileitem == null) { return null; }
+                    if (checkMagCondition && (projectileitem.Container.Condition <= 0)) { return null; }
+                    if (allowedProjectileTags.Count > 0 && !projectileitem.HasTag(allowedProjectileTags)) { return null; }
+
+                    if (triggerOnUseOnContainers && slotItem.Condition > 0.0f)
                     {
-                        if (item?.GetComponent<Projectile>() != null && item.Container != null)
-                        {
-                            projectileitem = item;
-                            break;
-                        }
+                        slotItem.GetComponent<ItemContainer>()?.Item.ApplyStatusEffects(ActionType.OnUse, 1.0f);
                     }
-                    if (projectileitem?.Container == null) { return null; }
-                    if (checkMagCondition && (projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0)) { return null; }
                     return projectileitem.GetComponent<Projectile>();
                 }
             }
-            else if (UseAllBackpackAvailable != true)
+            else if (UseAllBackpackAvailable == false)
             {
-                Item slotItem = targetInv?.GetItemAt(CurrentSlotIndex - allowedSelfContainerIndex.Count);
+                Item slotItem = targetInv.GetItemAt(CurrentSlotIndex - allowedSelfContainerIndex.Count);
                 if (slotItem?.GetComponent<Projectile>() != null)
                 {
-                    if (slotItem.Condition <= 0 && checkMagCondition) { return null; }
+                    if ((slotItem.Condition <= 0 && checkMagCondition) || (allowedProjectileTags.Count > 0 && !slotItem.HasTag(allowedProjectileTags))) { return null; }
                     return slotItem.GetComponent<Projectile>();
                 }
                 else if (slotItem?.ownInventory != null)
                 {
-                    foreach (var item in slotItem.ownInventory.GetAllItems(false))
+                    projectileitem = slotItem.ownInventory.FindItem(i => i.GetComponent<Projectile>() != null && i.Container != null && i.Condition > 0, true);
+                    if (projectileitem == null) { return null; }
+                    if (checkMagCondition && (projectileitem.Container.Condition <= 0)) { return null; }
+                    if (allowedProjectileTags.Count > 0 && !projectileitem.HasTag(allowedProjectileTags)) { return null; }
+
+                    if (triggerOnUseOnContainers && slotItem.Condition > 0.0f)
                     {
-                        if (item?.GetComponent<Projectile>() != null && item.Container != null)
-                        {
-                            projectileitem = item;
-                            break;
-                        }
+                        slotItem.GetComponent<ItemContainer>()?.Item.ApplyStatusEffects(ActionType.OnUse, 1.0f);
                     }
-                    if (projectileitem?.Container == null) { return null; }
-                    if (checkMagCondition && (projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0)) { return null; }
                     return projectileitem.GetComponent<Projectile>();
                 }
             }
             else
             {
-                projectileitem = targetInv?.FindItem(i => i.GetComponent<Projectile>() != null, true);
-                if (projectileitem?.Container == null) { return null; }
-                if (checkMagCondition && (projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0)) { return null; }
+                projectileitem = targetInv.FindItem(i => i.GetComponent<Projectile>() != null && i.Container != null && i.Condition > 0, true);
+                if (projectileitem == null) { return null; }
+                if (allowedProjectileTags.Count > 0 && !projectileitem.HasTag(allowedProjectileTags)) { return null; }
+                if (checkMagCondition && projectileitem.Container.Condition <= 0) { return null; }
                 return projectileitem.GetComponent<Projectile>();
             }
             return null;
