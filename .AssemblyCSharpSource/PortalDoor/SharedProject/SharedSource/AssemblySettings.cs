@@ -4,6 +4,7 @@ global using System.Collections.Generic;
 global using System.Collections.Concurrent;
 global using System.Collections.Immutable;
 global using System.Reflection;
+global using System.Reflection.Emit;
 global using System.Runtime.CompilerServices;
 global using System.Linq;
 global using Barotrauma;
@@ -15,4 +16,4 @@ global using Microsoft.Xna.Framework;
 [assembly: IgnoresAccessChecksTo("BarotraumaCore")]
 [assembly: IgnoresAccessChecksTo("DedicatedServer")]
 
-namespace SRW;
+namespace MyModName;

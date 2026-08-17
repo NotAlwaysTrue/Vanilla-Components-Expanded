@@ -13,12 +13,11 @@ namespace ActiveProtectionSystem
         }
     }
 
-    [HarmonyPatch(typeof(Throwable), nameof(Throwable.Use))]
+    [HarmonyPatch(typeof(Throwable), nameof(Throwable.SecondaryUse))]
     class ThrowablePatch
     {
         static void Postfix(Throwable __instance)
         {
-            if (__instance.CurrentThrower == null) { return; }
             ActiveProtectionSystem.Projectiles.TryAdd(__instance.Item, true);
         }
     }

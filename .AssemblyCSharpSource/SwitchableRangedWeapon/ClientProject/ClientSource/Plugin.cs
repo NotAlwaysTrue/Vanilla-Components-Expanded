@@ -6,18 +6,12 @@ namespace SRW
     {
         public KeyOrMouse SwitchKey
         {
-            get
-            {
-                return switchkey.Value;
-            }
+            get => switchkey.Value;
         }
 
         public KeyOrMouse FireModeSwitchKey
         {
-            get
-            {
-                return firemodeswitchkey.Value;
-            }
+            get => firemodeswitchkey.Value;
         }
 
         private ISettingControl switchkey;

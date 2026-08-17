@@ -5,7 +5,47 @@ namespace SRW
 {
     public partial class BackpackFedWeapon : SwitchableRangedWeapon
     {
-        public BackpackFedWeapon(Item item, ContentXElement element) : base(item, element) { }
+        private HashSet<Identifier> requiredBackPackID;
+        private List<int> allowedSelfContainerIndex;
+        private int currentslotindex;
+
+        [InGameEditable, Serialize(0, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        public int CurrentSlotIndex
+        {
+            get
+            {
+                return currentslotindex;
+            }
+            set
+            {
+                CharacterInventory ParentInv = item.ParentInventory as CharacterInventory;
+                if (ParentInv == null)
+                {
+                    currentslotindex = 0;
+                    return;
+                }
+                Item targetItem = ParentInv.GetItemInLimbSlot(InvSlotType.Bag);
+                int maxbackpackindex = targetItem != null ? targetItem.OwnInventory.Capacity : 0;
+                maxbackpackindex = UseAllBackpackAvailable ? 1 : maxbackpackindex;
+                if (requiredBackPackID.Count >= 0 && !requiredBackPackID.Contains(targetItem.Prefab.Identifier))
+                {
+                    maxbackpackindex = 0;
+                }
+                int slotindexmax = allowedSelfContainerIndex.Count + maxbackpackindex - 1;
+                currentslotindex = value > slotindexmax ? 0 : value;
+            }
+        }
+
+        [InGameEditable, Serialize(true, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        public bool UseAllBackpackAvailable { get; set; }
+
+        public BackpackFedWeapon(Item item, ContentXElement element) : base(item, element) 
+        {
+            requiredBackPackID = element.GetAttributeIdentifierArray(nameof(requiredBackPackID), Array.Empty<Identifier>()).ToHashSet();
+            allowedSelfContainerIndex = element.GetAttributeIntArray(nameof(allowedSelfContainerIndex), Array.Empty<int>()).ToList();
+            UseAllBackpackAvailable = element.GetAttributeBool(nameof(UseAllBackpackAvailable), true);
+            CurrentSlotIndex = 0;
+        }
 
         public override bool Use(float deltaTime, Character? character = null)
         {
@@ -156,25 +196,65 @@ namespace SRW
         public new Projectile FindProjectile(bool triggerOnUseOnContainers = false)
         {
             CharacterInventory ParentInv = item.ParentInventory as CharacterInventory;
-            ItemInventory targetInv = ParentInv?.GetItemInLimbSlot(InvSlotType.Bag)?.OwnInventory;
-            if (targetInv == null) return null;
-
+            Item targetItem = ParentInv?.GetItemInLimbSlot(InvSlotType.Bag);
+            if (requiredBackPackID.Count >= 0 && !requiredBackPackID.Contains(targetItem.Prefab.Identifier)) { return null; }
+            ItemInventory targetInv = CurrentSlotIndex < allowedSelfContainerIndex.Count || targetItem == null ? item.OwnInventory : targetItem.OwnInventory;
             Item projectileitem = null;
-            if (switchableProjectiles.Count != 0)
+            if (targetInv == item.OwnInventory)
             {
-                Identifier targetTagOrID = switchableProjectiles[CurrentSelected];
-                projectileitem = targetInv.FindItem(i => ((i.HasTag(targetTagOrID) || i.Prefab.Identifier == targetTagOrID) && i.GetComponent<Projectile>() != null), false);
-                if (projectileitem == null) { return null; }
-                if ((projectileitem.Container?.Condition ?? 1f) <= 0 && checkMagCondition) { return null; }
-                return projectileitem.GetComponent<Projectile>();
+                int slotIndex = CurrentSlotIndex;
+                Item slotItem = targetInv?.GetItemAt(slotIndex);
+                if (slotItem?.GetComponent<Projectile>() != null)
+                {
+                    if (slotItem.Condition <= 0 && checkMagCondition) { return null; }
+                    return slotItem.GetComponent<Projectile>();
+                }
+                else if (slotItem?.ownInventory != null)
+                {
+                    foreach (var item in slotItem.ownInventory.GetAllItems(false))
+                    {
+                        if (item?.GetComponent<Projectile>() != null && item.Container != null)
+                        {
+                            projectileitem = item;
+                            break;
+                        }
+                    }
+                    if (projectileitem?.Container == null) { return null; }
+                    if (checkMagCondition && (projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0)) { return null; }
+                    return projectileitem.GetComponent<Projectile>();
+                }
+            }
+            else if (UseAllBackpackAvailable != true)
+            {
+                Item slotItem = targetInv?.GetItemAt(CurrentSlotIndex - allowedSelfContainerIndex.Count);
+                if (slotItem?.GetComponent<Projectile>() != null)
+                {
+                    if (slotItem.Condition <= 0 && checkMagCondition) { return null; }
+                    return slotItem.GetComponent<Projectile>();
+                }
+                else if (slotItem?.ownInventory != null)
+                {
+                    foreach (var item in slotItem.ownInventory.GetAllItems(false))
+                    {
+                        if (item?.GetComponent<Projectile>() != null && item.Container != null)
+                        {
+                            projectileitem = item;
+                            break;
+                        }
+                    }
+                    if (projectileitem?.Container == null) { return null; }
+                    if (checkMagCondition && (projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0)) { return null; }
+                    return projectileitem.GetComponent<Projectile>();
+                }
             }
             else
             {
-                projectileitem = targetInv.FindItem(i => i.GetComponent<Projectile>() != null, false);
-                if (projectileitem == null) { return null; }
-                if ((projectileitem.Container?.Condition ?? 1f) <= 0 && checkMagCondition) { return null; }
+                projectileitem = targetInv?.FindItem(i => i.GetComponent<Projectile>() != null, true);
+                if (projectileitem?.Container == null) { return null; }
+                if (checkMagCondition && (projectileitem.Condition <= 0 || projectileitem.Container.Condition <= 0)) { return null; }
                 return projectileitem.GetComponent<Projectile>();
             }
+            return null;
         }
     }
 }

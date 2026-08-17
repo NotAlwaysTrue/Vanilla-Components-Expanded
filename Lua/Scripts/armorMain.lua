@@ -72,7 +72,7 @@ function VCE.ArmorSystem.PlateMain(data,item,penlevel,damagemultiplier,afflictio
 
     if data.enablecorrection == true and data.correctionaffliction ~= nil then              --Corrections
         local prefab = AfflictionPrefab.Prefabs[data.correctionaffliction]
-        local strength = affliction.Strength * data.correctionmultiplier * damagemultiplier
+        local strength = affliction.Strength * data.correctionmultiplier * damagemultiplier * char.MaxVitality / 100
         local correctaffliction = prefab.Instantiate(strength, nil)
         char.CharacterHealth.ApplyAffliction(limb,correctaffliction,true,false,false)
     end
@@ -227,7 +227,7 @@ Hook.Patch("Kilo","Barotrauma.Character", "DamageLimb", function(instance, ptabl
         penetrationlevel = math.clamp(penetrationlevel,0,10)
     end
     if platedata ~= nil then
-        if clothdata.clamppen then
+        if platedata.clamppen then
             PEN = math.clamp(ptable["penetration"],0,1)
             penetrationlevel = math.clamp(penetrationlevel,0,10)
         end
