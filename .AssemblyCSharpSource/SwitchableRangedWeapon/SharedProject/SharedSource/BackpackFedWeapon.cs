@@ -41,12 +41,16 @@ namespace SRW
         [InGameEditable, Serialize(true, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public bool UseAllBackpackAvailable { get; set; }
 
+        [InGameEditable, Serialize(true, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        public bool TriggerOnUseOnContainer { get; set; }
+
         public BackpackFedWeapon(Item item, ContentXElement element) : base(item, element) 
         {
             allowedBackPackTags = element.GetAttributeIdentifierArray(nameof(allowedBackPackTags), Array.Empty<Identifier>()).ToList();
             allowedProjectileTags = element.GetAttributeIdentifierArray(nameof(allowedProjectileTags), Array.Empty<Identifier>()).ToList();
             allowedSelfContainerIndex = element.GetAttributeIntArray(nameof(allowedSelfContainerIndex), Array.Empty<int>()).ToList();
             UseAllBackpackAvailable = element.GetAttributeBool(nameof(UseAllBackpackAvailable), true);
+            TriggerOnUseOnContainer = element.GetAttributeBool(nameof(TriggerOnUseOnContainer), true);
             CurrentSlotIndex = 0;
         }
 
@@ -121,10 +125,10 @@ namespace SRW
             {
                 ApplyStatusEffects(ActionType.OnFailure, 1.0f, character);
             }
-
+            Item OnUseTarget = null;
             for (int i = 0; i < ProjectileCount; i++)
             {
-                Projectile projectile = FindProjectile(triggerOnUseOnContainers: true);
+                Projectile projectile = FindProjectile(ref OnUseTarget, TriggerOnUseOnContainer);
                 if (projectile == null)
                 {
                     LastProjectile = null;
@@ -181,6 +185,10 @@ namespace SRW
                     projectile.Item.body.ApplyTorque(projectile.Item.body.Mass * degreeOfFailure * 20.0f * projectile.GetSpreadFromPool());
                 }
                 Item.RemoveContained(projectile.Item);
+                if (OnUseTarget != null)
+                {
+                    OnUseTarget.ApplyStatusEffects(ActionType.OnUse, 1.0f);
+                }
                 LastProjectile = projectile;
             }
 
@@ -196,7 +204,7 @@ namespace SRW
 
         partial void LaunchProjSpecific();
 
-        public new Projectile FindProjectile(bool triggerOnUseOnContainers = false)
+        public Projectile FindProjectile(ref Item projectileContainer, bool triggerOnUseOnContainers = false)
         {
             ItemInventory targetInv;
             if (CurrentSlotIndex < allowedSelfContainerIndex.Count)
@@ -232,7 +240,7 @@ namespace SRW
 
                     if (triggerOnUseOnContainers && slotItem.Condition > 0.0f)
                     {
-                        slotItem.GetComponent<ItemContainer>()?.Item.ApplyStatusEffects(ActionType.OnUse, 1.0f);
+                        projectileContainer = slotItem.GetComponent<ItemContainer>()?.Item;
                     }
                     return projectileitem.GetComponent<Projectile>();
                 }
@@ -254,7 +262,7 @@ namespace SRW
 
                     if (triggerOnUseOnContainers && slotItem.Condition > 0.0f)
                     {
-                        slotItem.GetComponent<ItemContainer>()?.Item.ApplyStatusEffects(ActionType.OnUse, 1.0f);
+                        projectileContainer = slotItem.GetComponent<ItemContainer>()?.Item;
                     }
                     return projectileitem.GetComponent<Projectile>();
                 }
@@ -263,6 +271,10 @@ namespace SRW
             {
                 projectileitem = targetInv.FindItem(i => i.GetComponent<Projectile>() != null && i.Container != null && i.Condition > 0, true);
                 if (projectileitem == null) { return null; }
+                if (triggerOnUseOnContainers && projectileitem.Condition > 0.0f)
+                {
+                    projectileContainer = projectileitem.Container?.GetComponent<ItemContainer>()?.Item;
+                }
                 if (allowedProjectileTags.Count > 0 && !projectileitem.HasTag(allowedProjectileTags)) { return null; }
                 if (checkMagCondition && projectileitem.Container.Condition <= 0) { return null; }
                 return projectileitem.GetComponent<Projectile>();
