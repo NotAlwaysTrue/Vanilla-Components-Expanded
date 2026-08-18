@@ -34,7 +34,7 @@ namespace SRW
             }
             else
             {
-                localstr = TextManager.Get("SwitchableWeapon.SlotIndex#" + (CurrentSlotIndex - allowedSelfContainerIndex.Count + 1).ToString()).Fallback((CurrentSlotIndex - allowedSelfContainerIndex.Count + 1).ToString());
+                localstr = TextManager.Get("SwitchableWeapon.SlotIndex#" + (CurrentSlotIndex - allowedSelfContainerIndex.Count).ToString()).Fallback((CurrentSlotIndex).ToString());
             }
             GUI.DrawString(spriteBatch, SelectedPos, localstr, TextColor, forceUpperCase: ForceUpperCase.Yes);
 
@@ -54,7 +54,7 @@ namespace SRW
             if (character.IsKeyDown(InputType.Aim) && ModeSwitchKey.IsHit())
             {
                 CurrentSlotIndex += 1;
-                GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentProjectileSelected".ToIdentifier()], this));
+                GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["CurrentSlotIndex".ToIdentifier()], this));
             }
         }
     }
