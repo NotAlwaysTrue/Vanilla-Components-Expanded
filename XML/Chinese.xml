@@ -6,6 +6,10 @@
   <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayName>射击模式切换按键</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayName>
   <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.ToolTip>设置射击模式切换按键</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.ToolTip>
   <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayCategory>SwitchableRangedWeapon</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayCategory>
+  <Vanilla_Components_Expanded.SRW_CaculatorDeltaTimeScale.DisplayName>弹道计算器DeltaTime比例</Vanilla_Components_Expanded.SRW_CaculatorDeltaTimeScale.DisplayName>
+  <Vanilla_Components_Expanded.SRW_CaculatorDeltaTimeScale.ToolTip>设置弹道计算器的DeltaTime比例，较小的值将导致更好的曲线但会降低性能</Vanilla_Components_Expanded.SRW_CaculatorDeltaTimeScale.ToolTip>
+  <Vanilla_Components_Expanded.SRW_CaculatorDeltaTimeScale.DisplayCategory>弹道计算器</Vanilla_Components_Expanded.SRW_CaculatorDeltaTimeScale.DisplayCategory>
+
   <entityname.vceluacomponent>Lua 组件</entityname.vceluacomponent>
   <entitydescription.vceluacomponent>使用 Lua 脚本进行嵌入式编程</entitydescription.vceluacomponent>
 </infotexts>

@@ -27,6 +27,15 @@
     <Assembly file="%ModDir%/bin/Server/OSX/LuaComponent.dll" Target="Server" Platform="OSX"/>
     <Assembly file="%ModDir%/bin/Server/Windows/LuaComponent.dll" Target="Server" Platform="Windows"/>
 
+    <!--Shield-->
+    <Assembly file="%ModDir%/bin/Client/Linux/VoidShield.dll" Target="Client" Platform="Linux"/>
+    <Assembly file="%ModDir%/bin/Client/OSX/VoidShield.dll" Target="Client" Platform="OSX"/>
+    <Assembly file="%ModDir%/bin/Client/Windows/VoidShield.dll" Target="Client" Platform="Windows"/>
+
+    <Assembly file="%ModDir%/bin/Server/Linux/VoidShield.dll" Target="Server" Platform="Linux"/>
+    <Assembly file="%ModDir%/bin/Server/OSX/VoidShield.dll" Target="Server" Platform="OSX"/>
+    <Assembly file="%ModDir%/bin/Server/Windows/VoidShield.dll" Target="Server" Platform="Windows"/>
+
     <Lua File="%ModDir%/Lua/Autorun/init.lua" IsAutorun="true"/>
 
     <Config File="%ModDir%/XML/ConfigClient.xml" Target="Client" />
