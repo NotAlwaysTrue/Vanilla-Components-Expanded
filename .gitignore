@@ -4,3 +4,4 @@
 .AssemblyCSharpSource/**/launchSettings.json
 .vs
 .codegraph
+.github
