@@ -14,9 +14,17 @@ namespace SRW
             get => firemodeswitchkey.Value;
         }
 
+        public float CaculatorDeltaTimeScale
+        {
+            get => dtscale.Value;
+        }
+
         private ISettingControl switchkey;
 
         private ISettingControl firemodeswitchkey;
+
+        private ISettingRangeBase<float> dtscale;
+
         // Client-specific code
         partial void Initializeclient()
         {
@@ -24,6 +32,8 @@ namespace SRW
             switchkey = _control;
             ConfigService.TryGetConfig(Package, "SRW_FireModeSwitchKey", out ISettingControl _firemodecontrol);
             firemodeswitchkey = _firemodecontrol;
+            ConfigService.TryGetConfig(Package, "SRW_CaculatorDeltaTimeScale", out ISettingRangeBase<float> _dtscale);
+            dtscale = _dtscale;
         }
     }
 }

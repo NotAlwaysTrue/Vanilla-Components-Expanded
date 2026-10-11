@@ -14,5 +14,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\FIreModes.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\Plugin.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\SwitchableRangedWeapon.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)sharedsource\TrajectoryCaculator.cs" />
   </ItemGroup>
 </Project>
