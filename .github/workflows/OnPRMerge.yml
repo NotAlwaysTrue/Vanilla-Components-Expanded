@@ -1,0 +1,50 @@
+name: Recreate Dev branch from main after PR merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  recreate-dev-branch:
+    if: >
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.ref == 'Dev' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Delete Dev and recreate Dev from main
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+
+          if [ "${HEAD_REF}" != "Dev" ]; then
+            echo "Source branch is not Dev, skip."
+            exit 0
+          fi
+
+          echo "Source branch: ${HEAD_REF}"
+          
+          if git ls-remote --exit-code --heads origin "${HEAD_REF}" >/dev/null 2>&1; then
+            echo "Deleting remote branch: ${HEAD_REF}"
+            git push origin --delete "${HEAD_REF}"
+          else
+            echo "Remote branch ${HEAD_REF} does not exist, skip delete."
+          fi
+
+          echo "Creating remote branch ${HEAD_REF} from main"
+          git push origin "HEAD:refs/heads/${HEAD_REF}"
