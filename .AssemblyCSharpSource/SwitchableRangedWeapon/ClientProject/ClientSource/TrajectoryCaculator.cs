@@ -2,7 +2,6 @@
 using Barotrauma.Networking;
 using FarseerPhysics;
 using Microsoft.Xna.Framework.Graphics;
-using System;
 
 namespace SRW
 {
@@ -11,7 +10,7 @@ namespace SRW
         [Serialize(true, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public bool ShouldDrawTrajectory { get; set; }
 
-        public float DeltaTimeScale => SwitchableRangedWeaponPlugin.Instance.CaculatorDeltaTimeScale;
+        public float StepPerSecond => SwitchableRangedWeaponPlugin.Instance.CaculatorStepPerSecond;
 
         public float TimeOfFly { get; set; }
 
@@ -36,56 +35,83 @@ namespace SRW
             base.DrawHUD(spriteBatch, character);
             
             {
-                DrawProjectileTrajectory(spriteBatch, TimeOfFly, DeltaTimeScale);
+                DrawProjectileTrajectory(spriteBatch, TimeOfFly);
             }
         }
 
-        public void DrawProjectileTrajectory(SpriteBatch spriteBatch, float duration = 2.0f, float scale = 1, int thickness = 2)
+        public void DrawProjectileTrajectory(SpriteBatch spriteBatch, float duration = 2.0f, int thickness = 2)
         {
-            RangedWeapon weapon = item.GetComponent<RangedWeapon>();
-            Projectile projectile = weapon.FindProjectile(false);
-            Character user = Item.ParentInventory?.Owner as Character;
-            if (weapon == null || projectile == null || projectile.Hitscan || user == null) { return; }
+            RangedWeapon rawweapon = item.GetComponent<RangedWeapon>();
+            Projectile projectile = null;
+            if (rawweapon is BackpackFedWeapon bfw)
+            {
+                projectile = bfw.FindProjectile();
+            }
+            else if (rawweapon is SwitchableRangedWeapon srw)
+            {
+                projectile = srw.FindProjectile();
+            }
+            else
+            {
+                projectile = rawweapon?.FindProjectile();
+            }
 
-            Vector2 origin = Item.WorldPosition + ConvertUnits.ToDisplayUnits(weapon.TransformedBarrelPos);
+            Character user = Item.ParentInventory?.Owner as Character;
+            if (rawweapon == null || projectile == null || projectile.Hitscan || user == null) { return; }
+
+            Vector2 origin = Item.WorldPosition + ConvertUnits.ToDisplayUnits(rawweapon.TransformedBarrelPos);
             Vector2 direction = new(MathF.Cos(Item.body.Rotation), MathF.Sin(Item.body.Rotation));
             direction *= Item.FlippedX ? -1 : 1;
 
-            float mass = projectile.Item.body.FarseerBody.Mass;
-            float gravityScale = projectile.Item.body.FarseerBody.IgnoreGravity ? 0 : projectile.Item.body.FarseerBody.GravityScale;
+            float gravityScale = projectile.Item.body.FarseerBody.IgnoreGravity
+                ? 0
+                : projectile.Item.body.FarseerBody.GravityScale;
+
             float linearDamping = projectile.Item.body.FarseerBody.LinearDamping;
-            float totalImpulse = projectile.LaunchImpulse + weapon.LaunchImpulse;
+
+            float totalImpulse = projectile.LaunchImpulse + rawweapon.LaunchImpulse;
             float speedSim = Math.Min(totalImpulse, NetConfig.MaxPhysicsBodyVelocity * 0.95f);
-            // NOT I/m !!!!
 
-            float dt = (float)scale * 0.01666666667f;
+            int steps = (int)Math.Max(2, TimeOfFly * StepPerSecond);
 
-
-            int steps = Math.Max(1, (int)(duration / dt));
-
-            Vector2 originSim = ConvertUnits.ToSimUnits(origin);
-            Vector2 velocitySim = direction * speedSim;
-            Vector2 gravitySim = GameMain.World.Gravity * gravityScale * dt;
+            Vector2 p0 = ConvertUnits.ToSimUnits(origin);
+            Vector2 v0 = direction * speedSim;
+            Vector2 gravity = GameMain.World.Gravity * gravityScale;
 
             Camera cam = GameMain.GameScreen.Cam;
-
-            Vector2 prevWorld = origin;
-            Vector2 prevScreen = cam.WorldToScreen(prevWorld);
+            Vector2 prevScreen = cam.WorldToScreen(origin);
 
             for (int i = 1; i <= steps; i++)
             {
-                velocitySim += gravitySim;
-                velocitySim *= Math.Clamp(1f - linearDamping * dt, 0f, 1f);
-                originSim += velocitySim * dt;
+                float t = TimeOfFly / steps * i;
 
-                Vector2 currentWorld = ConvertUnits.ToDisplayUnits(originSim);
+                Vector2 posSim = ProjectilePositionAtTime(p0, v0, gravity, linearDamping, t);
+                Vector2 currentWorld = ConvertUnits.ToDisplayUnits(posSim);
                 Vector2 currentScreen = cam.WorldToScreen(currentWorld);
 
                 GUI.DrawLine(spriteBatch, prevScreen, currentScreen, DrawColor, width: thickness);
 
-                prevWorld = currentWorld;
                 prevScreen = currentScreen;
             }
+        }
+
+        private static Vector2 ProjectilePositionAtTime(
+            Vector2 p0,
+            Vector2 v0,
+            Vector2 gravity,
+            float damping,
+            float t)
+        {
+            if (t <= 0f)
+                return p0;
+
+            if (damping <= 0.0001f)
+                return p0 + v0 * t + 0.5f * gravity * t * t;
+
+            float e = MathF.Exp(-damping * t);
+            Vector2 terminalV = gravity / damping;
+
+            return p0 + terminalV * t + (v0 - terminalV) * ((1f - e) / damping);
         }
 
     }

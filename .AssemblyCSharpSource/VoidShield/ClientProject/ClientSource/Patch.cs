@@ -11,6 +11,10 @@ namespace VoidShield
             if (__instance.Container == null || Screen.Selected is SubEditorScreen) { return; }
             if (__instance.GetComponent<VoidShield>() is not VoidShield shield) { return; }
             shield.DrawSprite(spriteBatch, drawPos, -rotation, depth, overrideColor);
+            if (GameMain.DebugDraw)
+            {
+                shield.DebugDrawCollider(spriteBatch);
+            }
         }
     }
 
@@ -20,7 +24,7 @@ namespace VoidShield
         private static void Postfix(Item __instance, ref bool __result)
         {
             if (__result) { return; }
-            if (__instance.GetComponent<VoidShield>() is not { AlwaysDraw: true, IsActive: true }) { return; }
+            if (__instance.GetComponent<VoidShield>() is not { AlwaysDraw: true, ShieldActive: true }) { return; }
 
             Item? root = __instance.RootContainer;
             if (root == null || VoidShield.ContainerDrawsItsContents(root)) { return; }

@@ -3,6 +3,6 @@
   <Settings>
     <Setting Name="SRW_ModeSwitchKey" Type="control" Value="F" />
     <Setting Name="SRW_FireModeSwitchKey" Type="control" Value="B" />
-    <Setting Name="SRW_CaculatorDeltaTimeScale" Type="rangeFloat" Value="15" Min="1" Max="60" Steps="591"/>
+    <Setting Name="SRW_CaculatorStepPerSecond" Type="rangeInt" Value="6" Min="1" Max="60" Steps="60"/>
   </Settings>
 </Configuration>
