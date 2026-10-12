@@ -8,9 +8,7 @@ namespace VoidShield
     {
         private Sprite? sprite;
 
-        public Vector2 Size { get; set; }
-
-        public Vector2 DrawSize => Size;
+        public Vector2 DrawSize => Vector2.Zero;
 
         public bool AlwaysDraw { get; set; }
 
@@ -27,14 +25,12 @@ namespace VoidShield
                         break;
                 }
             }
-
-            Size = element.GetAttributeVector2("size", Vector2.One);
             AlwaysDraw = element.GetAttributeBool("alwaysdraw", false);
         }
 
-        public void Draw(SpriteBatch spriteBatch, bool editing, float itemDepth = -1f, Color? overrideColor = null)
+        public void Draw(SpriteBatch spriteBatch, bool editing, float _ = -1, Color? color = null)
         {
-            DrawSprite(spriteBatch, GetDrawPosition(), Item.RotationRad, itemDepth, overrideColor);
+            DrawSprite(spriteBatch, GetDrawPosition(), Item.RotationRad, color);
 
             if (GameMain.DebugDraw)
             {
@@ -50,14 +46,14 @@ namespace VoidShield
             collider.DebugDraw(spriteBatch, ShieldActive ? Color.Lime : Color.Red * 0.75f, forceColor: true);
         }
 
-        internal void DrawSprite(SpriteBatch spriteBatch, Vector2 drawPos, float spriteRotation, float depth, Color? overrideColor)
+        internal void DrawSprite(SpriteBatch spriteBatch, Vector2 drawPos, float spriteRotation, Color? color = null)
         {
             if (sprite == null || !ShieldActive) { return; }
 
             Vector2 offset = Vector2.Transform(Offset, Matrix.CreateRotationZ(spriteRotation));
             Vector2 position = new Vector2(drawPos.X + offset.X, -(drawPos.Y + offset.Y));
 
-            sprite.Draw(spriteBatch, position, overrideColor ?? Color.White, sprite.Origin, spriteRotation, Item.Scale, SpriteEffects.None, depth >= 0f ? depth : sprite.Depth);
+            sprite.Draw(spriteBatch, position, color ?? Color.White, sprite.Origin, spriteRotation, Item.Scale, SpriteEffects.None, sprite.Depth);
         }
 
         private Item? offsetContainer;
