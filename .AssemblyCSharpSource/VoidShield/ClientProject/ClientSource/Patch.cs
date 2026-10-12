@@ -10,7 +10,7 @@ namespace VoidShield
         {
             if (__instance.Container == null || Screen.Selected is SubEditorScreen) { return; }
             if (__instance.GetComponent<VoidShield>() is not VoidShield shield) { return; }
-            shield.DrawSprite(spriteBatch, drawPos, -rotation, depth, overrideColor);
+            shield.DrawSprite(spriteBatch, drawPos, -rotation, overrideColor);
             if (GameMain.DebugDraw)
             {
                 shield.DebugDrawCollider(spriteBatch);

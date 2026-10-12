@@ -8,7 +8,7 @@ namespace VoidShield
         static void ValidateHit(Projectile proj, Projectile.HitscanResult h, ref int hitsCount)
         {
             if (h.Fixture.Body.UserData is not VoidShield shield) { return; }
-            shield.Item.ApplyStatusEffects(ActionType.OnUse, 1f, worldPosition: proj.Item.WorldPosition);
+            shield.Item.ApplyStatusEffects(ActionType.OnUse, 1f, proj.User);
             hitsCount = proj.MaxTargetsToHit + 1;
         }
 

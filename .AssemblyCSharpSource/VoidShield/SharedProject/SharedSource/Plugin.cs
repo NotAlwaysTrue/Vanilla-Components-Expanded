@@ -18,6 +18,7 @@ namespace VoidShield
 
         public void OnLoadCompleted()
         {
+            harmony.PatchAll();
         }
 
         public void PreInitPatching()
