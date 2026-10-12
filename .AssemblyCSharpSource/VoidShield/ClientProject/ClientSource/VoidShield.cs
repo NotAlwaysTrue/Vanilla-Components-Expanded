@@ -33,11 +33,26 @@ namespace VoidShield
         }
 
         public void Draw(SpriteBatch spriteBatch, bool editing, float itemDepth = -1f, Color? overrideColor = null)
-            => DrawSprite(spriteBatch, GetDrawPosition(), Item.RotationRad, itemDepth, overrideColor);
+        {
+            DrawSprite(spriteBatch, GetDrawPosition(), Item.RotationRad, itemDepth, overrideColor);
+
+            if (GameMain.DebugDraw)
+            {
+                DebugDrawCollider(spriteBatch);
+            }
+        }
+        internal void DebugDrawCollider(SpriteBatch spriteBatch)
+        {
+            if (collider == null) { return; }
+            collider.Submarine = Item.Submarine;
+            collider.SetTransformIgnoreContacts(GetColliderSimPosition(), Item.RotationRad);
+            collider.UpdateDrawPosition(interpolate: false);
+            collider.DebugDraw(spriteBatch, ShieldActive ? Color.Lime : Color.Red * 0.75f, forceColor: true);
+        }
 
         internal void DrawSprite(SpriteBatch spriteBatch, Vector2 drawPos, float spriteRotation, float depth, Color? overrideColor)
         {
-            if (sprite == null || !IsActive) { return; }
+            if (sprite == null || !ShieldActive) { return; }
 
             Vector2 offset = Vector2.Transform(Offset, Matrix.CreateRotationZ(spriteRotation));
             Vector2 position = new Vector2(drawPos.X + offset.X, -(drawPos.Y + offset.Y));

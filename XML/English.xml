@@ -6,10 +6,9 @@
   <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayName>Fire Mode Switch Key</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayName>
   <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.ToolTip>Set Fire Mode Switch Key</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.ToolTip>
   <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayCategory>SwitchableRangedWeapon</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayCategory>
-  <Vanilla_Components_Expanded.SRW_CaculatorDeltaTimeScale.DisplayName>Trajectory Calculator DeltaTime Scale</Vanilla_Components_Expanded.SRW_CaculatorDeltaTimeScale.DisplayName>
-  <Vanilla_Components_Expanded.SRW_CaculatorDeltaTimeScale.ToolTip>Set DeltaTime Scale for Trajectory Calculator, smaller values will lead to better curve but decrease performance</Vanilla_Components_Expanded.SRW_CaculatorDeltaTimeScale.ToolTip>
-  <Vanilla_Components_Expanded.SRW_CaculatorDeltaTimeScale.DisplayCategory>Trajectory Calculator</Vanilla_Components_Expanded.SRW_CaculatorDeltaTimeScale.DisplayCategory>
-  
+  <Vanilla_Components_Expanded.SRW_CaculatorStepPerSecond.DisplayName>Trajectory Calculator Sample Rate</Vanilla_Components_Expanded.SRW_CaculatorStepPerSecond.DisplayName>
+  <Vanilla_Components_Expanded.SRW_CaculatorStepPerSecond.ToolTip>Set the sample rate for the trajectory calculator, higher values will produce better curves but reduce performance</Vanilla_Components_Expanded.SRW_CaculatorStepPerSecond.ToolTip>
+  <Vanilla_Components_Expanded.SRW_CaculatorStepPerSecond.DisplayCategory>TrajectoryCalculator</Vanilla_Components_Expanded.SRW_CaculatorStepPerSecond.DisplayCategory>
   <entityname.vceluacomponent>Lua Component</entityname.vceluacomponent>
   <entitydescription.vceluacomponent>Using Lua script for embedded programming.</entitydescription.vceluacomponent>
 </infotexts>
