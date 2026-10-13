@@ -24,7 +24,11 @@ namespace VoidShield
             CodeInstruction[] insertInstructions = new[]
             {
                 CodeInstruction.LoadArgument(0),
+#if CLIENT
                 CodeInstruction.LoadLocal(13),
+#else
+                CodeInstruction.LoadLocal(11),
+#endif
                 CodeInstruction.LoadLocal(8, true),
                 CodeInstruction.Call(typeof(Projectile_DoHitscan_Patch), nameof(ValidateHit)),
             };
