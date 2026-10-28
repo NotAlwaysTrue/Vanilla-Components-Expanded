@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Items>
+  <!--
   <Item name="" identifier="vceluacomponent" category="Electrical" tags="" linkable="true" allowedlinks="structure,item" spritecolor="100,100,255,255" inventoryiconcolor="100,100,255,255" resizehorizontal="true" resizevertical="true">
     <Sprite texture="%ModDir%/XML/LuaComp.png" depth="0.850" sourcerect="0,0,32,26" />
     <LuaComponent />
@@ -71,5 +72,30 @@
       <output name="signal_out31" displayname="connection.signaloutx~[num]=31" />
       <output name="signal_out32" displayname="connection.signaloutx~[num]=32" />
     </ConnectionPanel>
+  </Item>
+  -->
+
+  <Item name="" identifier="VCE_VirtualizedProjectile" category="Weapon" maxstacksize="1" interactthroughwalls="true" cargocontaineridentifier="metalcrate" tags="" impactsoundtag="impact_metal_light" hideinmenus="true" scale="0.5">
+    <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="0,0,1,1" origin="0.5,0.5" />
+    <Sprite texture="Content/Items/Weapons/weapons_new.png" sourcerect="0,0,1,1" depth="0.55" origin="0.5,0.5" />
+    <Body width="40" height="14" density="30" />
+    <VirtualizedProjectile characterusable="false" hitscan="true">
+      <StatusEffect type="OnNotContained" target="This" stackable="false">
+        <Remove />
+      </StatusEffect>
+    </VirtualizedProjectile>
+  </Item>
+
+  <Item name="" identifier="T_assaultriflemagazine" maxstacksize="8" maxstacksizecharacterinventory="2" scale="0.5" category="Weapon" allowasextracargo="true" cargocontaineridentifier="metalcrate" linkable="true" tags="smallitem,assaultrifleammo,handheldammo" impactsoundtag="impact_metal_light" health="4">
+    <PreferredContainer primary="assaultrifle" minamount="1" maxamount="1" spawnprobability="1"/>
+    <PreferredContainer primary="armcab" secondary="secarmcab"/>
+    <InventoryIcon texture="Content/Items/JobGear/TalentGear.png" sourcerect="476,3,36,48" origin="0.5,0.5" />
+    <Sprite texture="Content/Items/JobGear/TalentGear.png" sourcerect="476,3,36,48" depth="0.55" origin="0.5,0.5" />
+    <Body width="28" height="40" density="25" />
+    <VirtualizedMagazine MaxSize="4" ProjectileIdentifiers="shotgunslugexplosive,assaultrifleround,shotgunshell,hmground">
+    </VirtualizedMagazine>
+    <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect" >
+      <StatusEffect type="OnUse" target="This" disabledeltatime="true" Condition="-1"/>
+    </Holdable>
   </Item>
 </Items>
