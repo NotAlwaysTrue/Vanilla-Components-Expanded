@@ -133,6 +133,7 @@ namespace VCE_VirtualizedMagazine
         {
             outarray = loadedammoidentifiers.ToList();
             loadedammoidentifiers.Clear();
+            UpdateAmmoData(Inventory.FindItemByIdentifier(virtprojID));
         }
 
         /// <summary>
@@ -256,6 +257,8 @@ namespace VCE_VirtualizedMagazine
             var t = new List<Identifier>();
             target.UnLoadAmmoArray(out t);
             PushAmmoArray(ref t);
+            // Rejected rounds are top-first; restore them bottom-first to preserve feed order.
+            t.Reverse();
             target.PushAmmoArray(ref t);
             Item.Condition = loadedammoidentifiers.Count;
             target.Item.Condition = target.LoadedCount;
