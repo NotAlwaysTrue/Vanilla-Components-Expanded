@@ -73,7 +73,7 @@ namespace VCE_VirtualizedMagazine
     }
     public class VirtualizedMagazine : ItemContainer
     {
-        private const string containerXML = 
+        private const string containerXML =
             "<ItemContainer hideitems=\"true\" capacity=\"1\" SpawnWithId=\"VCE_VirtualizedProjectile\" drawinventory=\"false\" canbeselected=\"false\" ShowConditionInContainedStateIndicator=\"true\" removecontaineditemsondeconstruct=\"true\" containedstateindicatorstyle=\"bullet\">" +
                 "<Containable items=\"VCE_VirtualizedProjectile\" />" +
             "</ItemContainer>";
@@ -81,6 +81,12 @@ namespace VCE_VirtualizedMagazine
         private static readonly Identifier virtprojID = new("VCE_VirtualizedProjectile");
 
         private Stack<Identifier> loadedammoidentifiers;
+
+        public int LoadedCount
+        {
+            get => loadedammoidentifiers.Count;
+        }
+
         public Identifier TopIdentifier
         {
             get
@@ -119,9 +125,14 @@ namespace VCE_VirtualizedMagazine
         /// <param name="outarray">The ammo array ejected</param>
         public void ReLoadAmmoArray(ref List<Identifier> inarray, out List<Identifier> outarray)
         {
+            UnLoadAmmoArray(out outarray);
+            PushAmmoArray(ref inarray);
+        }
+
+        public void UnLoadAmmoArray(out List<Identifier> outarray)
+        {
             outarray = loadedammoidentifiers.ToList();
             loadedammoidentifiers.Clear();
-            PushAmmoArray(ref inarray);
         }
 
         /// <summary>
@@ -181,6 +192,7 @@ namespace VCE_VirtualizedMagazine
 
         public bool UpdateAmmoData(Item item = null)
         {
+            Item.Condition = loadedammoidentifiers.Count;
             if (item != null && VPItem == null && VPItem != item) { VPItem = item; }
             if (VPItem == null && item == null) { return false; }
             item = item ?? VPItem;
@@ -235,6 +247,20 @@ namespace VCE_VirtualizedMagazine
                     }
                 }
             }
+        }
+
+        public override bool Combine(Item item, Character user)
+        {
+            var target = item.GetComponent<VirtualizedMagazine>();
+            if (target == null) { return false; }
+            var t = new List<Identifier>();
+            target.UnLoadAmmoArray(out t);
+            PushAmmoArray(ref t);
+            target.PushAmmoArray(ref t);
+            Item.Condition = loadedammoidentifiers.Count;
+            target.Item.Condition = target.LoadedCount;
+
+            return true;
         }
     }
 }

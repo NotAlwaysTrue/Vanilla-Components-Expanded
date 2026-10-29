@@ -21,11 +21,19 @@ namespace VCE_VirtualizedMagazine
             if (element == null) { element = projectileContentXElement; }
 
             Attack = null;
+            statusEffectLists.Clear();
 
             foreach (var subElement in element.Elements())
             {
-                if (!subElement.Name.ToString().Equals("attack", StringComparison.OrdinalIgnoreCase)) { continue; }
-                Attack = new Attack(subElement, item.Name + ", Projectile", item);
+                switch (subElement.Name.ToString().ToLowerInvariant())
+                {
+                    case "attack":
+                        Attack = new Attack(subElement, item.Name + ", Projectile", item);
+                        continue;
+                    case "statuseffect":
+                        LoadStatusEffect(subElement);
+                        continue;
+                }
             }
 
             Hitscan = true;
@@ -44,6 +52,17 @@ namespace VCE_VirtualizedMagazine
             LightTargetMassThreshold = element.GetAttributeFloat("lighttargetmassthreshold", -1f);
 
             ParseProjectileDataClient(element);
+
+            void LoadStatusEffect(ContentXElement subElement)
+            {
+                var statusEffect = StatusEffect.Load(subElement, item.Name + ", " + GetType().Name);
+                if (!statusEffectLists.TryGetValue(statusEffect.type, out List<StatusEffect> effectList))
+                {
+                    effectList = new List<StatusEffect>();
+                    statusEffectLists.Add(statusEffect.type, effectList);
+                }
+                effectList.Add(statusEffect);
+            }
         }
 
 
@@ -345,8 +364,8 @@ namespace VCE_VirtualizedMagazine
             {
                 if (target.Body.UserData is Limb targetLimb)
                 {
-                    ApplyStatusEffects(conditionalActionType, 1.0f, character, targetLimb, useTarget: character, user: User);
-                    ApplyStatusEffects(ActionType.OnImpact, 1.0f, character, targetLimb, useTarget: character, user: User);
+                    ApplyStatusEffects(conditionalActionType, 1.0f, character, targetLimb, useTarget: character, user: User, worldPosition: worldPosition);
+                    ApplyStatusEffects(ActionType.OnImpact, 1.0f, character, targetLimb, useTarget: character, user: User, worldPosition: worldPosition);
 
                     var targetAttack = targetLimb.attack;
                     if (targetAttack != null)
@@ -385,8 +404,8 @@ namespace VCE_VirtualizedMagazine
                 }
                 else
                 {
-                    ApplyStatusEffects(conditionalActionType, 1.0f, useTarget: target.Body.UserData as Entity, user: User);
-                    ApplyStatusEffects(ActionType.OnImpact, 1.0f, useTarget: target.Body.UserData as Entity, user: User);
+                    ApplyStatusEffects(conditionalActionType, 1.0f, useTarget: target.Body.UserData as Entity, user: User, worldPosition: worldPosition);
+                    ApplyStatusEffects(ActionType.OnImpact, 1.0f, useTarget: target.Body.UserData as Entity, user: User, worldPosition: worldPosition);
 
                     if (GameMain.NetworkMember is { IsServer: true } server)
                     {
