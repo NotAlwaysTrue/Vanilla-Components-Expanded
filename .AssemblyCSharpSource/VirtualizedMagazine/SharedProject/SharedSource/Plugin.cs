@@ -31,7 +31,7 @@ namespace VCE_VirtualizedMagazine
         public void OnLoadCompleted()
         {
             ProjectileShootDispatcher.Init();
-            harmony.PatchAll(typeof(Plugin).Assembly);
+            harmony.PatchAll();
         }
 
         public void PreInitPatching()

@@ -135,8 +135,8 @@ namespace VCE_VirtualizedMagazine
 
         public void UnLoadAmmoArray(out List<Identifier> outarray)
         {
-            outarray = loadedammoidentifiers.ToList();
-            loadedammoidentifiers.Clear();
+            outarray = LoadedAmmoIdentifiers.ToList();
+            LoadedAmmoIdentifiers.Clear();
             UpdateAmmoData(Inventory.FindItemByIdentifier(virtprojID));
         }
 
@@ -150,7 +150,7 @@ namespace VCE_VirtualizedMagazine
             foreach (var id in inarray)
             {
                 var prefab = ElementHelper.GetItemPrefab(id);
-                if (prefab != null && (AllowedAmmoTags.Count == 0 || PrefabHasTag(prefab, AllowedAmmoTags)) && loadedammoidentifiers.Count < MaxSize)
+                if (prefab != null && (AllowedAmmoTags.Count == 0 || PrefabHasTag(prefab, AllowedAmmoTags)) && LoadedAmmoIdentifiers.Count < MaxSize)
                 {
                     LoadedAmmoIdentifiers.Push(id);
 
