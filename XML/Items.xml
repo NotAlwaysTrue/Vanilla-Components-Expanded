@@ -86,14 +86,26 @@
     </VirtualizedProjectile>
   </Item>
 
-  <Item name="" identifier="T_assaultriflemagazine" maxstacksize="8" maxstacksizecharacterinventory="2" scale="0.5" category="Weapon" allowasextracargo="true" cargocontaineridentifier="metalcrate" linkable="true" tags="smallitem,assaultrifleammo,handheldammo" impactsoundtag="impact_metal_light" health="4">
+  <Item name="" identifier="T_assaultriflemagazine" maxstacksize="8" maxstacksizecharacterinventory="2" scale="0.5" category="Weapon" allowasextracargo="true" cargocontaineridentifier="metalcrate" linkable="true" tags="smallitem,assaultrifleammo,handheldammo" impactsoundtag="impact_metal_light" health="30">
     <PreferredContainer primary="assaultrifle" minamount="1" maxamount="1" spawnprobability="1"/>
     <PreferredContainer primary="armcab" secondary="secarmcab"/>
     <InventoryIcon texture="Content/Items/JobGear/TalentGear.png" sourcerect="476,3,36,48" origin="0.5,0.5" />
     <Sprite texture="Content/Items/JobGear/TalentGear.png" sourcerect="476,3,36,48" depth="0.55" origin="0.5,0.5" />
     <Body width="28" height="40" density="25" />
-    <VirtualizedMagazine MaxSize="4" ProjectileIdentifiers="assaultrifleround,shotgunslugexplosive,shotgunshell,hmground">
-    </VirtualizedMagazine>
+    <VirtualizedMagazine MaxSize="30" AllowedAmmoTags="smallitem"/>
+    <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
+  </Item>
+
+  <Item name="" identifier="T_assaultriflemagazineFactory" maxstacksize="8" maxstacksizecharacterinventory="2" scale="0.5" category="Weapon" allowasextracargo="true" cargocontaineridentifier="metalcrate" linkable="true" tags="smallitem,assaultrifleammo,handheldammo" impactsoundtag="impact_metal_light" health="4">
+    <PreferredContainer primary="assaultrifle" minamount="1" maxamount="1" spawnprobability="1"/>
+    <PreferredContainer primary="armcab" secondary="secarmcab"/>
+    <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="960,960,64,64" />
+    <Sprite texture="Content/Items/Weapons/weapons_new.png" depth="0.54" sourcerect="146,157,21,44" origin="0.5,0.5" />
+    <Body width="28" height="40" density="25" />
+    <VirtualizedMagazineFactory>
+      <magazinedata MagazineID="T_assaultriflemagazine" MagazinePrefabID="TEST" amount="2"/>
+      <magazinedata MagazineID="T_assaultriflemagazine" MagazinePrefabID="TEST1" amount="2"/>
+    </VirtualizedMagazineFactory>
     <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
   </Item>
 </Items>

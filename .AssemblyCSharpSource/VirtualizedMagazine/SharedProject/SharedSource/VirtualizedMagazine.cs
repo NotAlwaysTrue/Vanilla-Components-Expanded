@@ -80,18 +80,22 @@ namespace VCE_VirtualizedMagazine
         private static readonly ContentXElement containerContentXElement = new(null, XElement.Parse(containerXML));
         private static readonly Identifier virtprojID = new("VCE_VirtualizedProjectile");
 
-        private Stack<Identifier> loadedammoidentifiers;
+        [Serialize(null, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        public Stack<Identifier> LoadedAmmoIdentifiers
+        {
+            get; private set;
+        }
 
         public int LoadedCount
         {
-            get => loadedammoidentifiers.Count;
+            get => LoadedAmmoIdentifiers.Count;
         }
 
         public Identifier TopIdentifier
         {
             get
             {
-                loadedammoidentifiers.TryPeek(out var result);
+                LoadedAmmoIdentifiers.TryPeek(out var result);
                 return result;
             }
         }
@@ -110,7 +114,7 @@ namespace VCE_VirtualizedMagazine
 
         public VirtualizedMagazine(Item item, ContentXElement element) : base(item, containerContentXElement)
         {
-            loadedammoidentifiers = new();
+            LoadedAmmoIdentifiers = new();
             var ammoarray = element.GetAttributeIdentifierArray("ProjectileIdentifiers", []).ToList();
             AllowedAmmoTags = element.GetAttributeIdentifierArray("AllowedAmmoTags", []).ToImmutableHashSet();
             MaxSize = element.GetAttributeInt("MaxSize", 30);
@@ -137,10 +141,10 @@ namespace VCE_VirtualizedMagazine
         }
 
         /// <summary>
-        /// Push ammo to ammo stack.
+        /// Load ammo list to stack
         /// </summary>
         /// <param name="inarray">The ammo array you want to load, also hold rejected ones after loading is completed</param>
-        public void PushAmmoArray(ref List<Identifier> inarray)
+        public void LoadAmmoArray(ref List<Identifier> inarray)
         {
             List<Identifier> outarray = new();
             foreach (var id in inarray)
@@ -148,7 +152,7 @@ namespace VCE_VirtualizedMagazine
                 var prefab = ElementHelper.GetItemPrefab(id);
                 if (prefab != null && (AllowedAmmoTags.Count == 0 || PrefabHasTag(prefab, AllowedAmmoTags)) && loadedammoidentifiers.Count < MaxSize)
                 {
-                    loadedammoidentifiers.Push(id);
+                    LoadedAmmoIdentifiers.Push(id);
 
                 }
                 else
@@ -159,6 +163,8 @@ namespace VCE_VirtualizedMagazine
             inarray = outarray;
             UpdateAmmoData(Inventory.FindItemByIdentifier(virtprojID));
         }
+
+        public void PushAmmoArray(ref List<Identifier> inarray) => LoadAmmoArray(ref inarray);
 
 #warning Will be removed IF i can fix the first round issue when items were placed in Sub Editor
         [Obsolete("DO NOT USE, WORKAROUND TO FIX FIRST ROUND CANT PARSE CORRECTLY")]
@@ -172,7 +178,7 @@ namespace VCE_VirtualizedMagazine
 
         public override void Update(float deltaTime, Camera cam)
         {
-            if (!manualflushcompleted) { ManualFlush(); }
+            if (!manualflushcompleted && !Item.OwnInventory.IsEmpty()) { ManualFlush(); }
             base.Update(deltaTime, cam);
         }
 
@@ -187,13 +193,13 @@ namespace VCE_VirtualizedMagazine
 
         public override bool Use(float deltaTime, Character character = null)
         {
-            loadedammoidentifiers.TryPop(out _);
+            LoadedAmmoIdentifiers.TryPop(out _);
             return UpdateAmmoData(Inventory.FindItemByIdentifier(virtprojID)); ;
         }
 
         public bool UpdateAmmoData(Item item = null)
         {
-            Item.Condition = loadedammoidentifiers.Count;
+            Item.Condition = LoadedAmmoIdentifiers.Count;
             if (item != null && VPItem == null && VPItem != item) { VPItem = item; }
             if (VPItem == null && item == null) { return false; }
             item = item ?? VPItem;
@@ -260,7 +266,7 @@ namespace VCE_VirtualizedMagazine
             // Rejected rounds are top-first; restore them bottom-first to preserve feed order.
             t.Reverse();
             target.PushAmmoArray(ref t);
-            Item.Condition = loadedammoidentifiers.Count;
+            Item.Condition = LoadedAmmoIdentifiers.Count;
             target.Item.Condition = target.LoadedCount;
 
             return true;
