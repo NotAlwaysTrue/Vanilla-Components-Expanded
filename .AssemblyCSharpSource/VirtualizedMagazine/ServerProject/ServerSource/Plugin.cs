@@ -1,6 +1,6 @@
 ﻿namespace VCE_VirtualizedMagazine
 {
-    public partial class Plugin : IAssemblyPlugin
+    public partial class VirtualizedMagazinePlugin : IAssemblyPlugin
     {
         // Server-specific code
     }

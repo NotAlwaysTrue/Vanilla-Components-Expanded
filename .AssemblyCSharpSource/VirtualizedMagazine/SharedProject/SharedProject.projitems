@@ -10,6 +10,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\AssemblySettings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)sharedsource\MagazineFactory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)sharedsource\MagazinePrefab.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\Plugin.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\HarmonyPatch.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\MethodScanner.cs" />

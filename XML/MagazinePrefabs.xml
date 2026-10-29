@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MagazinePrefabs>
+  <MagazinePrefab identifier="TEST" SuitableMagazine="T_assaultriflemagazine">
+    <AmmoGroup ProjectileIdentifier="shotgunshell" amount="15"/>
+    <AmmoGroup ProjectileIdentifier="shotgunslugexplosive" amount="15"/>
+  </MagazinePrefab>
+  <MagazinePrefab identifier="TEST1" SuitableMagazine="T_assaultriflemagazine">
+    <AmmoGroup ProjectileIdentifier="shotgunslugexplosive" amount="15"/>
+    <AmmoGroup ProjectileIdentifier="shotgunshell" amount="15"/>
+  </MagazinePrefab>
+</MagazinePrefabs>
