@@ -94,8 +94,6 @@
     <Body width="28" height="40" density="25" />
     <VirtualizedMagazine MaxSize="4" ProjectileIdentifiers="assaultrifleround,shotgunslugexplosive,shotgunshell,hmground">
     </VirtualizedMagazine>
-    <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect" >
-      <StatusEffect type="OnUse" target="This" disabledeltatime="true" Condition="-1"/>
-    </Holdable>
+    <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
   </Item>
 </Items>
