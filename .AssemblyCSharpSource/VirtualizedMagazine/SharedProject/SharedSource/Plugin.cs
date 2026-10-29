@@ -17,7 +17,7 @@
         public void OnLoadCompleted()
         {
             ProjectileShootDispatcher.Init();
-            harmony.PatchAll();
+            harmony.PatchAll(typeof(Plugin).Assembly);
         }
 
         public void PreInitPatching()

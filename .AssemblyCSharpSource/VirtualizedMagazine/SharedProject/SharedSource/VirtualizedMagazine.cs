@@ -145,7 +145,7 @@ namespace VCE_VirtualizedMagazine
             foreach (var id in inarray)
             {
                 var prefab = ElementHelper.GetItemPrefab(id);
-                if (!PrefabHasTag(prefab, AllowedAmmoTags) && loadedammoidentifiers.Count < MaxSize)
+                if (prefab != null && (AllowedAmmoTags.Count == 0 || PrefabHasTag(prefab, AllowedAmmoTags)) && loadedammoidentifiers.Count < MaxSize)
                 {
                     loadedammoidentifiers.Push(id);
 
