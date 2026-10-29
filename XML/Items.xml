@@ -92,7 +92,7 @@
     <InventoryIcon texture="Content/Items/JobGear/TalentGear.png" sourcerect="476,3,36,48" origin="0.5,0.5" />
     <Sprite texture="Content/Items/JobGear/TalentGear.png" sourcerect="476,3,36,48" depth="0.55" origin="0.5,0.5" />
     <Body width="28" height="40" density="25" />
-    <VirtualizedMagazine MaxSize="4" ProjectileIdentifiers="shotgunslugexplosive,assaultrifleround,shotgunshell,hmground">
+    <VirtualizedMagazine MaxSize="4" ProjectileIdentifiers="assaultrifleround,shotgunslugexplosive,shotgunshell,hmground">
     </VirtualizedMagazine>
     <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect" >
       <StatusEffect type="OnUse" target="This" disabledeltatime="true" Condition="-1"/>
