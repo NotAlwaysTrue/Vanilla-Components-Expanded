@@ -5,8 +5,6 @@ namespace VCE_VirtualizedMagazine
 {
     public partial class VirtualizedMagazinePlugin : IAssemblyPlugin
     {
-        private string ContentRaw = "<MagazinePrefabs file=\"%ModDir%/XML/MagazinePrefabs.xml\" />";
-
         // These are automatically assigned by the plugin service after the Constructor is called
         public IConfigService ConfigService { get; set; }
         public IPluginManagementService PluginService { get; set; }

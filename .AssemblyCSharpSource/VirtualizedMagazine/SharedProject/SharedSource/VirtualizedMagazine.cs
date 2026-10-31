@@ -1,6 +1,7 @@
 using Barotrauma;
 using Barotrauma.Items.Components;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Xml.Linq;
 
@@ -23,7 +24,7 @@ namespace VCE_VirtualizedMagazine
             return returnval;
         }
 
-        public static IEnumerable<ContentXElement> GetComponentsElementByID<T>(Identifier id)
+        public static IEnumerable<ContentXElement> GetComponentsElementByID<T>(Identifier id) where T : ItemComponent
         {
             ItemPrefab prefab = MapEntityPrefab.FindByIdentifier(id) as ItemPrefab;
 
@@ -39,7 +40,7 @@ namespace VCE_VirtualizedMagazine
         }
 
         public static Dictionary<(Identifier, Type ,int), ContentXElement> ChachedElements = new();
-        public static ContentXElement GetComponentElementByID<T>(Identifier id, int index)
+        public static ContentXElement GetComponentElementByID<T>(Identifier id, int index) where T : ItemComponent
         {
             if (id == null) { return null; };
             if (ChachedElements.TryGetValue((id, typeof(T), index), out var output))
@@ -66,7 +67,7 @@ namespace VCE_VirtualizedMagazine
             return null;
         }
 
-        public static ContentXElement GetFirstComponentElementByID<T>(Identifier id)
+        public static ContentXElement GetFirstComponentElementByID<T>(Identifier id) where T : ItemComponent
         {
             return GetComponentElementByID<T>(id, 0);
         }
@@ -74,16 +75,31 @@ namespace VCE_VirtualizedMagazine
     public class VirtualizedMagazine : ItemContainer
     {
         private const string containerXML =
-            "<ItemContainer hideitems=\"true\" capacity=\"1\" SpawnWithId=\"VCE_VirtualizedProjectile\" drawinventory=\"false\" canbeselected=\"false\" ShowConditionInContainedStateIndicator=\"true\" removecontaineditemsondeconstruct=\"true\" containedstateindicatorstyle=\"bullet\">" +
+            "<ItemContainer hideitems=\"true\" capacity=\"1\" SpawnWithId=\"VCE_VirtualizedProjectile\" drawinventory=\"true\" canbeselected=\"false\" ShowConditionInContainedStateIndicator=\"true\" removecontaineditemsondeconstruct=\"true\" containedstateindicatorstyle=\"bullet\">" +
                 "<Containable items=\"VCE_VirtualizedProjectile\" />" +
             "</ItemContainer>";
         private static readonly ContentXElement containerContentXElement = new(null, XElement.Parse(containerXML));
         private static readonly Identifier virtprojID = new("VCE_VirtualizedProjectile");
 
-        [Serialize(null, IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
         public Stack<Identifier> LoadedAmmoIdentifiers
         {
             get; private set;
+        } = new();
+
+        public IEnumerable<Identifier> LoadedAmmoIdentifiersArray
+        {
+            get => LoadedAmmoIdentifiers.ToArray().Reverse();
+        }
+
+        [Serialize("", IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
+        public string LoadedAmmoIdentifiersString
+        {
+            get => string.Join(",", LoadedAmmoIdentifiersArray);
+            set
+            {
+                var data = value.Split(',').ToIdentifiers().ToList();
+                LoadAmmoArray(ref data);
+            }
         }
 
         public int LoadedCount
@@ -102,7 +118,7 @@ namespace VCE_VirtualizedMagazine
 
         public int MaxSize
         {
-            get; private set;
+            get => (int)Item.MaxCondition;
         }
 
         public ImmutableHashSet<Identifier> AllowedAmmoTags
@@ -114,11 +130,9 @@ namespace VCE_VirtualizedMagazine
 
         public VirtualizedMagazine(Item item, ContentXElement element) : base(item, containerContentXElement)
         {
-            LoadedAmmoIdentifiers = new();
             var ammoarray = element.GetAttributeIdentifierArray("ProjectileIdentifiers", []).ToList();
             AllowedAmmoTags = element.GetAttributeIdentifierArray("AllowedAmmoTags", []).ToImmutableHashSet();
-            MaxSize = element.GetAttributeInt("MaxSize", 30);
-
+            UpdateWhenBroken = true;
             PushAmmoArray(ref ammoarray);
         }
 
@@ -161,25 +175,44 @@ namespace VCE_VirtualizedMagazine
                 }
             }
             inarray = outarray;
+            if(Inventory == null) { return; }
             UpdateAmmoData(Inventory.FindItemByIdentifier(virtprojID));
         }
 
         public void PushAmmoArray(ref List<Identifier> inarray) => LoadAmmoArray(ref inarray);
 
-#warning Will be removed IF i can fix the first round issue when items were placed in Sub Editor
-        [Obsolete("DO NOT USE, WORKAROUND TO FIX FIRST ROUND CANT PARSE CORRECTLY")]
-        private bool manualflushcompleted;
-        [Obsolete("DO NOT USE, WORKAROUND TO FIX FIRST ROUND CANT PARSE CORRECTLY")]
-        public void ManualFlush()
-        {
-            UpdateAmmoData(Inventory.FindItemByIdentifier(virtprojID));
-            manualflushcompleted = true;
-        }
-
         public override void Update(float deltaTime, Camera cam)
         {
-            if (!manualflushcompleted && !Item.OwnInventory.IsEmpty()) { ManualFlush(); }
-            base.Update(deltaTime, cam);
+            if (!string.IsNullOrEmpty(SpawnWithId) && !alwaysContainedItemsSpawned)
+            {
+                SpawnAlwaysContainedItems();
+                alwaysContainedItemsSpawned = true;
+            }
+
+            if (item.ParentInventory is CharacterInventory ownerInventory)
+            {
+                SetContainedItemPositionsIfNeeded();
+            }
+            else if (item.body != null && item.body.Enabled)
+            {
+                if (item.body.FarseerBody.Awake)
+                {
+                    SetContainedItemPositionsIfNeeded();
+                }
+            }
+
+            foreach (ActiveContainedItem activeContainedItem in activeContainedItems)
+            {
+                if (!ShouldApplyEffects(activeContainedItem)) { continue; }
+
+                StatusEffect effect = activeContainedItem.StatusEffect;
+                effect.Apply(ActionType.OnActive, deltaTime, item, targets);
+                effect.Apply(ActionType.OnContaining, deltaTime, item, targets);
+                if (item.GetComponent<Wearable>() is Wearable { IsActive: true })
+                {
+                    effect.Apply(ActionType.OnWearing, deltaTime, item, targets);
+                }
+            }
         }
 
         public static bool PrefabHasTag(ItemPrefab prefab, IEnumerable<Identifier> tags)
@@ -213,45 +246,81 @@ namespace VCE_VirtualizedMagazine
         {
             Inventory.AllowSwappingContainedItems = AllowSwappingContainedItems;
             containableItemIdentifiers = slotRestrictions.SelectMany(s => s.ContainableItems?.SelectMany(ri => ri.Identifiers) ?? Enumerable.Empty<Identifier>()).ToImmutableHashSet();
-            hasSignalConnections = item.Connections?.Any(c => c.Name is "contained_conditions" or "contained_conditions_percentage" or "contained_items") ?? false;
+            hasSignalConnections = false;
             if (item.Submarine == null || !item.Submarine.Loading)
             {
                 SpawnAlwaysContainedItems();
             }
         }
 
+        public override void OnMapLoaded()
+        {
+            if (itemIds != null)
+            {
+                initializingLoadedItems = true;
+                for (ushort i = 0; i < itemIds.Length; i++)
+                {
+                    if (i >= Inventory.Capacity)
+                    {
+                        //legacy support: before item stacking was implemented, revolver for example had a separate slot for each bullet
+                        //now there's just one, try to put the extra items where they fit (= stack them)
+                        Inventory.TryPutItem(item, user: null, createNetworkEvent: false);
+                        continue;
+                    }
+                    foreach (ushort id in itemIds[i])
+                    {
+                        if (Entity.FindEntityByID(id) is not Item item) { continue; }
+                        Inventory.TryPutItem(item, i, false, false, null, createNetworkEvent: false, ignoreCondition: true);
+                    }
+                }
+                initializingLoadedItems = false;
+                itemIds = null;
+            }
+
+            //outpost and ruins are loaded in multiple stages (each module is loaded separately)
+            //spawning items at this point during the generation will cause ID overlaps with the entities in the modules loaded afterwards
+            //so let's not spawn them at this point, but in the 1st Update()
+            if (item.Submarine?.Info != null && (item.Submarine.Info.IsOutpost || item.Submarine.Info.IsRuin))
+            {
+                if (SpawnWithId.Length > 0)
+                {
+                    IsActive = true;
+                }
+            }
+            else
+            {
+                SpawnAlwaysContainedItems();
+            }
+
+            SetContainedItemPositions();
+        }
+
         private void OnContainedSpawn(Item i)
         {
+            VPItem = i;
             alwaysContainedItemsSpawned = true;
             UpdateAmmoData(i);
         }
 
         private new void SpawnAlwaysContainedItems()
         {
-            if (SpawnWithId.Length > 0 && (item.Condition > 0.0f || SpawnWithIdWhenBroken))
+            ItemPrefab.Prefabs.TryGet(virtprojID, out var prefab);
+            if (prefab != null && Inventory != null && Inventory.CanProbablyBePut(prefab))
             {
-                string[] splitIds = SpawnWithId.Split(',');
-                foreach (string id in splitIds)
-                {
-                    ItemPrefab prefab = ItemPrefab.Prefabs.Find(m => m.Identifier == id);
-                    if (prefab != null && Inventory != null && Inventory.CanProbablyBePut(prefab))
-                    {
-                        bool isEditor = false;
+                bool isEditor = false;
 #if CLIENT
                         isEditor = Screen.Selected == GameMain.SubEditorScreen;
 #endif
-                        if (!isEditor && (Entity.Spawner == null || Entity.Spawner.Removed) && GameMain.NetworkMember == null)
-                        {
-                            var spawnedItem = new Item(prefab, Vector2.Zero, null);
-                            OnContainedSpawn(spawnedItem);
-                            Inventory.TryPutItem(spawnedItem, null, spawnedItem.AllowedSlots, createNetworkEvent: false);
-                        }
-                        else
-                        {
-                            IsActive = true;
-                            Entity.Spawner?.AddItemToSpawnQueue(prefab, Inventory, spawnIfInventoryFull: false, onSpawned: OnContainedSpawn);
-                        }
-                    }
+                if (!isEditor && (Entity.Spawner == null || Entity.Spawner.Removed) && GameMain.NetworkMember == null)
+                {
+                    var spawnedItem = new Item(prefab, Vector2.Zero, null);
+                    OnContainedSpawn(spawnedItem);
+                    Inventory.TryPutItem(spawnedItem, null, spawnedItem.AllowedSlots, createNetworkEvent: false);
+                }
+                else
+                {
+                    IsActive = true;
+                    Entity.Spawner?.AddItemToSpawnQueue(prefab, Inventory, spawnIfInventoryFull: false, onSpawned: OnContainedSpawn);
                 }
             }
         }
