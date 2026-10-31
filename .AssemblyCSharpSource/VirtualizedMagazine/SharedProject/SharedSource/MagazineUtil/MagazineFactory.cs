@@ -83,7 +83,6 @@ namespace VCE_VirtualizedMagazine
 
         public override bool Use(float deltaTime, Character character = null)
         {
-            Manufacture();
             if (RemoveAfterSpawn && spawned)
             {
                 Entity.Spawner?.AddItemToRemoveQueue(Item);
@@ -109,8 +108,7 @@ namespace VCE_VirtualizedMagazine
                     IsActive = true;
                     Entity.Spawner?.AddItemToSpawnQueue(itemprefab, 
                                                         Item.ParentInventory, 
-                                                        spawnIfInventoryFull: 
-                                                        false, 
+                                                        spawnIfInventoryFull: true, 
                                                         onSpawned: (i) =>
                                                         {
                                                             LoadAmmoForItem(i, magazineprefab.AmmoData);

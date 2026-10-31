@@ -9,13 +9,19 @@
     <Import_RootNamespace>SharedProject</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\AssemblySettings.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)sharedsource\MagazineFactory.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)sharedsource\MagazinePrefab.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\Plugin.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\HarmonyPatch.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\MethodScanner.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedProjectile.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Sharedsource\AssemblySettings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Sharedsource\MagazineUtil\MagazineFactory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)sharedsource\magazineutil\MagazineLoader.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Sharedsource\MagazineUtil\MagazinePrefab.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)sharedsource\magazineutil\AmmoStorage.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Sharedsource\Plugin.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Sharedsource\Harmony\HarmonyPatch.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Sharedsource\Harmony\MethodScanner.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Sharedsource\VirtualizedMagazine.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Sharedsource\VirtualizedProjectile.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Sharedsource\MagazineUtil\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Sharedsource\Harmony\" />
   </ItemGroup>
 </Project>

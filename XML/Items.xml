@@ -92,7 +92,7 @@
     <InventoryIcon texture="Content/Items/JobGear/TalentGear.png" sourcerect="476,3,36,48" origin="0.5,0.5" />
     <Sprite texture="Content/Items/JobGear/TalentGear.png" sourcerect="476,3,36,48" depth="0.55" origin="0.5,0.5" />
     <Body width="28" height="40" density="25" />
-    <VirtualizedMagazine MaxSize="30" AllowedAmmoTags="smallitem"/>
+    <VirtualizedMagazine AllowedAmmoTags="smallitem"/>
     <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
   </Item>
 
@@ -106,6 +106,40 @@
       <magazinedata MagazineID="T_assaultriflemagazine" MagazinePrefabID="TEST" amount="2"/>
       <magazinedata MagazineID="T_assaultriflemagazine" MagazinePrefabID="TEST1" amount="2"/>
     </VirtualizedMagazineFactory>
+    <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
+  </Item>
+
+  <Item name="" identifier="T_assaultriflemagazineAmmoBox" maxstacksize="8" maxstacksizecharacterinventory="2" scale="0.5" category="Weapon" allowasextracargo="true" cargocontaineridentifier="metalcrate" linkable="true" tags="smallitem,assaultrifleammo,handheldammo" impactsoundtag="impact_metal_light">
+    <PreferredContainer primary="assaultrifle" minamount="1" maxamount="1" spawnprobability="1"/>
+    <PreferredContainer primary="armcab" secondary="secarmcab"/>
+    <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="960,960,64,64" />
+    <Sprite texture="Content/Items/Weapons/weapons_new.png" depth="0.54" sourcerect="146,157,21,44" origin="0.5,0.5" />
+    <Body width="28" height="40" density="25" />
+    <VirtualizedAmmoStorage ProjectileIdentifier="shotgunshell"/>
+    <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
+  </Item>
+
+  <Item name="" identifier="T_assaultriflemagazineLoader" maxstacksize="8" maxstacksizecharacterinventory="2" scale="0.5" category="Weapon" allowasextracargo="true" cargocontaineridentifier="metalcrate" linkable="true" tags="smallitem,assaultrifleammo,handheldammo" impactsoundtag="impact_metal_light">
+    <PreferredContainer primary="assaultrifle" minamount="1" maxamount="1" spawnprobability="1"/>
+    <PreferredContainer primary="armcab" secondary="secarmcab"/>
+    <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="960,960,64,64" />
+    <Sprite texture="Content/Items/Weapons/weapons_new.png" depth="0.54" sourcerect="146,157,21,44" origin="0.5,0.5" />
+    <Body width="28" height="40" density="25" />
+    <VirtualizedMagazineLoader/>
+    <ItemContainer capacity="1" hideitems="true" ContainedStateIndicatorSlot="1">
+      <SlotIcon slotindex="1" texture="Content/UI/StatusMonitorUI.png" sourcerect="128,448,64,64" origin="0.5,0.5" />
+      <SubContainer capacity="1"  maxstacksize="1">
+      </SubContainer>
+    </ItemContainer>
+    <CustomInterface canbeselected="false" drawhudwhenequipped="true" allowuioverlap="true">
+      <GuiFrame relativesize="0.15,0.1" anchor="CenterRight" relativeoffset="0,0.1" style="ItemUI" />
+      <IntegerInput text="Amount" targetitemcomponent="VirtualizedMagazineLoader" propertyname="PushAmount" min="1" step="1" GetValueInterval="0.5"/>
+      <Button text="Load">
+        <StatusEffect type="OnUse" target="This">
+          <Use />
+        </StatusEffect>
+      </Button>
+    </CustomInterface>
     <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
   </Item>
 </Items>

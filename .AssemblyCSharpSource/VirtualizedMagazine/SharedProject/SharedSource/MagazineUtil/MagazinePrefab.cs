@@ -42,8 +42,8 @@ namespace VCE_VirtualizedMagazine
         // example didnt consider have multiple rounds in a single data but should be the same
         public MagazinePrefab(ContentXElement element, MagazinePrefabFile file) : base(file, element.GetAttributeIdentifier("identifier", "")) 
         {
-            SuitableMagazineIdentifier = element.GetAttributeIdentifier("SuitableMagazine", null);
-            if (SuitableMagazineIdentifier == null)
+            SuitableMagazineIdentifier = element.GetAttributeIdentifier("SuitableMagazine", Identifier.Empty);
+            if (SuitableMagazineIdentifier.IsEmpty)
             {
                 DebugConsole.LogWarning($"Warning: Empty Magazine identifier for MagazinePrefab {Identifier}");
                 return;
