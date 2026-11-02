@@ -1,0 +1,38 @@
+<Project>
+  <!--
+    Keep one intermediate folder per project.
+
+    ClientProject/ and ServerProject/ each hold three csproj files (Windows /
+    Linux / Mac). Without this file they share obj/project.assets.json and
+    obj/project.nuget.cache, so a single "dotnet restore" pass (even with the
+    force option) only rewrites some of the *.nuget.g.props / *.nuget.g.targets
+    files and leaves the others stale.
+
+    A stale *.nuget.g.props leaves $(PkgBarotrauma_ReferenceAssemblies_*)
+    empty, which breaks the ReadGameVersion target in SharedItems.props
+    (MSB3441: Cannot get assembly name for "\assemblies\Windows\Barotrauma.dll").
+    A stale *.nuget.g.targets makes the compiler silently reference the wrong
+    Barotrauma package after toggling UsePublicizedAssemblies - and because
+    both packages expose the same assembly identity (Barotrauma, Version=x,
+    PublicKeyToken=null) there is no warning, only CS0122 on internal members.
+  -->
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+
+  <!--
+    Moving the intermediate folder out of the project directory removes the SDK's
+    implicit exclusion of <project>\obj from the default **\*.cs glob. Every stale
+    obj\<Platform>\<Configuration>\<tfm>\*AssemblyInfo.cs and
+    obj\...\.NETCoreApp,Version=v8.0.AssemblyAttributes.cs left behind by an earlier
+    build (Windows / Linux / Mac, Debug / Release) is then compiled alongside the
+    freshly generated file, which the compiler reports as CS0579
+    "duplicate attribute" (AssemblyCompany, TargetFramework, AssemblyVersion, ...).
+
+    Exclude bin/obj below this props file instead, so no build layout can leak
+    generated sources into the compilation again.
+  -->
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);$(MSBuildThisFileDirectory)**\obj\**;$(MSBuildThisFileDirectory)**\bin\**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>

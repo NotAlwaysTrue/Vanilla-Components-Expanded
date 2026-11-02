@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>7c1c5d04-3108-447b-8ce6-9f5effa614ec</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>SharedSource</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)SharedItems.props" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\ActiveProtectionSystem\ActiveProtectionSystem.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\ActiveProtectionSystem\HarmonyPatch.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)sharedsource\Plugin.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\SwitchableRangedWeapon\BackpackFedWeapon.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\SwitchableRangedWeapon\FIreModes.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\SwitchableRangedWeapon\SwitchableRangedWeapon.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\SwitchableRangedWeapon\TrajectoryCaculator.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\Harmony\HarmonyPatch.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\Harmony\MethodScanner.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\MagazineUtil\AmmoStorage.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\MagazineUtil\MagazineFactory.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\MagazineUtil\MagazineLoader.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\MagazineUtil\MagazinePrefab.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\VirtualizedMagazine.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\VirtualizedProjectile.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VoidShield\Patch.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VoidShield\VoidShield.cs" />
+  </ItemGroup>
+</Project>

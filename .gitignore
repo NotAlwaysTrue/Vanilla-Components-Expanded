@@ -1,7 +1,9 @@
-.AssemblyCSharpSource/**/bin
-.AssemblyCSharpSource/**/obj
-.AssemblyCSharpSource/**/**.user
-.AssemblyCSharpSource/**/launchSettings.json
+CsProjectSource/**/bin
+obj
 .vs
 .codegraph
 .github
+
+UserBuildData.props
+launchSettings.json
+**.user

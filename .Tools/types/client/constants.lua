@@ -1,2 +1,0 @@
-CLIENT = true
-SERVER = false

@@ -1,8 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<contentpackage name="Vanilla_Components_Expanded" modversion="1.5.3" corepackage="False" steamworkshopid="3606054332" gameversion="1.13.4.0">
+<contentpackage name="Vanilla_Components_Expanded_UNSTABLE" modversion="1.5.3" corepackage="False" steamworkshopid="3606054332" gameversion="1.13.4.0">
   <Afflictions file="%ModDir%/XML/Afflictions.xml" />
   <Text file="%ModDir%/XML/Chinese.xml" />
   <Text file="%ModDir%/XML/English.xml" />
   <Item file="%ModDir%/XML/Items.xml" />
-  <!--<MagazinePrefab file="%ModDir%/XML/MagazinePrefabs.xml" />-->
+  <PluginInfo file="%ModDir%/PluginInfo.xml" />
+
+  <Dependency identifier="VCELOCALTESTPKG" isoptional="true" order="Above" names="VCETESTPACK" />
+  <FileGroup>
+    <Conditional dependencies="VCELOCALTESTPKG" />
+    <Item file="%ModDir%/.Test/testItems.xml" />
+    <MagazinePrefab file="%ModDir%/.Test/MagazinePrefabs.xml" />
+  </FileGroup>
+
 </contentpackage>

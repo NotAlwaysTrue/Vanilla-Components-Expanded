@@ -1,0 +1,23 @@
+<Project>
+  <!--
+    Machine specific build settings.
+
+    Copy this file to "UserBuildData.props" (same folder) and edit the values below.
+    "UserBuildData.props" is ignored by git, so every developer can point at their own
+    Barotrauma installation without touching the tracked template files.
+  -->
+  <PropertyGroup>
+    <!--
+      Absolute path to the Barotrauma executable (or to its folder).
+
+      launchSettings.json cannot read MSBuild properties, so the "Launch Barotrauma" launch
+      profile in PluginToolbox is produced from PluginToolbox/Properties/launchSettings.template.json:
+      every build expands this value into PluginToolbox/Properties/launchSettings.json. Rebuild
+      PluginToolbox after changing the path, and edit the template instead of the generated file.
+
+      If this file is missing, BuildData.props falls back to
+      <repo>\..\..\Barotrauma.exe, which assumes the repository sits directly in LocalMods.
+    -->
+    <BarotraumaExePath><Replace with your Barotrauma Game Dir>\Barotrauma.exe</BarotraumaExePath>
+  </PropertyGroup>
+</Project>
