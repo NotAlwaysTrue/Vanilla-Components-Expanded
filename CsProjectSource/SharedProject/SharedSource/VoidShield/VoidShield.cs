@@ -3,7 +3,7 @@ using FarseerPhysics;
 using FarseerPhysics.Dynamics;
 using FarseerPhysics.Dynamics.Contacts;
 
-namespace VoidShield
+namespace VCE_VoidShield
 {
     public partial class VoidShield : ItemComponent
     {

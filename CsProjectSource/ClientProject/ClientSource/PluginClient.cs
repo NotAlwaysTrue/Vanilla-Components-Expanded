@@ -10,7 +10,7 @@ public partial class VCEPlugin
     private static VCEKeySetting firemodekeysetting;
     private static IntSetting caculatorstep;
     public static KeyOrMouse SRW_SwitchKey => switchkeysetting.KeyValue;
-    public static KeyOrMouse SRW_FireModeSwitchKey => switchkeysetting.KeyValue;
+    public static KeyOrMouse SRW_FireModeSwitchKey => firemodekeysetting.KeyValue;
     public static int SRW_CaculatorStepPerSecond => caculatorstep.Value;
     public partial void InitProjectSpecific()
     {
@@ -20,12 +20,14 @@ public partial class VCEPlugin
             SyncMode = SettingSyncMode.NoSync,
             ToolTip = TextManager.Get("SRW.SwitchKey.ToolTip").Fallback("The key used to switch between projectile/slots")
         });
+
         SettingsService.RegisterSetting(new VCEKeySetting($"SRW_FireModeSwitchKey".ToIdentifier(), Keys.B.ToString(), label: TextManager.Get("SRW.FireModeSwitchKey").Fallback("SRW FireMode Switch Key"))
         {
             ShowInUI = true,
             SyncMode = SettingSyncMode.NoSync,
             ToolTip = TextManager.Get("SRW.FireModeSwitchKey.ToolTip").Fallback("The key used to switch between firemodes")
         });
+
         SettingsService.RegisterSetting(new IntSetting($"SRW_CaculatorStepPerSecond".ToIdentifier(), 6, label: TextManager.Get("SRW.CaculatorStepPerSecond").Fallback("SRW Trajectory Caculator Step PerSecond"))
         {
             ShowInUI = true,

@@ -2,7 +2,7 @@ using Barotrauma.Items.Components;
 using FarseerPhysics;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace VoidShield
+namespace VCE_VoidShield
 {
     public partial class VoidShield : IDrawableComponent
     {

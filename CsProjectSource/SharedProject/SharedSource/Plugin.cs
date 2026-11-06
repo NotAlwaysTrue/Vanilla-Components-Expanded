@@ -25,7 +25,7 @@ public partial class VCEPlugin : IBarotraumaPlugin
 
     private static Harmony harmony;
 
-    private static Type[] ictypes =
+    private static readonly Type[] ictypes =
     {
         typeof(SwitchableRangedWeapon), typeof(BackpackFedWeapon), typeof(TrajectoryCalculator),
         typeof(VirtualizedMagazine), typeof(VirtualizedMagazineFactory), typeof(VirtualizedMagazineLoader), typeof(VirtualizedProjectile), typeof(VirtualizedAmmoStorage),

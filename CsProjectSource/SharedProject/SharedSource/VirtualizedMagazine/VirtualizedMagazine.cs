@@ -76,7 +76,7 @@ namespace VCE_VirtualizedMagazine
     public class VirtualizedMagazine : ItemContainer
     {
         private const string containerXML =
-            "<ItemContainer hideitems=\"true\" capacity=\"1\" SpawnWithId=\"VCE_VirtualizedProjectile\" drawinventory=\"true\" canbeselected=\"false\" ShowConditionInContainedStateIndicator=\"true\" removecontaineditemsondeconstruct=\"true\" containedstateindicatorstyle=\"bullet\">" +
+            "<ItemContainer hideitems=\"true\" capacity=\"1\" SpawnWithId=\"VCE_VirtualizedProjectile\" drawinventory=\"false\" canbeselected=\"false\" ShowConditionInContainedStateIndicator=\"true\" removecontaineditemsondeconstruct=\"true\" containedstateindicatorstyle=\"bullet\">" +
                 "<Containable items=\"VCE_VirtualizedProjectile\" />" +
             "</ItemContainer>";
         private static readonly ContentXElement containerContentXElement = new(null, XElement.Parse(containerXML));
@@ -87,21 +87,22 @@ namespace VCE_VirtualizedMagazine
             get; private set;
         } = new();
 
-        public IEnumerable<Identifier> LoadedAmmoIdentifiersArray
-        {
-            get => LoadedAmmoIdentifiers.ToArray().Reverse();
-        }
-
         [Serialize("", IsPropertySaveable.Yes, alwaysUseInstanceValues: true)]
-        public string LoadedAmmoIdentifiersString
+        public Identifier[] LoadedAmmoIdentifiersArray
         {
-            get => string.Join(",", LoadedAmmoIdentifiersArray);
+            get
+            {
+                var data = LoadedAmmoIdentifiers.ToArray();
+                Array.Reverse(data);
+                return data;
+            }
             set
             {
-                var data = value.Split(',').ToIdentifiers().ToList();
+                var data = value.ToList();
                 LoadAmmoArray(ref data);
             }
         }
+
 
         public int LoadedCount
         {

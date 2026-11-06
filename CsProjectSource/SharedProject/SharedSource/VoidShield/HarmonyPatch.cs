@@ -2,7 +2,7 @@ using Barotrauma.Items.Components;
 using System.Reflection;
 using System.Reflection.Emit;
 
-namespace VoidShield
+namespace VCE_VoidShield
 {
     [HarmonyPatch(typeof(Projectile), nameof(Projectile.DoHitscan))]
     public static class Projectile_DoHitscan_Patch

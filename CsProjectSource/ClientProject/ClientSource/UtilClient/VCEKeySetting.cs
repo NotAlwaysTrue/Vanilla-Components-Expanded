@@ -74,12 +74,12 @@ namespace VanillaComponentsExpanded
         private static bool TryParseKey(string raw, out KeyOrMouse res)
         {
  
-            if (Enum.TryParse<Keys>(raw, out var key))
+            if (Enum.TryParse<Keys>(raw, true, out var key))
             {
                 res = new KeyOrMouse(key);
                 return true;
             }
-            else if (Enum.TryParse<MouseButton>(raw, out var mouse))
+            else if (Enum.TryParse<MouseButton>(raw, true, out var mouse))
             {
                 res = new KeyOrMouse(mouse);
                 return true;

@@ -1,7 +1,7 @@
 using Barotrauma.Items.Components;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace VoidShield
+namespace VCE_VoidShield
 {
     [HarmonyPatch(typeof(Item), nameof(Item.DrawDecorativeSprites))]
     internal static class Item_DrawDecorativeSprites_Patch
