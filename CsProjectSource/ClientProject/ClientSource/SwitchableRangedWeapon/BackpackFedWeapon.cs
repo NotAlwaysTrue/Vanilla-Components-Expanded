@@ -45,10 +45,10 @@ namespace VCE_SRW
 
         private new void UpdateUserInput(Character character)
         {
-            base.UpdateUserInput(character);
-            if (character == null || Character.Controlled != character) { return; }
+            // The base HUD update already processes fire mode and trigger input once.
+            if (!CanSwitchModes(character) || !character.HeldItems.Contains(item)) { return; }
 
-            if (character.IsKeyDown(InputType.Aim) && ModeSwitchKey.IsHit())
+            if (ModeSwitchKey.IsHit())
             {
                 CurrentSlotIndex += 1;
                 GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["CurrentSlotIndex".ToIdentifier()], this));

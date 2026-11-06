@@ -76,13 +76,14 @@ namespace VCE_SRW
                 GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["triggerReleased".ToIdentifier()], this), true);
             }
 
-            if (character.IsKeyDown(InputType.Aim) && fireModeswitchKey.IsHit())
+            bool canSwitch = CanSwitchModes(character) && character.HeldItems.Contains(item);
+            if (canSwitch && maxfiremodeselectable > 1 && fireModeswitchKey.IsHit())
             {
                 currentFireModeSelected += 1;
                 GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentFireModeSelected".ToIdentifier()], this));
             }
 
-            if (character.IsKeyDown(InputType.Aim) && ModeSwitchKey.IsHit())
+            if (canSwitch && maxselectable > 1 && ModeSwitchKey.IsHit())
             {
                 currentProjectileSelected += 1;
                 GameMain.Client?.CreateEntityEvent(Item, new Item.ChangePropertyEventData(this.SerializableProperties["currentProjectileSelected".ToIdentifier()], this));
