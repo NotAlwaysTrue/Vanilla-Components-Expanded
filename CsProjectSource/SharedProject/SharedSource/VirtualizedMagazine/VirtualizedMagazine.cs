@@ -73,7 +73,7 @@ namespace VCE_VirtualizedMagazine
             return GetComponentElementByID<T>(id, 0);
         }
     }
-    public class VirtualizedMagazine : ItemContainer
+    public partial class VirtualizedMagazine : ItemContainer, Barotrauma.Networking.IServerSerializable, Barotrauma.Networking.IClientSerializable
     {
         private const string containerXML =
             "<ItemContainer hideitems=\"true\" capacity=\"1\" SpawnWithId=\"VCE_VirtualizedProjectile\" drawinventory=\"false\" canbeselected=\"false\" ShowConditionInContainedStateIndicator=\"true\" removecontaineditemsondeconstruct=\"true\" containedstateindicatorstyle=\"bullet\">" +
@@ -98,6 +98,7 @@ namespace VCE_VirtualizedMagazine
             }
             set
             {
+                LoadedAmmoIdentifiers.Clear();
                 var data = value.ToList();
                 LoadAmmoArray(ref data);
             }
@@ -236,6 +237,7 @@ namespace VCE_VirtualizedMagazine
         public bool UpdateAmmoData(Item item = null)
         {
             Item.Condition = LoadedAmmoIdentifiers.Count;
+            SyncAmmoState();
             if (item != null && VPItem == null && VPItem != item) { VPItem = item; }
             if (VPItem == null && item == null) { return false; }
             item = item ?? VPItem;
@@ -243,6 +245,8 @@ namespace VCE_VirtualizedMagazine
             item.tags = ItemPrefab.FindByIdentifier(TopIdentifier)?.Tags?.ToHashSet() ?? [];
             return true;
         }
+
+        partial void SyncAmmoState();
 
 
         public override void OnItemLoaded()

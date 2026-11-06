@@ -12,4 +12,40 @@
 
   <entityname.vceluacomponent>Lua 组件</entityname.vceluacomponent>
   <entitydescription.vceluacomponent>使用 Lua 脚本进行嵌入式编程</entitydescription.vceluacomponent>
+  <entityname.vceammoloader>通用装弹机</entityname.vceammoloader>
+  <entitydescription.vceammoloader>投入弹药包储存弹药，按编排装填 VCE 虚拟弹匣。</entitydescription.vceammoloader>
+  <vce.ammoloader.title>通用装弹机</vce.ammoloader.title>
+  <vce.ammoloader.presets>A · 预设管理</vce.ammoloader.presets>
+  <vce.ammoloader.plan>B · 弹药顺序编排</vce.ammoloader.plan>
+  <vce.ammoloader.actual>C · 弹匣实际内容</vce.ammoloader.actual>
+  <vce.ammoloader.loadpreset>加载预设</vce.ammoloader.loadpreset>
+  <vce.ammoloader.up>↑</vce.ammoloader.up>
+  <vce.ammoloader.down>↓</vce.ammoloader.down>
+  <vce.ammoloader.delete>×</vce.ammoloader.delete>
+  <vce.ammoloader.topfirst>从上到下依次出膛</vce.ammoloader.topfirst>
+  <vce.ammoloader.savepreset>保存编排</vce.ammoloader.savepreset>
+  <vce.ammoloader.presetname>预设名称</vce.ammoloader.presetname>
+  <vce.ammoloader.clear>清空</vce.ammoloader.clear>
+  <vce.ammoloader.unload>卸弹回库</vce.ammoloader.unload>
+  <vce.ammoloader.stock>机器弹药库存</vce.ammoloader.stock>
+  <vce.ammoloader.intake>弹药包投料口 · 放入即入库</vce.ammoloader.intake>
+  <vce.ammoloader.check>装填检查</vce.ammoloader.check>
+  <vce.ammoloader.needstock>需求 / 库存</vce.ammoloader.needstock>
+  <vce.ammoloader.targetslot>目标弹匣槽位</vce.ammoloader.targetslot>
+  <vce.ammoloader.load>开始装填</vce.ammoloader.load>
+  <vce.ammoloader.confirmreplace>再点一次“加载预设”替换未保存的编排</vce.ammoloader.confirmreplace>
+  <vce.ammoloader.nopresets>暂无兼容预设</vce.ammoloader.nopresets>
+  <vce.ammoloader.add>+ 添加</vce.ammoloader.add>
+  <vce.ammoloader.nomagazine>未放入弹匣</vce.ammoloader.nomagazine>
+  <vce.ammoloader.empty>空弹匣</vce.ammoloader.empty>
+  <vce.ammoloader.unavailable>机器损坏或配置无效</vce.ammoloader.unavailable>
+  <vce.ammoloader.syncing>正在同步库存</vce.ammoloader.syncing>
+  <vce.ammoloader.unloadfirst>请先卸弹回库</vce.ammoloader.unloadfirst>
+  <vce.ammoloader.invalidplan>编排为空或超出容量/限制</vce.ammoloader.invalidplan>
+  <vce.ammoloader.incompatible>编排含不兼容弹药</vce.ammoloader.incompatible>
+  <vce.ammoloader.notenough>库存不足</vce.ammoloader.notenough>
+  <vce.ammoloader.ready>库存充足，可以装填</vce.ammoloader.ready>
+  <vce.ammoloader.invalidpreset>请输入名称并使用有效编排</vce.ammoloader.invalidpreset>
+  <vce.ammoloader.saved>预设已保存</vce.ammoloader.saved>
+  <vce.ammoloader.savefailed>保存失败</vce.ammoloader.savefailed>
 </infotexts>

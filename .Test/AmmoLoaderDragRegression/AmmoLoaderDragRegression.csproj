@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UseAppHost>false</UseAppHost>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GameDir>$(MSBuildThisFileDirectory)..\..\..\..\</GameDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(GameDir)Barotrauma.dll" Private="false" />
+    <Reference Include="$(GameDir)BarotraumaCore.dll" Private="false" />
+    <Reference Include="$(GameDir)MonoGame.Framework.Windows.NetStandard.dll" Private="false" />
+    <Reference Include="$(GameDir)XNATypes.dll" Private="false" />
+    <Reference Include="../../bin/Windows/Client/VanillaComponentsExpandedClient.dll" Private="false" />
+  </ItemGroup>
+</Project>

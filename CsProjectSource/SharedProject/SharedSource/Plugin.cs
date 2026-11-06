@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using VCE_APS;
 using VCE_SRW;
 using VCE_VirtualizedMagazine;
+using VCE.AmmoLoading;
 
 
 [assembly: IgnoresAccessChecksTo("Barotrauma")]
@@ -29,7 +30,7 @@ public partial class VCEPlugin : IBarotraumaPlugin
     {
         typeof(SwitchableRangedWeapon), typeof(BackpackFedWeapon), typeof(TrajectoryCalculator),
         typeof(VirtualizedMagazine), typeof(VirtualizedMagazineFactory), typeof(VirtualizedMagazineLoader), typeof(VirtualizedProjectile), typeof(VirtualizedAmmoStorage),
-        typeof(ActiveProtectionSystem)
+        typeof(ActiveProtectionSystem), typeof(AmmoLoader), typeof(AmmoPackage)
     };
 
     public void Init()

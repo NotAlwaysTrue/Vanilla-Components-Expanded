@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DefineConstants>CLIENT</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../AmmoLoaderRegression/GameStubs.cs" />
+    <Compile Include="../../CsProjectSource/ClientProject/ClientSource/VirtualizedMagazine/VirtualizedMagazine.Network.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+</Project>
