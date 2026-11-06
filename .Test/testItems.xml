@@ -18,7 +18,6 @@
     <Body width="28" height="40" density="25" />
     <VirtualizedMagazineFactory>
       <magazinedata MagazineID="T_assaultriflemagazine" MagazinePrefabID="TEST" amount="2"/>
-      <magazinedata MagazineID="T_assaultriflemagazine" MagazinePrefabID="TEST1" amount="2"/>
     </VirtualizedMagazineFactory>
     <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
   </Item>

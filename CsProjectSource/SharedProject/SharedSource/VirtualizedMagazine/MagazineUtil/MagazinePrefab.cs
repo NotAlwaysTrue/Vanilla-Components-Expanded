@@ -21,6 +21,8 @@ namespace VCE_VirtualizedMagazine
         static IDebugConsole DebugConsole => VanillaComponentsExpanded.VCEPlugin.DebugConsole;
 
         public static PrefabCollection<MagazinePrefab> Prefabs = new();
+
+        public static PrefabCollection<MagazinePrefab> CustomPrefabs = new();
         public string OriginalName { get; }
         public LocalizedString DisplayName { get; }
         public ContentXElement Element { get; }
@@ -28,12 +30,25 @@ namespace VCE_VirtualizedMagazine
 
         public bool Disposed;
 
-        public Identifier SuitableMagazineIdentifier
+        public List<Identifier> StartSection
+        {
+            get;
+        } = [];
+
+        public List<Identifier> MainSection
+        {
+            get;
+        } = [];
+
+        public List<Identifier> EndSection
+        {
+            get;
+        } = [];
+
+        public bool AutoRepeat
         {
             get;
         }
-
-        public List<Identifier> AmmoData;
 
 
         // Note: Ammodata in prefabs should look exact the same as how it looks in a magazine
@@ -44,37 +59,52 @@ namespace VCE_VirtualizedMagazine
         // example didnt consider have multiple rounds in a single data but should be the same
         public MagazinePrefab(ContentXElement element, MagazinePrefabFile file) : base(file, element.GetAttributeIdentifier("identifier", "")) 
         {
-            SuitableMagazineIdentifier = element.GetAttributeIdentifier("SuitableMagazine", Identifier.Empty);
-            if (SuitableMagazineIdentifier.IsEmpty)
-            {
-                DebugConsole.AddWarning($"Warning: Empty Magazine identifier for MagazinePrefab {Identifier}");
-                return;
-            }
-
-            AmmoData = [];
+            AutoRepeat = element.GetAttributeBool("AutoRepeat", true);
 
             foreach (var subElement in element.Elements())
             {
                 switch(subElement.Name.ToString().ToLowerInvariant())
                 {
-                    case "ammogroup":
-                        Identifier projectileid = subElement.GetAttributeIdentifier("ProjectileIdentifier", Identifier.Empty);
-                        int amount = subElement.GetAttributeInt("Amount", 1);
-
-                        if (projectileid.IsEmpty)
+                    case "startammogroup":
+                        foreach (var sub1 in subElement.Elements())
                         {
-                            DebugConsole.AddWarning($"Warning: Empty Projectile identifier for MagazinePrefab {Identifier}");
-                            continue;
+                            ParseAmmoData(sub1, StartSection);
                         }
-                        for (int i = 0; i < amount; i++)
+                        continue;
+                    case "mainammogroup":
+                    case "ammogroup":
+                        foreach (var sub1 in subElement.Elements())
                         {
-                            AmmoData.Insert(0, projectileid);
+                            ParseAmmoData(sub1, MainSection);
+                        }
+                        continue;
+                    case "endammogroup":
+                        foreach (var sub1 in subElement.Elements())
+                        {
+                            ParseAmmoData(sub1, EndSection);
                         }
                         continue;
                 }
             }
 
         }
+
+        private void ParseAmmoData(ContentXElement element,List<Identifier> datalist)
+        {
+            Identifier projectileid = element.GetAttributeIdentifier("ProjectileIdentifier", Identifier.Empty);
+            int amount = element.GetAttributeInt("Amount", 1);
+
+            if (projectileid.IsEmpty)
+            {
+                DebugConsole.AddWarning($"Warning: Empty Projectile identifier for MagazinePrefab {Identifier}");
+                return;
+            }
+            for (int i = 0; i < amount; i++)
+            {
+                datalist.Insert(0, projectileid);
+            }
+        }
+
 
         public override void Dispose() { }
     }

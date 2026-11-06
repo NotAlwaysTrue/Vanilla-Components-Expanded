@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <MagazinePrefabs>
-  <MagazinePrefab identifier="TEST" SuitableMagazine="T_assaultriflemagazine">
-    <AmmoGroup ProjectileIdentifier="shotgunshell" amount="15"/>
-    <AmmoGroup ProjectileIdentifier="shotgunslugexplosive" amount="15"/>
-  </MagazinePrefab>
-  <MagazinePrefab identifier="TEST1" SuitableMagazine="T_assaultriflemagazine">
-    <AmmoGroup ProjectileIdentifier="shotgunslugexplosive" amount="15"/>
-    <AmmoGroup ProjectileIdentifier="shotgunshell" amount="15"/>
+  <MagazinePrefab identifier="TEST" AutoRepeat="true">
+    <StartAmmoGroup>
+      <AmmoGroup ProjectileIdentifier="shotgunshell" amount="5"/>
+    </StartAmmoGroup><!--Ammo at the very top of the magazine-->
+    <MainAmmoGroup>
+      <AmmoGroup ProjectileIdentifier="assaultrifleround" amount="5"/>
+    </MainAmmoGroup><!--Ammo in the middle of the magazine, will auto-repeat if AutoRepeat is true (default=true)-->
+    <EndAmmoGroup>
+      <AmmoGroup ProjectileIdentifier="shotgunshellblunt" amount="5"/>
+    </EndAmmoGroup><!--Ammo at the end of the magazine-->
   </MagazinePrefab>
 </MagazinePrefabs>

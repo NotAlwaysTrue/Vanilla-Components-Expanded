@@ -101,7 +101,7 @@ namespace VCE_VirtualizedMagazine
                 if ((Entity.Spawner == null || Entity.Spawner.Removed) && GameMain.NetworkMember == null)
                 {
                     var spawnedItem = new Item(itemprefab, Vector2.Zero, null);
-                    LoadAmmoForItem(spawnedItem, magazineprefab.AmmoData);
+                    LoadAmmoForItem(spawnedItem, magazineprefab);
                     Item.ParentInventory?.TryPutItem(spawnedItem, null, spawnedItem.AllowedSlots, createNetworkEvent: false);
                 }
                 else
@@ -112,16 +112,47 @@ namespace VCE_VirtualizedMagazine
                                                         spawnIfInventoryFull: true, 
                                                         onSpawned: (i) =>
                                                         {
-                                                            LoadAmmoForItem(i, magazineprefab.AmmoData);
+                                                            LoadAmmoForItem(i, magazineprefab);
                                                         });
                 }
             }
         }
 
-        private static void LoadAmmoForItem(Item i, List<Identifier> list)
+        private static void LoadAmmoForItem(Item item, MagazinePrefab prefab)
         {
-            var vm = i.GetComponent<VirtualizedMagazine>();
-            vm.LoadAmmoArray(ref list);
+            var vm = item.GetComponent<VirtualizedMagazine>();
+
+            var end = prefab.EndSection;
+            var start = prefab.StartSection;
+            var main = prefab.MainSection;
+            var n = (int)item.MaxCondition;
+
+            int takeEnd = Math.Min(end.Count, n);
+            int takeStart = Math.Min(start.Count, n - takeEnd);
+            int space = n - takeEnd - takeStart;
+
+            var result = new List<Identifier>(n);
+
+            result.AddRange(end.Take(takeEnd));
+
+            if (main.Count > 0 && space > 0)
+            {
+                if (prefab.AutoRepeat)
+                {
+                    for (int i = 0; i < space; i++)
+                    {
+                        result.Add(main[i % main.Count]);
+                    }
+                }
+                else
+                {
+                    result.AddRange(main.Take(space));
+                }
+            }
+
+            result.AddRange(start.Take(takeStart));
+
+            vm.LoadedAmmoIdentifiersArray = result.ToArray();
         }
     }
 }
