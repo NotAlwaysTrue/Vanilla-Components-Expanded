@@ -54,7 +54,7 @@ UI 与后端属于同一个 `AmmoLoader` 实例，直接使用以下接口：
 
 弹匣继续使用 `<VirtualizedMagazine AllowedAmmoTags="your_ammo_tag" />`。
 `vcevirtualmagazine` 仅为示例目标槽过滤 tag，可改为模组自己的容器条件。
-测试弹匣与两种弹药包在 `.Test/AmmoLoaderItems.xml`，随可选 `VCETESTPACK` 测试依赖加载。
+装弹机 `vceammoloader`、测试弹匣与两种弹药包统一放在 `.Test/AmmoLoaderItems.xml`，仅启用可选 `VCETESTPACK` 测试依赖时加载。
 
 删除了独立 `AmmoPackage`，不提供旧组件或旧机器存档迁移。开发测试需要重新放置机器与弹药包。
 

@@ -407,7 +407,8 @@ public sealed partial class AmmoLoader
                 { UserData = index, CanBeFocused = true, ToolTip = $"{AmmoName(run.Id)}\n{L("dragorder")}" };
             var row = new GUILayoutGroup(new RectTransform(new Vector2(0.98f, 0.9f), card.RectTransform, Anchor.Center), isHorizontal: true)
                 { RelativeSpacing = 0.01f, CanBeFocused = false };
-            var ammoLabel = AmmoLabel(row, run.Id, $"≡ {AmmoName(run.Id)}", 0.62f);
+            Label(row, "≡", 1, 0.05f);
+            var ammoLabel = AmmoLabel(row, run.Id, AmmoName(run.Id), 0.56f);
             if (!IsCompatible(target, run.Id)) { ammoLabel.TextColor = Color.OrangeRed; }
             var number = new GUINumberInput(new RectTransform(new Vector2(0.26f, 1), row.RectTransform),
                 NumberType.Int)
@@ -427,7 +428,8 @@ public sealed partial class AmmoLoader
                 { UserData = index, CanBeFocused = true, ToolTip = $"{AmmoName(rounds[i])}\n{L("dragorder")}" };
             var row = new GUILayoutGroup(new RectTransform(new Vector2(0.98f, 0.9f), card.RectTransform, Anchor.Center),
                 isHorizontal: true, childAnchor: Anchor.CenterLeft) { RelativeSpacing = 0.01f, CanBeFocused = false };
-            var ammoLabel = AmmoLabel(row, rounds[i], $"≡ {i + 1:D2} · {AmmoName(rounds[i])}", 0.86f);
+            Label(row, "≡", 1, 0.05f);
+            var ammoLabel = AmmoLabel(row, rounds[i], $"{i + 1:D2} · {AmmoName(rounds[i])}", 0.80f);
             if (!IsCompatible(target, rounds[i])) { ammoLabel.TextColor = Color.OrangeRed; }
             Button(row, "delete", 0.13f, 1, () => RemoveRound(index));
         }

@@ -56,7 +56,7 @@ foreach (string contract in new[] { "IServerSerializable", "IClientSerializable"
     if (!componentTypes.Single(t => t.Name == "AmmoLoader").GetInterfaces().Any(t => t.Name == contract))
     { throw new Exception($"The single AmmoLoader component must implement {contract}."); }
 }
-var loaderItem = XDocument.Load(Path.Combine(root, "XML/Items.xml")).Descendants("Item")
+var loaderItem = XDocument.Load(Path.Combine(root, ".Test/AmmoLoaderItems.xml")).Descendants("Item")
     .Single(e => (string?)e.Attribute("identifier") == "vceammoloader");
 var loaderConfig = loaderItem.Elements("AmmoLoader").Single();
 if (loaderItem.Element("VirtualizedAmmoLoader") != null || (int?)loaderConfig.Attribute("inputcontainerindex") != 0 ||
