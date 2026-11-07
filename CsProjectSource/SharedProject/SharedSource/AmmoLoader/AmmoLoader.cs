@@ -103,11 +103,11 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         {
             return false;
         }
-        var rounds = AmmoPlan.Expand(plan).Take(magazine.MaxSize - magazine.LoadedCount).ToArray();
+        var rounds = AmmoPlan.Expand(plan).TakeLast(magazine.MaxSize - magazine.LoadedCount).ToArray();
         var demand = AmmoStock.Count(rounds);
         if (demand.Keys.Any(id => !IsCompatible(magazine, id)) || !Stock.CanTake(demand)) { return false; }
         var original = magazine.LoadedAmmoIdentifiersArray;
-        // Push the fitting top-first prefix bottom-first, above the existing rounds.
+        // The plan's tail is inserted first; discard the head that no longer fits.
         var toLoad = rounds.Reverse().Select(id => id.ToIdentifier()).ToList();
         try { magazine.LoadAmmoArray(ref toLoad); }
         catch (Exception e)

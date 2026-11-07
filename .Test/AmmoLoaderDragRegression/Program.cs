@@ -12,10 +12,12 @@ using VCE_VirtualizedMagazine;
 // Run from the mod root after building WindowsClient; no game window is created.
 string root = Directory.GetCurrentDirectory();
 string gameDir = Path.GetFullPath(Path.Combine(root, "../.."));
+// A staged client directory lets the regression run while the game holds the deployed DLL.
+string clientDir = args.Length == 0 ? Path.Combine(root, "bin/Windows/Client") : Path.GetFullPath(args[0]);
 AssemblyLoadContext.Default.Resolving += (_, name) =>
 {
     string path = Path.Combine(name.Name == "VanillaComponentsExpandedClient"
-        ? Path.Combine(root, "bin/Windows/Client") : gameDir, name.Name + ".dll");
+        ? clientDir : gameDir, name.Name + ".dll");
     return File.Exists(path) ? AssemblyLoadContext.Default.LoadFromAssemblyPath(path) : null;
 };
 try { Run(); }
@@ -68,9 +70,9 @@ static void Run()
     draft.Clear();
     Add("normal", AmmoPlan.MaxRounds - 1);
     Add("normal", 2);
-    if (draft[0].Count != AmmoPlan.MaxRounds - 1) { throw new Exception("An oversized batch partially changed the plan."); }
+    if (draft[0].Count != AmmoPlan.MaxRounds) { throw new Exception("A batch did not fill the final available round at the global limit."); }
     Add("normal", 1);
-    if (draft[0].Count != AmmoPlan.MaxRounds) { throw new Exception("An exact-limit batch was rejected."); }
+    if (draft[0].Count != AmmoPlan.MaxRounds) { throw new Exception("A full plan accepted another round."); }
     draft.Clear();
     for (int i = 0; i < AmmoPlan.MaxGroups; i++) { Add(i % 2 == 0 ? "normal" : "tracer", 1); }
     Add("normal", 5);
@@ -84,7 +86,7 @@ static void Run()
         throw new Exception("Adding to the first group was rejected at the group limit.");
     }
     draft.Clear();
-    Console.WriteLine("PASS: batch additions prepend without reordering existing rounds, merge the first group and atomically respect round/group limits.");
+    Console.WriteLine("PASS: batch additions prepend without reordering existing rounds, merge the first group, fill remaining round capacity and respect group limits.");
     var reorderRuns = typeof(AmmoLoader).GetMethod("ReorderRuns", fields)!;
     void Reorder(params int[] order) => reorderRuns.Invoke(loader, new object[] { order });
     draft.AddRange(new[] { new AmmoRun("normal", 20), new AmmoRun("tracer", 5), new AmmoRun("blunt", 10) });
@@ -303,6 +305,7 @@ static void Run()
     typeof(GameMain).GetProperty(nameof(GameMain.Instance))!.SetValue(null, null);
     typeof(PlayerInput).GetField("allowInput", fields)!.SetValue(null, false);
     Console.WriteLine("PASS: native GUIListBox starts, reorders and releases draggable rows with selection disabled.");
+    typeof(AmmoLoader).GetField("uiDirty", fields)!.SetValue(loader, false);
     foreach (var size in new[] { new Point(1920, 1080), new Point(1280, 720), new Point(2560, 1440) })
     {
         typeof(GameMain).GetProperty(nameof(GameMain.GraphicsWidth))!.SetValue(null, size.X);
@@ -464,10 +467,135 @@ static void Run()
     if (magazine.LoadedCount != 3 || !remaining.SequenceEqual(new[] { ammoPrefab.Identifier, "missing_round".ToIdentifier() }))
     { throw new Exception("Full magazines must preserve existing rounds and return rejected input; empty assignment must not clear them."); }
     Console.WriteLine("PASS: actual magazine assignment appends up to capacity, preserves old rounds and returns rejected LoadAmmoArray input.");
+    var capacityTarget = (ItemContainer)RuntimeHelpers.GetUninitializedObject(typeof(ItemContainer));
+    var targetInventory = new ItemInventory(null, capacityTarget, 1, 1);
+    typeof(ItemContainer).GetField(nameof(ItemContainer.Inventory))!.SetValue(capacityTarget, targetInventory);
+    var targetSlot = ((Array)typeof(Inventory).GetField("slots", fields)!.GetValue(targetInventory)!).GetValue(0)!;
+    targetSlot.GetType().GetMethod("Add")!.Invoke(targetSlot, new object[] { magazineItem });
+    typeof(Item).GetField("componentsByType", fields)!.SetValue(magazineItem,
+        new Dictionary<Type, List<ItemComponent>> { [typeof(VirtualizedMagazine)] = [magazine] });
+    typeof(AmmoLoader).GetField("targetContainer", fields)!.SetValue(loader, capacityTarget);
+    typeof(Item).GetProperty(nameof(Item.MaxCondition))!.SetValue(magazineItem, 30f);
+    typeof(AmmoLoader).GetField("addCount", fields)!.SetValue(loader, 5);
+    magazine.LoadedAmmoIdentifiers.Clear();
+    for (int i = 0; i < 18; i++) { magazine.LoadedAmmoIdentifiers.Push(ammoPrefab.Identifier); }
+    foreach (string id in new[] { "tracer", "normal" })
+    {
+        draft.Clear();
+        draft.AddRange(new[] { new AmmoRun("normal", 5), new AmmoRun("ap", 5) });
+        Add(id, 5);
+        var expected = id == "normal" ? new[] { new AmmoRun("normal", 7), new AmmoRun("ap", 5) }
+            : new[] { new AmmoRun("tracer", 2), new AmmoRun("normal", 5), new AmmoRun("ap", 5) };
+        if (!draft.SequenceEqual(expected) || magazine.LoadedCount != 18 ||
+            (int)typeof(AmmoLoader).GetField("addCount", fields)!.GetValue(loader)! != 5)
+        { throw new Exception("18/30 loaded plus a 10-round draft must add only two of a five-round batch without changing the batch setting or magazine."); }
+        Add(id, 5);
+        if (!draft.SequenceEqual(expected)) { throw new Exception("Repeated clicks overfilled the draft after the partial batch."); }
+    }
+    magazine.LoadedAmmoIdentifiers.Clear();
+    for (int i = 0; i < 27; i++) { magazine.LoadedAmmoIdentifiers.Push(ammoPrefab.Identifier); }
+    draft.Clear();
+    Add("normal", 2);
+    Add("ap", 2);
+    if (!draft.SequenceEqual(new[] { new AmmoRun("ap", 1), new AmmoRun("normal", 2) }))
+    { throw new Exception("A batch did not clip to the target's final available round."); }
+    Add("ap", 1);
+    Add("tracer", 1);
+    changeCount.Invoke(loader, new object[] { 1, 3 });
+    if (!draft.SequenceEqual(new[] { new AmmoRun("ap", 1), new AmmoRun("normal", 2) }))
+    { throw new Exception("Adding or editing quantities exceeded the three remaining magazine slots."); }
+    changeCount.Invoke(loader, new object[] { 1, 1 });
+    Add("tracer", 1);
+    if (draft.Sum(r => r.Count) != 3 || draft[0].Id != "tracer")
+    { throw new Exception("Reducing a group did not make room for another round."); }
+    draft.Clear();
+    draft.AddRange(new[] { new AmmoRun("normal", 5), new AmmoRun("ap", 1) });
+    changeCount.Invoke(loader, new object[] { 0, 4 });
+    changeCount.Invoke(loader, new object[] { 0, 5 });
+    Add("tracer", 1);
+    if (!draft.SequenceEqual(new[] { new AmmoRun("normal", 4), new AmmoRun("ap", 1) }))
+    { throw new Exception("An oversized preset must allow reductions while rejecting increases and additions."); }
+    draft.Clear();
+    for (int i = 0; i < 3; i++) { magazine.LoadedAmmoIdentifiers.Push(ammoPrefab.Identifier); }
+    Add("normal", 1);
+    if (draft.Count != 0) { throw new Exception("A full target magazine still accepts new draft ammunition."); }
+    typeof(AmmoLoader).GetField("targetContainer", fields)!.SetValue(loader, null);
+    Add("normal", 31);
+    if (draft.Single().Count != 31) { throw new Exception("Removing the magazine did not restore generic preset editing."); }
+    draft.Clear();
+    Console.WriteLine("PASS: actual target capacity limits additions and quantity increases, preserves oversized presets for reduction, and supports full/absent magazines.");
     ItemPrefab.Prefabs.Remove(ammoPrefab);
     typeof(GameMain).GetProperty(nameof(GameMain.Instance))!.SetValue(null, null);
     typeof(PlayerInput).GetField("allowInput", fields)!.SetValue(null, false);
     Console.WriteLine("PASS: stock tooltip refreshes in place on both Shift keys and release, and reuses text while the key state is unchanged.");
+
+    var refreshLoader = (AmmoLoader)RuntimeHelpers.GetUninitializedObject(typeof(AmmoLoader));
+    var refreshDraft = new List<AmmoRun>();
+    void SetRefreshField(string name, object value) => typeof(AmmoLoader).GetField(name, fields)!.SetValue(refreshLoader, value);
+    SetRefreshField("draft", refreshDraft);
+    SetRefreshField("message", "");
+    typeof(AmmoLoader).GetProperty(nameof(AmmoLoader.Stock))!.SetValue(refreshLoader, new AmmoStock());
+    refreshLoader.GuiFrame = new GUIFrame(new RectTransform(new Point(1800, 800)), style: null);
+    var lists = new[] { "presetList", "planList", "previewList", "stockList", "actualList", "checkList" }
+        .Select((name, index) =>
+        {
+            var list = new GUIListBox(new RectTransform(new Point(280, 300), refreshLoader.GuiFrame.RectTransform)
+                { AbsoluteOffset = new Point(index * 300, 0) }, style: null);
+            SetRefreshField(name, list);
+            return list;
+        }).ToArray();
+    foreach (string name in new[] { "presetLoadButton", "presetDelete", "loadButton", "unloadButton", "saveButton", "clearButton" })
+    { SetRefreshField(name, new GUIButton(new RectTransform(new Point(100, 30)), style: null)); }
+    foreach (string name in new[] { "targetLabel", "planLabel", "draftLabel", "stockSummary", "presetScope" })
+    { SetRefreshField(name, new GUITextBlock(new RectTransform(new Point(200, 30)), "", style: null)); }
+    var previousKeyboard = GUI.KeyboardDispatcher;
+    var keyboardProperty = typeof(GUI).GetProperty(nameof(GUI.KeyboardDispatcher))!;
+    keyboardProperty.SetValue(null, RuntimeHelpers.GetUninitializedObject(keyboardProperty.PropertyType));
+    var flush = typeof(GUI).GetMethod("RefreshUpdateList", fields)!;
+    var updateList = typeof(GUI).GetField("updateList", fields)!;
+    try
+    {
+        savedField.SetValue(null, testSaved);
+        flush.Invoke(null, null);
+        void Tick()
+        {
+            GUI.ClearUpdateList();
+            // Match GameMain: collect controls, update the item HUD, then update the collected controls.
+            refreshLoader.AddToGUIUpdateList();
+            refreshLoader.UpdateHUDComponentSpecific(null!, 1f / 60, null!);
+            flush.Invoke(null, null);
+            var queued = ((IEnumerable<GUIComponent>)updateList.GetValue(null)!).ToArray();
+            foreach (var control in queued) { control.UpdateManually(1f / 60); }
+            foreach (var list in lists)
+            foreach (var row in list.Content.Children.Where(c => c.Rect.Intersects(list.Content.Rect)))
+            {
+                if (!queued.Contains(row) || row.GetAllChildren().Any(c => !queued.Contains(c)))
+                { throw new Exception("A refreshed row or its layout/input controls missed the current frame's update list."); }
+            }
+        }
+        foreach (int count in new[] { 0, 30, 2, 60, 0 })
+        {
+            refreshDraft.Clear();
+            if (count > 0) { refreshDraft.Add(new AmmoRun("normal", count)); }
+            refreshLoader.Stock.TryAdd(new Dictionary<string, int> { ["normal"] = 10 });
+            SetRefreshField("uiDirty", true);
+            Tick();
+            var firstFrame = lists.SelectMany(l => l.Content.Children).SelectMany(c => c.GetAllChildren().Prepend(c))
+                .Where(c => c is GUILayoutGroup || c.Parent is GUILayoutGroup).Select(c => c.Rect).ToArray();
+            Tick();
+            var nextFrame = lists.SelectMany(l => l.Content.Children).SelectMany(c => c.GetAllChildren().Prepend(c))
+                .Where(c => c is GUILayoutGroup || c.Parent is GUILayoutGroup).Select(c => c.Rect).ToArray();
+            if (!firstFrame.SequenceEqual(nextFrame)) { throw new Exception("Refreshed row layout changed on the following frame."); }
+            lists[2].BarScroll = 0.5f;
+        }
+        Console.WriteLine("PASS: native refresh registers all visible row controls in the same frame, with stable layout after adding, shrinking and clearing a scrolled plan.");
+    }
+    finally
+    {
+        GUI.ClearUpdateList();
+        GUI.KeyboardDispatcher = previousKeyboard;
+        savedField.SetValue(null, previousSaved);
+    }
 
     foreach (bool repeat in new[] { false, true })
     {

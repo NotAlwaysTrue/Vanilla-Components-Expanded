@@ -20,6 +20,9 @@ public sealed partial class AmmoLoader
     private string message = "";
     private int addCount = 5;
 
+    private int DraftCapacity => Target is { } target
+        ? Math.Clamp(target.MaxSize - target.LoadedCount, 0, AmmoPlan.MaxRounds) : AmmoPlan.MaxRounds;
+
     private static LocalizedString L(string key) => TextManager.Get("vce.ammoloader." + key);
     private static string AmmoName(string id) => ItemPrefab.FindByIdentifier(id.ToIdentifier())?.Name.Value ?? id;
     public override bool RecreateGUIOnResolutionChange => true;
@@ -311,6 +314,13 @@ public sealed partial class AmmoLoader
 
     public override void AddToGUIUpdateList(int order = 0)
     {
+        // Rebuild before collection: HUD updates run later, leaving detached rows in this frame's update/draw list.
+        if (uiDirty && presetList != null && GUI.KeyboardDispatcher.Subscriber is not GUITextBox &&
+            presetList.DraggedElement == null && planList?.DraggedElement == null && previewList?.DraggedElement == null)
+        {
+            RefreshUI();
+            uiDirty = false;
+        }
         if (GuiFrame?.GetChild<GUIDragHandle>() is { } dragHandle)
         {
             // The window exceeds ItemHUDArea; competing top/bottom clamps reverse vertical dragging.
@@ -338,18 +348,14 @@ public sealed partial class AmmoLoader
             displayedSynchronized = synchronized;
             uiDirty = true;
         }
-        if (uiDirty && presetList != null && GUI.KeyboardDispatcher.Subscriber is not GUITextBox &&
-            presetList.DraggedElement == null && planList?.DraggedElement == null && previewList?.DraggedElement == null)
-        {
-            RefreshUI();
-            uiDirty = false;
-        }
     }
 
     private void RefreshUI()
     {
         var target = Target;
         var stock = Stock;
+        int capacity = DraftCapacity;
+        int planned = draft.Sum(r => r.Count);
         var visiblePresets = AmmoPresets.All(target)
             .Where(p => target == null || p.Rounds.All(r => IsCompatible(target, r.Id))).ToList();
         if (selectedPreset != null)
@@ -399,7 +405,7 @@ public sealed partial class AmmoLoader
             var number = new GUINumberInput(new RectTransform(new Vector2(0.26f, 1), row.RectTransform),
                 NumberType.Int)
             {
-                MinValueInt = 1, MaxValueInt = AmmoPlan.MaxRounds - draft.Sum(r => r.Count) + run.Count, IntValue = run.Count
+                MinValueInt = 1, MaxValueInt = Math.Max(run.Count, capacity - planned + run.Count), IntValue = run.Count
             };
             number.ToolTip = L("rounds");
             number.OnValueChanged += _ => ChangeRunCount(index, number.IntValue);
@@ -420,7 +426,7 @@ public sealed partial class AmmoLoader
             Button(row, "delete", 0.13f, 1, () => RemoveRound(index));
         }
         stockList!.Content.ClearChildren();
-        var demand = AmmoStock.Count(rounds.Take(target == null ? rounds.Length : Math.Max(0, target.MaxSize - target.LoadedCount)));
+        var demand = AmmoStock.Count(rounds.TakeLast(capacity));
         var visibleStock = stock.Counts.Where(p => target == null || IsCompatible(target, p.Key)).OrderBy(p => AmmoName(p.Key)).ToArray();
         stockList.UseGridLayout = visibleStock.Length > 0;
         stockSummary!.Text = message.Length > 0 ? message : $"{L(target == null ? "allstock" : "compatiblestock")} · {visibleStock.Length} {L("types")} · {visibleStock.Sum(p => (long)p.Value):N0} {L("rounds")}";
@@ -436,7 +442,7 @@ public sealed partial class AmmoLoader
                 OnClicked = (_, _) => { AddRun(p.Key, addCount); return true; },
                 Enabled = IsCompatible(target, p.Key) &&
                     (draft.Count < AmmoPlan.MaxGroups || string.Equals(draft.FirstOrDefault()?.Id, p.Key, StringComparison.OrdinalIgnoreCase)) &&
-                    draft.Sum(r => r.Count) <= AmmoPlan.MaxRounds - addCount
+                    planned < capacity
             };
             BindStockTooltip(tile, prefab, AmmoName(p.Key));
             if (prefab != null && (prefab.InventoryIcon ?? prefab.Sprite) is { } icon)
@@ -473,7 +479,6 @@ public sealed partial class AmmoLoader
         var actual = AmmoPlan.Compact(target?.LoadedAmmoIdentifiers.Select(id => id.Value) ?? []);
         if (actual.Count == 0) { TextRow(actualList, L(target == null ? "nomagazine" : "empty").Value); }
         SequenceRows(actualList, actual);
-        int planned = draft.Sum(r => r.Count);
         targetLabel!.Text = target == null ? L("actual") : $"{L("actual")} · {target.LoadedCount}/{target.MaxSize}";
         targetLabel.ToolTip = target == null ? L("nomagazine") : target.Item.Name;
         planLabel!.Text = $"{L("preview")} · {planned} {L("rounds")}";
@@ -488,15 +493,22 @@ public sealed partial class AmmoLoader
         loadButton!.Enabled = problem == "ready";
         loadButton.ToolTip = L(problem);
         unloadButton!.Enabled = Ready && IsSynchronized && target?.LoadedCount > 0;
+        // Visibility culling during collection needs the new scroll range, including after a list shrinks.
+        foreach (var list in new[] { presetList, planList, previewList, stockList, actualList, checkList })
+        {
+            list!.UpdateScrollBarSize();
+        }
     }
 
     private void AddRun(string id, int count)
     {
+        int capacity = DraftCapacity;
         if (count < 1 || count > AmmoPlan.MaxRounds || string.IsNullOrWhiteSpace(id)) { return; }
+        count = Math.Min(count, capacity - draft.Sum(r => r.Count));
+        if (count < 1) { return; }
         var plan = draft.Prepend(new AmmoRun(id, count)).ToArray();
-        if (plan.Sum(r => (long)r.Count) > AmmoPlan.MaxRounds) { return; }
         var merged = AmmoPlan.Compact(AmmoPlan.Expand(plan));
-        if (!AmmoPlan.IsValid(merged, AmmoPlan.MaxRounds)) { return; }
+        if (!AmmoPlan.IsValid(merged, capacity)) { return; }
         draft.Clear();
         draft.AddRange(merged);
         DraftChanged();
@@ -506,6 +518,7 @@ public sealed partial class AmmoLoader
     {
         // Clearing a number input temporarily reports zero even with MinValueInt = 1.
         if (count < 1 || index < 0 || index >= draft.Count) { return; }
+        if (count > draft[index].Count && draft.Sum(r => (long)r.Count) - draft[index].Count + count > DraftCapacity) { return; }
         draft[index] = draft[index] with { Count = count };
         DraftChanged();
     }
