@@ -16,14 +16,20 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
     private ushort observedTarget;
     private Identifier[] observedRounds = [];
 
-    [Serialize(0, IsPropertySaveable.Yes)]
+    [Serialize(0, IsPropertySaveable.No)]
     public int InputContainerIndex { get; set; }
 
-    [Serialize(2, IsPropertySaveable.Yes)]
+    [Serialize(2, IsPropertySaveable.No)]
     public int TargetContainerIndex { get; set; } = 2;
 
-    [Serialize(1, IsPropertySaveable.Yes)]
+    [Serialize(1, IsPropertySaveable.No)]
     public int OutputContainerIndex { get; set; } = 1;
+
+    [Serialize(false, IsPropertySaveable.No)]
+    public bool UseSupplyStorage { get; set; }
+
+    [Serialize("", IsPropertySaveable.No)]
+    public string TextPrefix { get; set; } = "";
 
     public VirtualizedMagazine? Target => targetContainer?.Inventory?.GetItemAt(0)?.GetComponent<VirtualizedMagazine>();
     public ItemContainer? InputContainer => inputContainer;
@@ -79,25 +85,31 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         if (!Ready || Item.Removed || Item.IsInRemoveQueue) { return "unavailable"; }
         if (outputContainer?.Inventory == null) { return "nooutput"; }
         if (package == null) { return "nopackage"; }
-        if (Stock[id] < 1) { return "notenough"; }
-        return outputContainer.Inventory.CanProbablyBePut(package, Math.Min(Stock[id], (int)package.Health), quality: 0)
+        int available = WithdrawalAmount(id);
+        if (available < 1) { return "notenough"; }
+        return outputContainer.Inventory.CanProbablyBePut(package, Math.Min(available, (int)package.Health), quality: 0)
             ? "withdraw" : "outputfull";
     }
 
     private bool TryWithdraw(string id)
     {
+        if (!IsAuthority) { return false; }
+        if (RefreshSupplies()) { Changed(); }
         var package = FindWithdrawalPackage(id);
-        if (!IsAuthority || WithdrawalProblem(id, package) != "withdraw" || Entity.Spawner is not { Removed: false } spawner)
+        if (WithdrawalProblem(id, package) != "withdraw" || Entity.Spawner is not { Removed: false } spawner)
         { return false; }
         var inventory = outputContainer!.Inventory;
         if (spawner.IsInSpawnQueue(info => info is EntitySpawner.ItemSpawnInfo pending && pending.Inventory == inventory))
         { return false; }
-        int requested = Math.Min(Stock[id], (int)package!.Health);
-        // Stock stays saveable until the queued item actually reaches the output inventory.
+        int requested = Math.Min(WithdrawalAmount(id), (int)package!.Health);
+        // Charge only after the queued item reaches the output, using the then-current supplies.
         spawner.AddItemToSpawnQueue(package, inventory, condition: requested, quality: 0, spawnIfInventoryFull: false,
             onSpawned: spawned =>
             {
-                int amount = Math.Min(requested, Stock[id]);
+                if (RefreshSupplies()) { Changed(); }
+                int amount = Math.Min(requested, WithdrawalAmount(id));
+                var demand = new Dictionary<string, int> { [id] = amount };
+                var quote = UseSupplyStorage ? QuoteSupply(demand) : new SupplyQuote(demand, [], Stock.CanTake(demand));
                 bool delivered = false;
                 try
                 {
@@ -107,14 +119,15 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
                         !spawned.ContainedItems.Any() && amount > 0)
                     {
                         spawned.Condition = amount;
-                        delivered = (double)spawned.Condition == amount;
+                        delivered = (double)spawned.Condition == amount && TryPrepareSupplyDebit(quote, out var debits) &&
+                            TryCommitSupplyDebit(quote, debits);
                     }
                 }
                 catch (Exception e)
                 {
                     VanillaComponentsExpanded.VCEPlugin.DebugConsole.AddWarning($"AmmoLoader package delivery failed: {e.Message}");
                 }
-                if (delivered && Stock.TryTake(new Dictionary<string, int> { [id] = amount })) { Changed(); }
+                if (delivered) { RefreshSupplies(); Changed(); }
                 else
                 {
                     try { spawned.Condition = 0; }
@@ -133,17 +146,29 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         scanTimer -= deltaTime;
         if (scanTimer > 0) { return; }
         scanTimer = 0.25f;
-        bool changed = false;
-        if (Ready && Entity.Spawner is { Removed: false } spawner)
+        bool changed = RefreshSupplies();
+        if (Ready && !supplyError && Entity.Spawner is { Removed: false } spawner)
         {
             foreach (var source in inputContainer!.Inventory.AllItems.ToArray())
             {
+                if (supplySources.Any(s => s.Item == source)) { continue; }
                 var package = source.GetComponent<VirtualizedAmmoStorage>();
                 if (package == null || source.Removed || source.IsInRemoveQueue) { continue; }
                 string id = package.AmmoIdentifier.Value;
                 if (!IsProjectile(id) || source.ContainedItems.Any()) { continue; }
                 if (source.Condition <= 0) { spawner.AddItemToRemoveQueue(source); continue; }
                 int amount = (int)source.Condition;
+                if (UseSupplyStorage)
+                {
+                    if (amount < 1 || !TryPrepareReturn(new Dictionary<string, int> { [id] = amount }, out var stored, out var credits)) { continue; }
+                    credits.Add((source, source.Condition, source.Condition - amount));
+                    if (!TryApplySupplyChanges(credits)) { continue; }
+                    Stock.TryAdd(stored);
+                    if (source.Condition == 0) { spawner.AddItemToRemoveQueue(source); }
+                    RefreshSupplies();
+                    changed = true;
+                    continue;
+                }
                 if (!Stock.TryAdd(new Dictionary<string, int> { [id] = amount })) { continue; }
                 // Zero the saved VCE storage before queuing removal, so it cannot be deposited twice.
                 source.Condition = 0;
@@ -165,14 +190,17 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
     private bool TryLoad(IReadOnlyList<AmmoRun> plan, ushort targetId)
     {
         var magazine = Target;
-        if (!Ready || magazine == null || magazine.Item.ID != targetId || magazine.LoadedCount >= magazine.MaxSize ||
+        if (!IsAuthority || !Ready || magazine == null || magazine.Item.ID != targetId || magazine.LoadedCount >= magazine.MaxSize ||
             !AmmoPlan.IsValid(plan, AmmoPlan.MaxRounds))
         {
             return false;
         }
         var rounds = AmmoPlan.Expand(plan).TakeLast(magazine.MaxSize - magazine.LoadedCount).ToArray();
         var demand = AmmoStock.Count(rounds);
-        if (demand.Keys.Any(id => !IsCompatible(magazine, id)) || !Stock.CanTake(demand)) { return false; }
+        if (demand.Keys.Any(id => !IsCompatible(magazine, id))) { return false; }
+        if (RefreshSupplies()) { Changed(); }
+        var quote = QuoteSupply(demand);
+        if (!TryPrepareSupplyDebit(quote, out var debits)) { return false; }
         var original = magazine.LoadedAmmoIdentifiersArray;
         // The plan's tail is inserted first; discard the head that no longer fits.
         var toLoad = rounds.Reverse().Select(id => id.ToIdentifier()).ToList();
@@ -188,7 +216,12 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
             RestoreMagazine(magazine, original);
             return false;
         }
-        Stock.TryTake(demand);
+        if (!TryCommitSupplyDebit(quote, debits))
+        {
+            RestoreMagazine(magazine, original);
+            return false;
+        }
+        RefreshSupplies();
         Changed();
         return true;
     }
@@ -196,9 +229,10 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
     private bool TryUnload(ushort targetId)
     {
         var magazine = Target;
-        if (!Ready || magazine == null || magazine.Item.ID != targetId || magazine.LoadedCount == 0) { return false; }
+        if (!IsAuthority || !Ready || magazine == null || magazine.Item.ID != targetId || magazine.LoadedCount == 0) { return false; }
+        if (RefreshSupplies()) { Changed(); }
         var returned = AmmoStock.Count(magazine.LoadedAmmoIdentifiers.Select(id => id.Value));
-        if (!Stock.CanAdd(returned)) { return false; }
+        if (!TryPrepareReturn(returned, out var stored, out var credits)) { return false; }
         var original = magazine.LoadedAmmoIdentifiersArray;
         try { magazine.UnLoadAmmoArray(out _); }
         catch (Exception e)
@@ -207,7 +241,13 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
             VanillaComponentsExpanded.VCEPlugin.DebugConsole.AddWarning($"AmmoLoader unload rolled back: {e.Message}");
             return false;
         }
-        Stock.TryAdd(returned);
+        if (!TryApplySupplyChanges(credits))
+        {
+            RestoreMagazine(magazine, original);
+            return false;
+        }
+        Stock.TryAdd(stored);
+        RefreshSupplies();
         Changed();
         return true;
     }
@@ -241,7 +281,10 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
 
     public override void Load(ContentXElement element, bool usePrefabValues, IdRemap idRemap, bool isItemSwap)
     {
+        // Old submarine saves must not override the prefab's current container order.
+        var containerIndices = (InputContainerIndex, TargetContainerIndex, OutputContainerIndex);
         base.Load(element, usePrefabValues, idRemap, isItemSwap);
+        (InputContainerIndex, TargetContainerIndex, OutputContainerIndex) = containerIndices;
         var saved = element?.Element.Element("Stock");
         try { Stock.Load(saved); invalidStock = null; }
         catch (Exception e) when (e is FormatException or OverflowException)
@@ -253,12 +296,12 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
 
     private enum Command : byte { Refresh, Load, Unload, Withdraw }
     private sealed record Request(Command Command, uint Revision, ushort Target, AmmoRun[] Plan) : IEventData;
-    private sealed record Snapshot(uint Revision, Dictionary<string, int> Stock);
+    private sealed record Snapshot(uint Revision, Dictionary<string, int> Stock, SupplyPool[]? Supplies = null, bool SupplyError = false);
     private sealed record SnapshotPage(uint Revision, int Index, int Count, string Data) : IEventData;
 
     private SnapshotPage[] CapturePages()
     {
-        var snapshot = new Snapshot(revision, new Dictionary<string, int>(Stock.Counts));
+        var snapshot = new Snapshot(revision, new Dictionary<string, int>(Stock.Counts), supplies, supplyError);
         string json = JsonSerializer.Serialize(snapshot);
         const int charsPerPage = 128;
         int pages = (json.Length + charsPerPage - 1) / charsPerPage;

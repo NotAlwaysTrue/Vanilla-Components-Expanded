@@ -61,6 +61,13 @@
   <vce.ammoloader.rounds>rounds</vce.ammoloader.rounds>
   <vce.ammoloader.types>types</vce.ammoloader.types>
   <vce.ammoloader.allstock>All stock</vce.ammoloader.allstock>
+  <vce.ammoloader.availableammo>Available ammo</vce.ammoloader.availableammo>
+  <vce.ammoloader.stored>Stored</vce.ammoloader.stored>
+  <vce.ammoloader.supplied>Supply</vce.ammoloader.supplied>
+  <vce.ammoloader.stockandsupply>Stock [stock] + Supply [supply]</vce.ammoloader.stockandsupply>
+  <vce.ammoloader.supplyhint>Supply counts use the reserve remaining after the current plan. Ammo types from the same supply share a reserve; their counts cannot be added together.</vce.ammoloader.supplyhint>
+  <vce.ammoloader.supplycost>Supply cost / reserve</vce.ammoloader.supplycost>
+  <vce.ammoloader.supplyerror>Invalid supply configuration; only stored ammunition is available</vce.ammoloader.supplyerror>
   <vce.ammoloader.compatiblestock>Compatible stock</vce.ammoloader.compatiblestock>
   <vce.ammoloader.allpresets>All presets</vce.ammoloader.allpresets>
   <vce.ammoloader.compatiblepresets>Compatible presets</vce.ammoloader.compatiblepresets>

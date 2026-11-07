@@ -12,6 +12,7 @@
     <Compile Include="../../../CsProjectSource/ClientProject/ClientSource/VirtualizedMagazine/VirtualizedMagazine.Network.cs" />
     <Compile Include="../../../CsProjectSource/ClientProject/ClientSource/AmmoLoader/AmmoLoader.Network.cs" />
     <Compile Include="../../../CsProjectSource/SharedProject/SharedSource/AmmoLoader/AmmoLoader.cs" />
+    <Compile Include="../../../CsProjectSource/SharedProject/SharedSource/AmmoLoader/AmmoLoader.Supply.cs" />
     <Compile Include="../../../CsProjectSource/SharedProject/SharedSource/AmmoLoader/AmmoStock.cs" />
     <Compile Include="../../../CsProjectSource/SharedProject/SharedSource/AmmoLoader/AmmoPlan.cs" />
     <Compile Include="../../../CsProjectSource/SharedProject/SharedSource/VirtualizedMagazine/MagazineUtil/AmmoStorage.cs" />

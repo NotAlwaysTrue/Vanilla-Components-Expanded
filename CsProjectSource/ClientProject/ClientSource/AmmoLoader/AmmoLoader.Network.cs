@@ -10,7 +10,7 @@ public sealed partial class AmmoLoader
     private bool hasSnapshot;
     private float refreshTimer;
 
-    public bool IsSynchronized => GameMain.Client == null || (hasSnapshot && pages.All(p => p != null));
+    public bool IsSynchronized => GameMain.Client == null || (hasSnapshot && receivingRevision == revision && pages.All(p => p != null));
 
     public void UpdateClientState(float deltaTime)
     {
@@ -77,10 +77,19 @@ public sealed partial class AmmoLoader
         if (pages.Length != count) { return; }
         pages[index] = data;
         if (pages.Any(p => p == null)) { return; }
-        var snapshot = JsonSerializer.Deserialize<Snapshot>(string.Concat(pages));
-        if (snapshot == null) { return; }
+        Snapshot? snapshot;
+        try { snapshot = JsonSerializer.Deserialize<Snapshot>(string.Concat(pages)); }
+        catch (JsonException) { return; }
+        if (snapshot?.Stock == null || snapshot.Revision != incomingRevision) { return; }
         var restored = new AmmoStock();
         if (snapshot.Stock.Count != 0 && !restored.TryAdd(snapshot.Stock)) { return; }
+        var receivedSupplies = snapshot.Supplies ?? [];
+        if (!ValidSupplies(receivedSupplies) || (snapshot.SupplyError && receivedSupplies.Length != 0)) { return; }
+        supplies = receivedSupplies.Select(p => p with
+        {
+            Costs = new Dictionary<string, double>(p.Costs, StringComparer.OrdinalIgnoreCase)
+        }).ToArray();
+        supplyError = snapshot.SupplyError;
         Stock = restored;
         revision = snapshot.Revision;
         hasSnapshot = true;

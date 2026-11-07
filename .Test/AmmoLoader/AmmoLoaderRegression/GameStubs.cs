@@ -13,6 +13,7 @@ namespace Barotrauma
     }
     public static class Identifiers { public static Identifier ToIdentifier(this string id) => new(id); }
     public enum IsPropertySaveable { No, Yes }
+    public enum ActionType { OnBroken, OnActive }
     public sealed class SerializeAttribute : Attribute
     {
         public SerializeAttribute(object value, IsPropertySaveable saveable, bool alwaysUseInstanceValues = false) { }
@@ -63,7 +64,20 @@ namespace Barotrauma
     {
         public ushort ID = id;
         public ItemPrefab Prefab = prefab;
-        public float Condition = 100;
+        private float condition = 100;
+        public Action<float>? BeforeConditionSet;
+        public bool IgnoreConditionChanges;
+        public int BrokenEffects;
+        public float Condition { get => condition; set => SetCondition(value, false); }
+        public void SetCondition(float value, bool isNetworkEvent, bool executeEffects = true)
+        {
+            if (IgnoreConditionChanges) { return; }
+            BeforeConditionSet?.Invoke(value);
+            float previous = condition;
+            condition = value;
+            if (executeEffects && condition == 0 && previous > 0) { ApplyStatusEffects(ActionType.OnBroken, 1); }
+        }
+        public void ApplyStatusEffects(ActionType type, float deltaTime) { if (type == ActionType.OnBroken) { BrokenEffects++; } }
         public float MaxCondition = 100;
         public bool Removed, IsInRemoveQueue;
         public ItemInventory? ParentInventory;
@@ -138,6 +152,8 @@ namespace Barotrauma.Items.Components
         public ItemComponent(Item item, ContentXElement element) { Item = item; }
         public Item Item;
         public bool IsActive;
+        public void PlaySound(ActionType type) { }
+        public void StopSounds(ActionType type) { }
         public interface IEventData { }
         public virtual void OnItemLoaded() { }
         public virtual void Update(float dt, Camera cam) { }

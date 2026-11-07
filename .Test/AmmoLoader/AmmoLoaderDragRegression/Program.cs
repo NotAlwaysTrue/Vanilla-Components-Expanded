@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Xml.Linq;
@@ -31,6 +32,22 @@ catch (Exception e)
 static void Run()
 {
     const BindingFlags fields = BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+    foreach (var (input, output, target) in new[] { (0, 1, 2), (0, 2, 1), (2, 0, 1) })
+    {
+        var owner = (Item)RuntimeHelpers.GetUninitializedObject(typeof(Item));
+        var configured = new AmmoLoader(owner, new ContentXElement(null, XElement.Parse(
+            $"<AmmoLoader inputcontainerindex='{input}' outputcontainerindex='{output}' targetcontainerindex='{target}' />")));
+        if (configured.InputContainerIndex != input || configured.OutputContainerIndex != output || configured.TargetContainerIndex != target)
+        { throw new Exception($"Native XML container indices changed: expected {input}/{output}/{target}, got {configured.InputContainerIndex}/{configured.OutputContainerIndex}/{configured.TargetContainerIndex}."); }
+        configured.Load(new ContentXElement(null, XElement.Parse(
+            "<AmmoLoader inputcontainerindex='0' outputcontainerindex='2' targetcontainerindex='1' />")), false, null!, false);
+        if (configured.InputContainerIndex != input || configured.OutputContainerIndex != output || configured.TargetContainerIndex != target)
+        { throw new Exception("Saved container indices replaced the current prefab's mapping."); }
+        var saved = configured.Save(new XElement("Item"));
+        if (saved.Attributes().Any(a => a.Name.LocalName.EndsWith("containerindex", StringComparison.OrdinalIgnoreCase)))
+        { throw new Exception("Container configuration was persisted as mutable machine state."); }
+    }
+    Console.WriteLine("PASS: native construction/load/save keeps three prefab container orders and ignores obsolete saved indices.");
     var source = XDocument.Load(".Test/AmmoLoader/AmmoLoaderItems.xml").Descendants("Item")
         .Single(e => (string?)e.Attribute("identifier") == "vceammoloader").Element("AmmoLoader")!.Element("GuiFrame")!;
     var loader = (AmmoLoader)RuntimeHelpers.GetUninitializedObject(typeof(AmmoLoader));
@@ -383,6 +400,16 @@ static void Run()
     var layoutKeyboard = GUI.KeyboardDispatcher;
     var dispatcherProperty = typeof(GUI).GetProperty(nameof(GUI.KeyboardDispatcher))!;
     dispatcherProperty.SetValue(null, RuntimeHelpers.GetUninitializedObject(dispatcherProperty.PropertyType));
+    var captionPack = (TextPack)RuntimeHelpers.GetUninitializedObject(typeof(TextPack));
+    typeof(TextPack).GetField("texts", fields)!.SetValue(captionPack, new Dictionary<Identifier, ImmutableArray<TextPack.Text>>
+    {
+        ["test.ammoloader.intake".ToIdentifier()] = [new("Replacement intake caption", false, captionPack)],
+        ["test.ammoloader.stockandsupply".ToIdentifier()] = [new("库存[stock]\n弹药箱[supply]", false, captionPack)],
+        ["vce.ammoloader.stockandsupply".ToIdentifier()] = [new("Stock [stock] + Supply [supply]", false, captionPack)],
+        ["vce.ammoloader.output".ToIdentifier()] = [new("Ammo pickup", false, captionPack)]
+    }.ToImmutableDictionary());
+    TextManager.TextPacks[TextManager.DefaultLanguage] = [captionPack];
+    typeof(TextManager).GetProperty(nameof(TextManager.LanguageVersion))!.SetValue(null, TextManager.LanguageVersion + 1);
     foreach (var size in new[] { new Point(900, 600), new Point(1450, 840), new Point(1800, 1000) })
     {
         layoutLoader.GuiFrame = new GUIFrame(new RectTransform(size), style: null);
@@ -425,6 +452,16 @@ static void Run()
         layoutLoader.GuiFrame.GetAllChildren().OfType<GUITickBox>().Single().Selected = false;
         if (!((GUINumberInput)typeof(AmmoLoader).GetField("addQuantity", fields)!.GetValue(layoutLoader)!).TextBox.Enabled)
         { throw new Exception("Leaving withdrawal mode must re-enable the add quantity."); }
+        var originalSlots = layoutContainers[0].Inventory.visualSlots.Select(slot => slot.Rect).ToArray();
+        layoutLoader.TextPrefix = "test.ammoloader.";
+        layoutLoader.CreateGUI();
+        var customizedInput = (GUIFrame)typeof(AmmoLoader).GetField("inputHolder", fields)!.GetValue(layoutLoader)!;
+        var customizedOutput = (GUIFrame)typeof(AmmoLoader).GetField("outputHolder", fields)!.GetValue(layoutLoader)!;
+        if (!layoutContainers[0].Inventory.visualSlots.Select(slot => slot.Rect).SequenceEqual(originalSlots) ||
+            customizedInput.Parent.Children.OfType<GUITextBlock>().Single().Text.SanitizedValue != "Replacement intake caption" ||
+            customizedOutput.Parent.Children.OfType<GUITextBlock>().Single().Text.SanitizedValue != "Ammo pickup")
+        { throw new Exception("A custom localization prefix changed intake slot spacing or failed to fall back to VCE text."); }
+        layoutLoader.TextPrefix = "";
     }
     GUI.KeyboardDispatcher = layoutKeyboard;
     Console.WriteLine("PASS: native dock panels fit configurable multi-row slots at three window sizes; checkbox switches and preserves mode/quantity.");
@@ -496,15 +533,22 @@ static void Run()
     typeof(PlayerInput).GetField("allowInput", fields)!.SetValue(null, true);
     var keyboard = typeof(PlayerInput).GetField("keyboardState", fields)!;
     var tooltipTile = new GUIButton(new RectTransform(new Point(72)), style: null);
-    typeof(AmmoLoader).GetMethod("BindStockTooltip", fields)!.Invoke(null, new object?[] { tooltipTile, ammoPrefab, "fallback", null });
+    LocalizedString tooltipHint = "";
+    typeof(AmmoLoader).GetMethod("BindStockTooltip", fields)!.Invoke(null,
+        new object?[] { tooltipTile, ammoPrefab, "fallback", (Func<LocalizedString>)(() => tooltipHint) });
+    foreach (string hint in new[] { "", "Stock: 20", "‖color:gui.green‖Stock: 20‖color:end‖" })
     foreach (Keys? key in new Keys?[] { null, Keys.LeftShift, null, Keys.RightShift, null })
     {
+        tooltipHint = hint;
         keyboard.SetValue(null, key.HasValue ? new KeyboardState(key.Value) : new KeyboardState());
         string description = key?.ToString() ?? "released";
-        typeof(ItemPrefab).GetProperty(nameof(ItemPrefab.Description))!.SetValue(ammoPrefab, (LocalizedString)description);
+        typeof(ItemPrefab).GetProperty(nameof(ItemPrefab.Description))!
+            .SetValue(ammoPrefab, (LocalizedString)$"‖color:gui.orange‖{description}‖color:end‖");
         tooltipTile.OnDrawToolTip(tooltipTile);
-        if (!tooltipTile.ToolTip.SanitizedValue.Contains(description))
-        { throw new Exception("Stock tooltip did not rebuild after pressing or releasing Shift on the same tile."); }
+        string renderedTooltip = tooltipTile.ToolTip.SanitizedValue;
+        if (!renderedTooltip.Contains(description) || renderedTooltip.Contains("‖color:") ||
+            renderedTooltip.Contains("Stock: 20") != (hint.Length > 0))
+        { throw new Exception($"Stock tooltip lost rich formatting or Shift/hint refresh: {renderedTooltip}"); }
         var cachedTooltip = tooltipTile.ToolTip;
         tooltipTile.OnDrawToolTip(tooltipTile);
         if (!ReferenceEquals(cachedTooltip, tooltipTile.ToolTip))
@@ -596,16 +640,26 @@ static void Run()
     void SetRefreshField(string name, object value) => typeof(AmmoLoader).GetField(name, fields)!.SetValue(refreshLoader, value);
     SetRefreshField("draft", refreshDraft);
     SetRefreshField("message", "");
+    var suppliesType = typeof(AmmoLoader).GetField("supplies", fields)!.FieldType;
+    void SetSupplies(string json) => SetRefreshField("supplies", System.Text.Json.JsonSerializer.Deserialize(json, suppliesType)!);
+    SetSupplies("[]");
     typeof(AmmoLoader).GetProperty(nameof(AmmoLoader.Stock))!.SetValue(refreshLoader, new AmmoStock());
     refreshLoader.GuiFrame = new GUIFrame(new RectTransform(new Point(1800, 800)), style: null);
     var lists = new[] { "presetList", "planList", "previewList", "stockList", "actualList", "checkList" }
         .Select((name, index) =>
         {
             var list = new GUIListBox(new RectTransform(new Point(280, 300), refreshLoader.GuiFrame.RectTransform)
-                { AbsoluteOffset = new Point(index * 300, 0) }, style: null);
+                { AbsoluteOffset = new Point(index * 300, 0) }, style: null)
+                { AutoHideScrollBar = false, KeepSpaceForScrollBar = true };
+            list.UpdateDimensions();
             SetRefreshField(name, list);
             return list;
         }).ToArray();
+    var checkHeaderRow = new GUILayoutGroup(new RectTransform(new Point(lists[5].Content.Rect.Width, 30),
+        refreshLoader.GuiFrame.RectTransform)
+        { AbsoluteOffset = new Point(lists[5].Content.Rect.X - refreshLoader.GuiFrame.Rect.X, -30) }, isHorizontal: true);
+    SetRefreshField("checkAmountHeader", typeof(AmmoLoader).GetMethod("CheckAmountLabel", fields)!.Invoke(null,
+        new object[] { checkHeaderRow, (LocalizedString)"Required / Available" })!);
     foreach (string name in new[] { "presetLoadButton", "presetDelete", "loadButton", "unloadButton", "saveButton", "clearButton" })
     { SetRefreshField(name, new GUIButton(new RectTransform(new Point(100, 30)), style: null)); }
     foreach (string name in new[] { "targetLabel", "planLabel", "draftLabel", "stockSummary", "presetScope" })
@@ -633,6 +687,34 @@ static void Run()
             {
                 if (!queued.Contains(row) || row.GetAllChildren().Any(c => !queued.Contains(c)))
                 { throw new Exception("A refreshed row or its layout/input controls missed the current frame's update list."); }
+            }
+            foreach (var tile in lists[3].Content.Children.OfType<GUIButton>())
+            {
+                var caption = tile.Children.OfType<GUITextBlock>().Last();
+                if (tile.Rect.Size != new Point((int)(72 * GUI.Scale)) || caption.TextAlignment != Alignment.BottomRight)
+                { throw new Exception($"Stock tiles changed their original square size or lost right-aligned counts: {tile.Rect.Size}, expected {new Point((int)(72 * GUI.Scale))}, alignment {caption.TextAlignment}."); }
+                int captionLines = refreshLoader.UseSupplyStorage ? 2 : 1;
+                if (refreshLoader.UseSupplyStorage && (caption.AutoScaleHorizontal || caption.TextScale != 0.75f))
+                { throw new Exception("Box-backed stock captions changed font scale with their values."); }
+                if (caption.Text.SanitizedValue.Split('\n').Length != captionLines ||
+                    caption.Rect.Height < (int)(14 * captionLines * GUI.Scale) || tile.Children.Where(c => c is GUIImage ||
+                    c is GUITextBlock && c != caption && c != tile.TextBlock).Any(c => c.Rect.Bottom > caption.Rect.Top))
+                { throw new Exception("Stock counts lost their line layout, had insufficient height or overlapped the icon/name."); }
+            }
+            var amountHeader = (GUITextBlock)typeof(AmmoLoader).GetField("checkAmountHeader", fields)!.GetValue(refreshLoader)!;
+            foreach (var label in lists[5].Content.Children.OfType<GUILayoutGroup>()
+                .SelectMany(row => row.Children.OfType<GUITextBlock>()).Prepend(amountHeader))
+            {
+                if (label.Rect.Right != lists[5].Content.Rect.Right || label.Rect.Left != amountHeader.Rect.Left ||
+                    !label.TextAlignment.HasFlag(Alignment.Left) || label.Padding.X != 0)
+                { throw new Exception($"Loading-check first characters are not aligned in one right-anchored column: header {amountHeader.Rect}, label {label.Rect}, content {lists[5].Content.Rect}."); }
+            }
+            foreach (var row in lists[5].Content.Children.OfType<GUILayoutGroup>())
+            {
+                var name = row.Children.OfType<GUIFrame>().Single().Children.OfType<GUITextBlock>().Single();
+                var amount = row.Children.OfType<GUITextBlock>().Single();
+                if (Math.Abs(amount.Rect.Left - name.Rect.Right - (int)(2 * GUI.Scale)) > 1 || name.Padding != Vector4.Zero)
+                { throw new Exception($"Loading-check names waste space before the amount column: name {name.Rect}, amount {amount.Rect}."); }
             }
         }
         foreach (int count in new[] { 0, 30, 2, 60, 0 })
@@ -665,6 +747,118 @@ static void Run()
         stockTile.OnClicked(stockTile, null);
         if (refreshDraft.Sum(r => r.Count) != 5) { throw new Exception("Leaving withdrawal mode did not restore stock-to-draft clicks."); }
         Console.WriteLine("PASS: stock clicks route to withdrawal without changing the draft and return to adding the configured batch when unchecked.");
+        SetSupplies("""
+            [{"Id":"shared","Prefab":"box","Amount":5,"Capacity":100,"Costs":{"normal":0.5,"ap":1}}]
+            """);
+        refreshDraft.Clear();
+        refreshLoader.Stock.Load(null);
+        refreshLoader.Stock.TryAdd(new Dictionary<string, int> { ["normal"] = 2 });
+        refreshDraft.AddRange(new[] { new AmmoRun("normal", 6), new AmmoRun("ap", 1) });
+        SetRefreshField("uiDirty", true);
+        Tick();
+        var supplyTiles = lists[3].Content.Children.OfType<GUIButton>().ToArray();
+        if (supplyTiles.Length != 2) { throw new Exception("Available ammunition omitted a supply-only projectile."); }
+        foreach (var tile in supplyTiles)
+        {
+            string id = ((ValueTuple<string, ItemPrefab?>)tile.UserData).Item1;
+            string caption = tile.Children.OfType<GUITextBlock>().Last().Text.SanitizedValue;
+            if (caption != (id == "normal" ? "2" : "0"))
+            { throw new Exception("A generic loader replaced its single numeric stock caption with supply labels."); }
+        }
+        if (lists[5].Content.CountChildren != 2) { throw new Exception("Plan validation must show stored rounds and shared pool consumption without a supply-only projectile row."); }
+        SetRefreshField("withdrawMode", true);
+        SetRefreshField("uiDirty", true);
+        Tick();
+        if (lists[3].Content.Children.OfType<GUIButton>().Count() != 1)
+        { throw new Exception("Withdrawal exposed supply-only ammunition as stored packages."); }
+        Console.WriteLine("PASS: generic loaders keep numeric stock captions with supply integration; pool cost remains visible and supply-only ammo stays out of package withdrawal.");
+        refreshLoader.UseSupplyStorage = true;
+        refreshLoader.TextPrefix = "test.ammoloader.";
+        SetRefreshField("uiDirty", true);
+        Tick();
+        supplyTiles = lists[3].Content.Children.OfType<GUIButton>().ToArray();
+        if (supplyTiles.Length != 2) { throw new Exception("Refillable supply mode hid supplied ammunition from package withdrawal."); }
+        foreach (var tile in supplyTiles)
+        {
+            string id = ((ValueTuple<string, ItemPrefab?>)tile.UserData).Item1;
+            string caption = tile.Children.OfType<GUITextBlock>().Last().Text.SanitizedValue;
+            if (caption != (id == "normal" ? "库存2\n弹药箱10" : "库存0\n弹药箱5"))
+            { throw new Exception("Package withdrawal subtracted the draft from available supply reserves."); }
+        }
+        Console.WriteLine("PASS: refillable supply mode exposes box-funded packages without reserving the draft; custom text keeps slot rectangles unchanged.");
+        int supplyTileWidth = supplyTiles[0].Rect.Width;
+        SetSupplies("[]");
+        refreshDraft.Clear();
+        refreshLoader.Stock.Load(null);
+        refreshLoader.Stock.TryAdd(new Dictionary<string, int> { ["normal"] = 50 });
+        foreach (bool withdraw in new[] { false, true })
+        {
+            SetRefreshField("withdrawMode", withdraw);
+            SetRefreshField("uiDirty", true);
+            Tick();
+            var tile = lists[3].Content.Children.OfType<GUIButton>().Single();
+            if (tile.Children.OfType<GUITextBlock>().Last().Text.SanitizedValue != "库存50\n弹药箱0" ||
+                tile.Rect.Width != supplyTileWidth)
+            { throw new Exception("Removing the ammo box changed the stock caption format or tile width."); }
+        }
+        foreach (int reserve in new[] { 0, 1, 30, 1890 })
+        {
+            SetSupplies($$$"""
+                [{"Id":"shared","Prefab":"box","Amount":{{{reserve}}},"Capacity":2000,"Costs":{"normal":1}}]
+                """);
+            SetRefreshField("uiDirty", true);
+            Tick();
+            var caption = lists[3].Content.Children.OfType<GUIButton>().Single().Children.OfType<GUITextBlock>().Last();
+            if (caption.Text.SanitizedValue != $"库存50\n弹药箱{reserve}")
+            { throw new Exception("Changing the box reserve changed the two-line stock format."); }
+        }
+        foreach (var scenario in new[]
+        {
+            (Stock: 30, Demand: 15, Box: true, Amounts: new[] { "15 / 30" }, Shortage: false),
+            (Stock: 5, Demand: 15, Box: true, Amounts: new[] { "5 / 5", "5.00 / 5.0" }, Shortage: false),
+            (Stock: 0, Demand: 6, Box: true, Amounts: new[] { "3.00 / 5.0" }, Shortage: false),
+            (Stock: 2, Demand: 15, Box: true, Amounts: new[] { "2 / 2", "6.50 / 5.0" }, Shortage: true),
+            (Stock: 5, Demand: 15, Box: false, Amounts: new[] { "15 / 5" }, Shortage: true),
+            (Stock: 0, Demand: 15, Box: false, Amounts: new[] { "15 / 0" }, Shortage: true),
+            (Stock: 30, Demand: 15, Box: false, Amounts: new[] { "15 / 30" }, Shortage: false),
+            (Stock: 30, Demand: 0, Box: true, Amounts: Array.Empty<string>(), Shortage: false)
+        })
+        {
+            SetSupplies(scenario.Box ? """
+                [{"Id":"shared","Prefab":"box","Amount":5,"Capacity":100,"Costs":{"normal":0.5}}]
+                """ : "[]");
+            refreshLoader.Stock.Load(null);
+            if (scenario.Stock > 0) { refreshLoader.Stock.TryAdd(new Dictionary<string, int> { ["normal"] = scenario.Stock }); }
+            refreshDraft.Clear();
+            if (scenario.Demand > 0) { refreshDraft.Add(new AmmoRun("normal", scenario.Demand)); }
+            SetRefreshField("withdrawMode", false);
+            SetRefreshField("uiDirty", true);
+            Tick();
+            var amounts = lists[5].Content.Children.Select(row => row.Children.OfType<GUITextBlock>().Single()).ToArray();
+            if (!amounts.Select(label => label.Text.SanitizedValue).SequenceEqual(scenario.Amounts) ||
+                (scenario.Shortage && amounts.Last().TextColor != Color.OrangeRed))
+            { throw new Exception($"Loading check mixed stored rounds with box reserves or lost a shortage: {scenario}."); }
+            if (amounts.Select(label => label.Rect.X).Distinct().Count() > 1)
+            { throw new Exception("Stored-round and supply-box quantities no longer share a column."); }
+        }
+        Console.WriteLine("PASS: loading checks separate stock and box debits, omit unused sources, align amount columns, and preserve missing-stock/box shortage warnings.");
+        typeof(ItemComponent).GetField("GuiFrameSource", fields)!.SetValue(refreshLoader,
+            new XElement("GuiFrame", new XAttribute("draggable", false)));
+        refreshDraft.Add(new AmmoRun("normal", 40));
+        foreach (var size in new[] { new Point(900, 600), new Point(1450, 840), new Point(1800, 1000) })
+        {
+            refreshLoader.GuiFrame.RectTransform.Resize(size);
+            refreshLoader.CreateGUI();
+            int listIndex = 0;
+            foreach (string name in new[] { "presetList", "planList", "previewList", "stockList", "actualList", "checkList" })
+            { lists[listIndex++] = (GUIListBox)typeof(AmmoLoader).GetField(name, fields)!.GetValue(refreshLoader)!; }
+            Tick();
+            refreshLoader.GuiFrame.RectTransform.AbsoluteOffset += new Point(37, 23);
+            Tick();
+        }
+        Console.WriteLine("PASS: loading-check amount columns align at the right edge; names fill the remaining width with only a small gap across three window sizes and movement.");
+        Console.WriteLine("PASS: box-backed captions keep one fixed font size with no box, an empty box, and one-, two- or four-digit reserves.");
+        Console.WriteLine("PASS: stock tiles keep their original square size and right alignment; two-line box captions have separate space and retain an explicit zero without a box in loading/withdrawal modes.");
     }
     finally
     {

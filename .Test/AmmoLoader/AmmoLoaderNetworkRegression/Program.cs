@@ -100,6 +100,27 @@ Check(machine.Requests.Count == requests, "withdraw rejects unknown projectile i
 ReceiveStock(2, 0, 2, "{\"Revision\":2,\"Stock\":{");
 loader.RequestWithdraw("a");
 Check(machine.Requests.Count == requests, "withdraw waits for a complete stock snapshot");
+ReceiveStock(3, 0, 2, "{\"Revision\":3,\"Stock\":{\"a\":2},\"Supplies\":[");
+Check(!loader.IsSynchronized && loader.Stock["a"] == 90, "a partial supply snapshot does not expose new stock or enable commands");
+ReceiveStock(3, 1, 2, "{\"Id\":\"shared\",\"Prefab\":\"box\",\"Amount\":5,\"Capacity\":100,\"Costs\":{\"A\":0.5,\"b\":1}}]}");
+Check(loader.IsSynchronized && loader.Stock["a"] == 2 && loader.StateRevision == 3, "supplies and stock publish together after page reassembly");
+var quoteSupply = loader.GetType().GetMethod("QuoteSupply", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+var suppliedAmmo = loader.GetType().GetMethod("SuppliedAmmo", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+var quote = quoteSupply.Invoke(loader, new object[] { new Dictionary<string, int> { ["a"] = 6, ["b"] = 1 } })!;
+var remainingSupply = (Dictionary<string, int>)suppliedAmmo.Invoke(loader, new[] { quote })!;
+Check((bool)quote.GetType().GetProperty("CanLoad")!.GetValue(quote)! && remainingSupply["a"] == 4 && remainingSupply["b"] == 2,
+    "clients quote shared reserves and stock priority from server data with case-insensitive identifiers and no adapter");
+quote = quoteSupply.Invoke(loader, new object[] { new Dictionary<string, int> { ["a"] = 8, ["b"] = 3 } })!;
+Check(!(bool)quote.GetType().GetProperty("CanLoad")!.GetValue(quote)!, "clients reject aggregate overspending even when each caliber is individually affordable");
+ReceiveStock(4, 0, 1, "{\"Revision\":4,\"Stock\":{\"a\":999},\"Supplies\":[{\"Id\":\"bad\",\"Prefab\":\"box\",\"Amount\":5,\"Capacity\":100,\"Costs\":{\"a\":0}}]}");
+Check(!loader.IsSynchronized && loader.Stock["a"] == 2 && loader.StateRevision == 3, "invalid supply costs reject the entire snapshot and keep commands disabled");
+ReceiveStock(5, 0, 1, "{\"Revision\":99,\"Stock\":{\"a\":999}}");
+Check(!loader.IsSynchronized && loader.StateRevision == 3, "payload revision cannot bypass snapshot ordering");
+ReceiveStock(6, 0, 1, "{");
+Check(!loader.IsSynchronized && loader.Stock["a"] == 2, "malformed supply snapshots preserve the last valid state");
+ReceiveStock(7, 0, 1, "{\"Revision\":7,\"Stock\":{\"a\":2},\"Supplies\":[],\"SupplyError\":true}");
+quote = quoteSupply.Invoke(loader, new object[] { new Dictionary<string, int> { ["a"] = 3 } })!;
+Check(loader.IsSynchronized && !(bool)quote.GetType().GetProperty("CanLoad")!.GetValue(quote)!, "removing or disabling a supply clears previously advertised virtual availability");
 Console.WriteLine($"Actual magazine and loader client network: {checks} checks passed (game boundary stubbed).");
 #else
 mag.LoadedAmmoIdentifiersArray = Enumerable.Range(0, 300).Select(i => i % 2 == 0 ? a.Identifier : b.Identifier).ToArray();

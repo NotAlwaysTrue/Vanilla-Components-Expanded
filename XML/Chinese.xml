@@ -62,6 +62,13 @@
   <vce.ammoloader.rounds>发</vce.ammoloader.rounds>
   <vce.ammoloader.types>种</vce.ammoloader.types>
   <vce.ammoloader.allstock>全部库存</vce.ammoloader.allstock>
+  <vce.ammoloader.availableammo>可用弹药</vce.ammoloader.availableammo>
+  <vce.ammoloader.stored>现存</vce.ammoloader.stored>
+  <vce.ammoloader.supplied>可供</vce.ammoloader.supplied>
+  <vce.ammoloader.stockandsupply>库存[stock]+可供[supply]</vce.ammoloader.stockandsupply>
+  <vce.ammoloader.supplyhint>可供数量按当前编排扣除供给消耗后计算。同一供给源的弹种共用储量，数量不能相加。</vce.ammoloader.supplyhint>
+  <vce.ammoloader.supplycost>供给消耗 / 储量</vce.ammoloader.supplycost>
+  <vce.ammoloader.supplyerror>供给配置无效；仅可使用现存弹药</vce.ammoloader.supplyerror>
   <vce.ammoloader.compatiblestock>兼容库存</vce.ammoloader.compatiblestock>
   <vce.ammoloader.allpresets>全部预设</vce.ammoloader.allpresets>
   <vce.ammoloader.compatiblepresets>兼容预设</vce.ammoloader.compatiblepresets>

@@ -316,3 +316,241 @@ loader.OutputContainerIndex = 0;
 loader.OnItemLoaded();
 Check(loader.OutputContainer == null && loader.Ready, "overlapping output and intake disables withdrawal without disabling magazine loading");
 Console.WriteLine($"Backend including package withdrawal: {checks} checks passed (spawn queue and game boundary stubbed).");
+
+machine = new Item(50, bulletA);
+intake = new ItemContainer(machine, 6);
+pickup = new ItemContainer(machine, 3);
+targetSlot = new ItemContainer(machine, 1);
+loader = new AmmoLoader(machine, new(new XElement("AmmoLoader")));
+machine.Components.AddRange([intake, pickup, targetSlot, loader]);
+loader.OnItemLoaded();
+mag = new VirtualizedMagazine(magItem);
+magItem.Components.Clear();
+magItem.Components.Add(mag);
+targetSlot.Inventory.AllItems.Add(magItem);
+var box = new Item(51, largest) { Condition = 2, MaxCondition = 100 };
+var otherBox = new Item(52, largest) { Condition = 3, MaxCondition = 100 };
+box.Components.Add(new VirtualizedAmmoStorage(box, new(XElement.Parse("<VirtualizedAmmoStorage ProjectileIdentifier='a' />"))));
+intake.Inventory.AllItems.AddRange([box, otherBox]);
+var costs = new Dictionary<string, double> { ["a"] = 0.5, ["b"] = 1 };
+loader.SupplyResolver = item => item == box || item == otherBox ? new("shared", costs) : null;
+loader.Update(1, new Camera());
+Check(box.Condition == 2 && !box.IsInRemoveQueue && loader.Stock.Counts.Count == 0,
+    "recognized supplies stay in intake even if they also have VirtualizedAmmoStorage");
+loader.Stock.TryAdd(Amount("a", 2));
+uint supplyRevision = Revision();
+Send(1, supplyRevision, 20, true, (1, 8), (2, 3));
+Check(mag.LoadedCount == 0 && box.Condition == 2 && otherBox.Condition == 3 && loader.Stock["a"] == 2,
+    "individually affordable calibers cannot overspend their shared pool in one plan");
+mag.ThrowOnRefresh = true;
+Send(1, Revision(), 20, true, (1, 6), (2, 3));
+Check(mag.LoadedCount == 0 && box.Condition == 2 && otherBox.Condition == 3 && loader.Stock["a"] == 2,
+    "magazine failure charges neither supplies nor stored rounds");
+mag.ThrowOnRefresh = false;
+Send(1, Revision(), 20, false, (1, 6), (2, 3));
+Check(mag.LoadedCount == 0 && box.Condition == 2, "inaccessible supply load rejected");
+otherBox.BeforeConditionSet = value => { if (value < 3) { throw new InvalidOperationException("Injected supply debit failure"); } };
+Send(1, Revision(), 20, true, (1, 6), (2, 3));
+Check(mag.LoadedCount == 0 && box.Condition == 2 && otherBox.Condition == 3 && loader.Stock["a"] == 2 &&
+    box.BrokenEffects == 0 && otherBox.BrokenEffects == 0,
+    "a later box debit failure restores earlier boxes, concrete stock and the magazine");
+otherBox.BeforeConditionSet = null;
+otherBox.IgnoreConditionChanges = true;
+Send(1, Revision(), 20, true, (1, 6), (2, 3));
+Check(mag.LoadedCount == 0 && box.Condition == 2 && otherBox.Condition == 3 && box.BrokenEffects == 0 && loader.Stock["a"] == 2,
+    "an invulnerable source silently rejecting Condition changes cannot grant free ammo or destroy earlier boxes");
+otherBox.IgnoreConditionChanges = false;
+Send(1, supplyRevision, 20, true, (1, 6), (2, 3));
+Check(mag.LoadedCount == 9 && box.Condition == 0 && otherBox.Condition == 0 && loader.Stock["a"] == 0 &&
+    mag.LoadedAmmoIdentifiers.Select(i => i.Value).SequenceEqual(Enumerable.Repeat("a", 6).Concat(Enumerable.Repeat("b", 3))),
+    "stock is used first and mixed shortages share and exhaust multiple boxes in deterministic order");
+Check(box.BrokenEffects == 1 && otherBox.BrokenEffects == 1, "native exhaustion effects run once only after all supply debits commit");
+Send(1, supplyRevision, 20, true, (1, 6), (2, 3));
+Check(mag.LoadedCount == 9, "a supply load cannot be replayed");
+Send(2, Revision(), 20);
+Check(loader.Stock["a"] == 6 && loader.Stock["b"] == 3 && box.Condition == 0 && otherBox.Condition == 0,
+    "unloading returns concrete ammunition without refunding universal reserves");
+box.Condition = 10;
+loader.Update(1, new Camera());
+Entity.Spawner = new();
+Send(3, Revision(), 0, true, (1, 1));
+Entity.Spawner.ProcessQueue();
+Check(pickup.Inventory.AllItems.Single().Condition == 6 && box.Condition == 10 && loader.Stock["a"] == 0,
+    "package withdrawal uses only concrete stock and never converts shared reserves");
+loader.Stock.Load(null);
+mag.MaxSize = 3;
+Send(1, Revision(), 20, true, (3, 100), (1, 1), (2, 2));
+Check(mag.LoadedCount == 3 && box.Condition == 7.5f && otherBox.Condition == 0,
+    "supply cost covers only the fitting plan tail, not excess or incompatible discarded rounds");
+Send(2, Revision(), 20);
+loader.Stock.Load(null);
+intake.Inventory.AllItems.Remove(box);
+Send(1, Revision(), 20, true, (1, 1));
+Check(mag.LoadedCount == 0 && box.Condition == 7.5f, "a box removed before the periodic scan cannot still supply ammunition");
+intake.Inventory.AllItems.Add(box);
+box.Condition = 4;
+loader.Update(1, new Camera());
+supplyRevision = Revision();
+box.Condition = 3;
+loader.Update(1, new Camera());
+Check(Revision() > supplyRevision, "external Condition changes invalidate the published supply state");
+Send(1, supplyRevision, 20, true, (1, 1));
+Check(mag.LoadedCount == 0 && box.Condition == 3, "stale supply revision rejected");
+GameMain.NetworkMember = new() { IsClient = true };
+Send(1, Revision(), 20, true, (1, 1));
+Check(mag.LoadedCount == 0 && box.Condition == 3, "only the authority can debit supplies");
+GameMain.NetworkMember = null;
+
+foreach (double invalidCost in new[] { 0, -1, double.NaN, double.PositiveInfinity, 1e-100 })
+{
+    costs["a"] = invalidCost;
+    Send(1, Revision(), 20, true, (1, 1));
+    Check(mag.LoadedCount == 0 && box.Condition == 3, "invalid or unrepresentable costs cannot provide free rounds");
+}
+costs["a"] = 0.5;
+loader.SupplyResolver = item => new(item.ID.ToString(), costs);
+Send(1, Revision(), 20, true, (1, 1));
+Check(mag.LoadedCount == 0 && box.Condition == 3, "overlapping projectile mappings across pools fail closed");
+loader.SupplyResolver = item => new("shared", item == box ? costs : new Dictionary<string, double> { ["a"] = 1 });
+Send(1, Revision(), 20, true, (1, 1));
+Check(mag.LoadedCount == 0 && box.Condition == 3, "inconsistent costs within one pool fail closed");
+loader.SupplyResolver = _ => throw new InvalidOperationException("Injected adapter failure");
+loader.Update(1, new Camera());
+Check(!box.IsInRemoveQueue && box.Condition == 3 && loader.Stock.Counts.Count == 0,
+    "an adapter failure cannot accidentally deposit and destroy a supply box");
+loader.Stock.TryAdd(Amount("a", 1));
+Send(1, Revision(), 20, true, (1, 1));
+Check(mag.LoadedCount == 1 && box.Condition == 3, "adapter failure still permits loading existing concrete stock");
+loader.SupplyResolver = item => new("shared", costs);
+Send(2, Revision(), 20);
+loader.Update(1, new Camera());
+var supplySave = loader.Save(new XElement("Item"));
+Check(supplySave.Elements().All(e => e.Name == "Stock"), "supply reserves are saved on their physical items, not duplicated in machine stock");
+loader.Load(new(supplySave), false, new IdRemap(), false);
+Send(1, Revision(), 20, true, (1, 2));
+Check(mag.LoadedCount == 2 && box.Condition == 2.5f && loader.Stock["a"] == 0,
+    "restored concrete stock and live item reserves remain separate and usable");
+Console.WriteLine($"Backend including custom shared supplies: {checks} checks passed (game boundary stubbed).");
+
+machine = new Item(70, bulletA);
+intake = new ItemContainer(machine, 6);
+pickup = new ItemContainer(machine, 6);
+targetSlot = new ItemContainer(machine, 1);
+loader = new AmmoLoader(machine, new(new XElement("AmmoLoader"))) { UseSupplyStorage = true };
+machine.Components.AddRange([intake, pickup, targetSlot, loader]);
+loader.OnItemLoaded();
+mag = new VirtualizedMagazine(magItem);
+magItem.Components.Clear();
+magItem.Components.Add(mag);
+targetSlot.Inventory.AllItems.Add(magItem);
+box = new Item(71, largest) { MaxCondition = 10, Condition = 9 };
+otherBox = new Item(72, largest) { MaxCondition = 10, Condition = 9.25f };
+intake.Inventory.AllItems.AddRange([box, otherBox]);
+costs = new Dictionary<string, double> { ["a"] = 0.5, ["b"] = 1 };
+loader.SupplyResolver = item => item == box || item == otherBox ? new("shared", costs) : null;
+Entity.Spawner = new();
+void FillMagazine(params string[] ids)
+{
+    mag.LoadedAmmoIdentifiers.Clear();
+    foreach (string id in ids.Reverse()) { mag.LoadedAmmoIdentifiers.Push(id.ToIdentifier()); }
+    loader.Update(1, new Camera());
+}
+FillMagazine("a", "a", "a", "b", "b");
+Send(2, Revision(), 20);
+Check(mag.LoadedCount == 0 && box.Condition == 10 && otherBox.Condition == 9.75f && loader.Stock["a"] == 0 && loader.Stock["b"] == 2,
+    "unload refills shared boxes across source boundaries and returns only excess whole rounds to stock");
+intake.Inventory.AllItems.Clear();
+FillMagazine("a", "b");
+Send(2, Revision(), 20);
+Check(mag.LoadedCount == 0 && loader.Stock["a"] == 1 && loader.Stock["b"] == 3,
+    "missing boxes fall back to concrete stock without losing mixed ammunition");
+intake.Inventory.AllItems.AddRange([box, otherBox]);
+box.Condition = otherBox.Condition = 10;
+FillMagazine("a", "b");
+Send(2, Revision(), 20);
+Check(mag.LoadedCount == 0 && box.Condition == 10 && otherBox.Condition == 10 && loader.Stock["a"] == 2 && loader.Stock["b"] == 4,
+    "full boxes fall back to stock without overfilling");
+loader.Stock.Load(null);
+box.Condition = otherBox.Condition = 9;
+FillMagazine("b", "a", "a", "a", "a");
+var originalReturnOrder = mag.LoadedAmmoIdentifiers.ToArray();
+otherBox.BeforeConditionSet = value => { if (value > 9) { throw new InvalidOperationException("Injected credit failure"); } };
+Send(2, Revision(), 20);
+Check(mag.LoadedAmmoIdentifiers.SequenceEqual(originalReturnOrder) && box.Condition == 9 && otherBox.Condition == 9 && loader.Stock.Counts.Count == 0,
+    "a later refund failure restores earlier boxes, the complete magazine order and overflow stock");
+otherBox.BeforeConditionSet = null;
+otherBox.IgnoreConditionChanges = true;
+Send(2, Revision(), 20);
+Check(mag.LoadedAmmoIdentifiers.SequenceEqual(originalReturnOrder) && box.Condition == 9 && loader.Stock.Counts.Count == 0,
+    "a silently rejected credit cannot consume magazine rounds");
+otherBox.IgnoreConditionChanges = false;
+GameMain.NetworkMember = new() { IsClient = true };
+Send(2, Revision(), 20);
+Check(mag.LoadedAmmoIdentifiers.SequenceEqual(originalReturnOrder) && box.Condition == 9, "clients cannot credit supplies or unload locally");
+GameMain.NetworkMember = null;
+loader.Stock.TryAdd(Amount("b", int.MaxValue));
+Send(2, Revision(), 20);
+Check(mag.LoadedAmmoIdentifiers.SequenceEqual(originalReturnOrder) && box.Condition == 9 && otherBox.Condition == 9,
+    "overflow fallback rejects the entire return before crediting any boxes");
+loader.Stock.Load(null);
+FillMagazine();
+box.Condition = 2;
+otherBox.Condition = 3;
+loader.Stock.TryAdd(Amount("a", 2));
+loader.Update(1, new Camera());
+Send(3, Revision(), 20, true, (1, 1));
+Entity.Spawner.ProcessQueue();
+Check(pickup.Inventory.AllItems.Single().Condition == 12 && loader.Stock["a"] == 0 && box.Condition == 0 && otherBox.Condition == 0 &&
+    box.BrokenEffects == 0 && otherBox.BrokenEffects == 0,
+    "package withdrawal uses stock then shared reserves, retaining depleted boxes for refilling");
+returnedPackage = pickup.Inventory.AllItems.Single();
+pickup.Inventory.AllItems.Clear();
+returnedPackage.ParentInventory = intake.Inventory;
+intake.Inventory.AllItems.Add(returnedPackage);
+loader.Update(1, new Camera());
+Check(returnedPackage.Condition == 0 && returnedPackage.IsInRemoveQueue && box.Condition == 6 && otherBox.Condition == 0 && loader.Stock.Counts.Count == 0,
+    "redepositing the supplied package refills boxes without creating internal stock");
+intake.Inventory.AllItems.Remove(returnedPackage);
+box.Condition = 2;
+otherBox.Condition = 0;
+loader.Stock.TryAdd(Amount("a", 1));
+loader.Update(1, new Camera());
+Send(3, Revision(), 20, true, (1, 1));
+intake.Inventory.AllItems.Remove(box);
+Entity.Spawner.ProcessQueue();
+Check(pickup.Inventory.AllItems.Single().Condition == 1 && loader.Stock["a"] == 0 && box.Condition == 2,
+    "taking a box away while packing reduces delivery to the remaining concrete stock");
+pickup.Inventory.AllItems.Clear();
+intake.Inventory.AllItems.Add(box);
+loader.Update(1, new Camera());
+Send(3, Revision(), 20, true, (1, 1));
+intake.Inventory.AllItems.Remove(box);
+Entity.Spawner.ProcessQueue();
+Check(pickup.Inventory.AllItems.Count == 0 && Entity.Spawner.Spawned[^1].Removed && box.Condition == 2,
+    "no remaining source cancels a queued package without free ammunition");
+intake.Inventory.AllItems.Add(box);
+loader.Stock.TryAdd(Amount("a", 1));
+loader.Update(1, new Camera());
+Send(3, Revision(), 20, true, (1, 1));
+box.IgnoreConditionChanges = true;
+Entity.Spawner.ProcessQueue();
+Check(pickup.Inventory.AllItems.Count == 0 && box.Condition == 2 && loader.Stock["a"] == 1,
+    "rejected supply debit cancels package delivery and retains concrete stock");
+box.IgnoreConditionChanges = false;
+loader.Stock.Load(null);
+costs["a"] = 1.5625 / 30;
+box.MaxCondition = 100;
+box.Condition = 100;
+intake.Inventory.AllItems.Remove(otherBox);
+loader.Update(1, new Camera());
+Send(1, Revision(), 20, true, (1, 30));
+Check(mag.LoadedCount == 30 && box.Condition == 98.4375f, "DDA 30-round magazine consumes exactly 1.5625 Condition");
+Send(2, Revision(), 20);
+Check(mag.LoadedCount == 0 && box.Condition == 100 && loader.Stock.Counts.Count == 0, "full DDA load-return roundtrip conserves box contents");
+for (int cycle = 0; cycle < 30; cycle++)
+{
+    Send(1, Revision(), 20, true, (1, 1));
+    Send(2, Revision(), 20);
+    Check(mag.LoadedCount == 0 && box.Condition == 100 && loader.Stock.Counts.Count == 0, "single-round supply return must not accumulate float drift or leftover stock");
+}
+Console.WriteLine($"Backend including refillable supplies: {checks} checks passed (game boundary stubbed).");

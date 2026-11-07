@@ -8,7 +8,7 @@ public sealed partial class AmmoLoader
     private readonly List<AmmoRun> draft = [];
     private GUIListBox? presetList, planList, previewList, stockList, actualList, checkList;
     private GUITextBox? presetName;
-    private GUITextBlock? targetLabel, planLabel, draftLabel, stockSummary, presetScope;
+    private GUITextBlock? targetLabel, planLabel, draftLabel, stockSummary, presetScope, checkAmountHeader;
     private GUIButton? loadButton, unloadButton, presetLoadButton, saveButton, clearButton, presetDelete;
     private GUIFrame? inputHolder, targetHolder, outputHolder;
     private GUINumberInput? addQuantity;
@@ -24,7 +24,11 @@ public sealed partial class AmmoLoader
     private int DraftCapacity => Target is { } target
         ? Math.Clamp(target.MaxSize - target.LoadedCount, 0, AmmoPlan.MaxRounds) : AmmoPlan.MaxRounds;
 
-    private static LocalizedString L(string key) => TextManager.Get("vce.ammoloader." + key);
+    private LocalizedString L(string key, string? fallback = null)
+    {
+        var original = TextManager.Get("vce.ammoloader." + (fallback ?? key));
+        return string.IsNullOrEmpty(TextPrefix) ? original : TextManager.Get(TextPrefix + key).Fallback(original);
+    }
     private static string AmmoName(string id) => ItemPrefab.FindByIdentifier(id.ToIdentifier())?.Name.Value ?? id;
     public override bool RecreateGUIOnResolutionChange => true;
 
@@ -168,7 +172,7 @@ public sealed partial class AmmoLoader
         checkHeader.RectTransform.AbsoluteOffset = new Point(checkList.Content.RectTransform.AbsoluteOffset.X, 0);
         checkHeader.RelativeSpacing = 0.01f;
         Label(checkHeader, L("check"), 1, 0.55f);
-        Label(checkHeader, L("needstock"), 1, 0.43f);
+        checkAmountHeader = CheckAmountLabel(checkHeader, L("needstock"));
 
         var dock = PanelRow(dockHeight);
         int intakeWidth = (supplyWidth - gap) / 2;
@@ -263,6 +267,11 @@ public sealed partial class AmmoLoader
             "≡", font: GUIStyle.SmallFont, textAlignment: Alignment.Center)
             { Padding = Vector4.Zero, CanBeFocused = false };
 
+    private static GUITextBlock CheckAmountLabel(GUILayoutGroup parent, LocalizedString text) =>
+        new(new RectTransform(new Vector2(0.43f, 1), parent.RectTransform, Anchor.CenterRight),
+            text, font: GUIStyle.SmallFont, textAlignment: Alignment.CenterLeft)
+            { IgnoreLayoutGroups = true, Padding = Vector4.Zero, AutoScaleHorizontal = true, CanBeFocused = false };
+
     private static GUITextBlock AmmoLabel(GUILayoutGroup parent, string id, string text, float width = 1)
     {
         var cell = new GUIFrame(new RectTransform(new Vector2(width, 1), parent.RectTransform), style: null)
@@ -294,8 +303,8 @@ public sealed partial class AmmoLoader
             bool shift = PlayerInput.IsShiftDown();
             LocalizedString extra = hint?.Invoke() ?? "";
             if (tooltipShift == shift && previousHint == extra.Value) { return; }
-            component.ToolTip = RichString.Rich(prefab?.GetTooltip(Character.Controlled) ?? fallback) +
-                (extra.Length > 0 ? "\n" + extra : "");
+            component.ToolTip = RichString.Rich((prefab?.GetTooltip(Character.Controlled) ?? fallback) +
+                (extra.Length > 0 ? "\n" + extra : ""));
             tooltipShift = shift;
             previousHint = extra.Value;
         };
@@ -307,7 +316,7 @@ public sealed partial class AmmoLoader
     private static GUIListBox List(GUILayoutGroup parent, float height) =>
         new(new RectTransform(new Vector2(1, height), parent.RectTransform)) { AutoHideScrollBar = false, KeepSpaceForScrollBar = true };
 
-    private static GUIButton Button(GUILayoutGroup parent, string text, float width, float height, Action action) =>
+    private GUIButton Button(GUILayoutGroup parent, string text, float width, float height, Action action) =>
         new(new RectTransform(new Vector2(width, height), parent.RectTransform), L(text), style: "GUIButtonSmallFreeScale")
         {
             ToolTip = L(text == "delete" ? "remove" : text),
@@ -475,18 +484,31 @@ public sealed partial class AmmoLoader
         }
         stockList!.Content.ClearChildren();
         var demand = AmmoStock.Count(rounds.TakeLast(capacity));
-        var visibleStock = stock.Counts.Where(p => withdrawMode || target == null || IsCompatible(target, p.Key)).OrderBy(p => AmmoName(p.Key)).ToArray();
+        var quote = QuoteSupply(demand);
+        var supplied = withdrawMode && !UseSupplyStorage ? new Dictionary<string, int>() :
+            SuppliedAmmo(withdrawMode ? QuoteSupply(new Dictionary<string, int>()) : quote);
+        var visibleStock = stock.Counts.Keys.Concat(supplied.Keys).Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(id => withdrawMode || target == null || IsCompatible(target, id)).OrderBy(AmmoName)
+            .Select(id => new KeyValuePair<string, int>(id, stock[id])).ToArray();
         stockList.UseGridLayout = visibleStock.Length > 0;
         stockList.ToolTip = L(withdrawMode ? "withdrawmodehint" : "addhint");
-        stockSummary!.Text = message.Length > 0 ? message : $"{L(withdrawMode || target == null ? "allstock" : "compatiblestock")} · {visibleStock.Length} {L("types")} · {visibleStock.Sum(p => (long)p.Value):N0} {L("rounds")}";
-        stockSummary.ToolTip = stockSummary.Text;
+        bool hasSupply = (!withdrawMode || UseSupplyStorage) && supplies.Length > 0;
+        stockSummary!.Text = message.Length > 0 ? message : $"{L(hasSupply ? "availableammo" : withdrawMode || target == null ? "allstock" : "compatiblestock")} · {visibleStock.Length} {L("types")} · {(hasSupply ? L("stored") + " " : "")}{visibleStock.Sum(p => (long)p.Value):N0} {L("rounds")}";
+        stockSummary.ToolTip = stockSummary.Text + (hasSupply ? "\n" + L(withdrawMode ? "withdrawmodehint" : "supplyhint") + "\n" +
+            string.Join("\n", supplies.Select(p => $"{AmmoName(p.Prefab)} · {p.Amount:N2}/{p.Capacity:N2}")) : "");
         if (visibleStock.Length == 0) { TextRow(stockList, L("emptystock").Value); }
         int stockCellSize = (int)(72 * GUI.Scale);
         foreach (var p in visibleStock)
         {
+            bool fromSupply = supplied.TryGetValue(p.Key, out int available);
+            string stockCaption = UseSupplyStorage
+                ? L("stockandsupply").Value.Replace("[stock]", p.Value.ToString()).Replace("[supply]", available.ToString())
+                : $"{p.Value:N0}";
+            int stockCaptionHeight = (int)((stockCaption.Contains('\n') ? 30 : 16) * GUI.Scale);
+            int stockImageHeight = stockCellSize - stockCaptionHeight;
             var prefab = ItemPrefab.FindByIdentifier(p.Key.ToIdentifier()) as ItemPrefab;
             var package = withdrawMode ? FindWithdrawalPackage(p.Key) : null;
-            var tile = new GUIButton(new RectTransform(new Point(stockCellSize, stockCellSize), stockList.Content.RectTransform),
+            var tile = new GUIButton(new RectTransform(new Point(stockCellSize), stockList.Content.RectTransform, isFixedSize: true),
                 style: "GUIButtonSmallFreeScale")
             {
                 UserData = (p.Key, package),
@@ -502,11 +524,12 @@ public sealed partial class AmmoLoader
             };
             BindStockTooltip(tile, prefab, AmmoName(p.Key), withdrawMode
                 ? () => L(!IsSynchronized ? "syncing" : WithdrawalProblem(p.Key, package)) +
-                    (package == null ? "" : $"\n{package.Name} · {Math.Min(Stock[p.Key], (int)package.Health)} {L("rounds")}")
-                : null);
+                    (package == null ? "" : $"\n{package.Name} · {Math.Min(WithdrawalAmount(p.Key), (int)package.Health)} {L("rounds")}")
+                : fromSupply ? () => $"{L("stored")}: {p.Value:N0}\n{L("supplied")}: {available:N0}\n{L("supplyhint")}" : null);
             if (prefab != null && (prefab.InventoryIcon ?? prefab.Sprite) is { } icon)
             {
-                new GUIImage(new RectTransform(new Vector2(0.8f), tile.RectTransform, Anchor.Center), icon, scaleToFit: true)
+                new GUIImage(new RectTransform(new Point((int)(stockCellSize * 0.8f), stockImageHeight),
+                    tile.RectTransform, Anchor.TopCenter), icon, scaleToFit: true)
                 {
                     CanBeFocused = false,
                     UserData = icon == prefab.InventoryIcon ? prefab.InventoryIconColor : prefab.SpriteColor,
@@ -515,25 +538,57 @@ public sealed partial class AmmoLoader
             }
             else
             {
-                new GUITextBlock(new RectTransform(new Vector2(0.9f, 0.7f), tile.RectTransform, Anchor.TopCenter),
+                new GUITextBlock(new RectTransform(new Point(stockCellSize, stockImageHeight), tile.RectTransform, Anchor.TopCenter),
                     AmmoName(p.Key), font: GUIStyle.SmallFont, textAlignment: Alignment.Center, wrap: true)
                     { CanBeFocused = false, AutoScaleHorizontal = true };
             }
-            new GUITextBlock(new RectTransform(new Vector2(0.94f, 0.3f), tile.RectTransform, Anchor.BottomRight),
-                $"{p.Value:N0}", font: GUIStyle.SmallFont, textAlignment: Alignment.BottomRight)
+            new GUITextBlock(new RectTransform(new Point(stockCellSize, stockCaptionHeight), tile.RectTransform, Anchor.BottomRight),
+                stockCaption,
+                font: GUIStyle.SmallFont, textAlignment: Alignment.BottomRight)
             {
-                CanBeFocused = false, AutoScaleHorizontal = true, Shadow = true,
-                Padding = new Vector4(0, 0, 4 * GUI.Scale, 2 * GUI.Scale)
+                CanBeFocused = false, AutoScaleHorizontal = !UseSupplyStorage, Shadow = true,
+                TextScale = UseSupplyStorage ? 0.75f : 1f,
+                Padding = new Vector4(4 * GUI.Scale, 0, 4 * GUI.Scale, 2 * GUI.Scale)
             };
         }
         checkList!.Content.ClearChildren();
+        var checkAmounts = new List<GUITextBlock> { checkAmountHeader! };
+        var checkNames = new List<GUITextBlock>();
         foreach (var id in demand.Keys.OrderBy(AmmoName))
         {
-            int needed = demand[id];
+            int needed = supplies.Any(p => p.Costs.ContainsKey(id)) ? quote.Stock.GetValueOrDefault(id) : demand[id];
+            if (needed == 0) { continue; }
             var row = ListRow(checkList);
-            AmmoLabel(row, id, AmmoName(id), 0.55f).ToolTip = id;
-            var amounts = Label(row, $"{needed} / {stock[id]}", 1, 0.43f);
-            if (needed > stock[id] || !IsCompatible(target, id)) { amounts.TextColor = Color.OrangeRed; }
+            var name = AmmoLabel(row, id, AmmoName(id));
+            name.ToolTip = id;
+            checkNames.Add(name);
+            var amounts = CheckAmountLabel(row, $"{needed} / {stock[id]}");
+            checkAmounts.Add(amounts);
+            if (!IsCompatible(target, id) || (needed > stock[id] && !quote.CanLoad)) { amounts.TextColor = Color.OrangeRed; }
+        }
+        foreach (var pool in supplies.Where(p => quote.Pools.ContainsKey(p.Id)))
+        {
+            double used = quote.Pools[pool.Id];
+            var row = ListRow(checkList);
+            checkNames.Add(AmmoLabel(row, pool.Prefab, AmmoName(pool.Prefab)));
+            var amounts = CheckAmountLabel(row, $"{used:N2} / {pool.Amount:N1}");
+            checkAmounts.Add(amounts);
+            amounts.ToolTip = L("supplycost");
+            if (used > pool.Amount) { amounts.TextColor = Color.OrangeRed; }
+        }
+        if (supplyError) { TextRow(checkList, L("supplyerror").Value, Color.OrangeRed); }
+        int amountWidth = Math.Max(1, (int)Math.Ceiling(Math.Min(checkList.Content.Rect.Width * 0.43f,
+            checkAmounts.Max(label => label.TextSize.X))));
+        foreach (var label in checkAmounts)
+        {
+            label.RectTransform.Resize(new Point(amountWidth, label.Rect.Height));
+        }
+        int nameWidth = Math.Max(0, checkList.Content.Rect.Width - amountWidth - (int)(2 * GUI.Scale));
+        foreach (var label in checkNames)
+        {
+            label.Parent.RectTransform.Resize(new Point(nameWidth, label.Parent.Rect.Height));
+            label.RectTransform.Resize(new Point(Math.Max(0, nameWidth - label.RectTransform.AbsoluteOffset.X), label.Rect.Height));
+            label.TextScale = 1f;
         }
         actualList!.Content.ClearChildren();
         var actual = AmmoPlan.Compact(target?.LoadedAmmoIdentifiers.Select(id => id.Value) ?? []);
@@ -549,10 +604,11 @@ public sealed partial class AmmoLoader
         string problem = !Ready ? "unavailable" : !IsSynchronized ? "syncing" : target == null ? "nomagazine" :
             target.LoadedCount >= target.MaxSize ? "full" : draft.Count == 0 ? "emptyplan" :
             !AmmoPlan.IsValid(draft, AmmoPlan.MaxRounds) ? "invalidplan" :
-            demand.Keys.Any(id => !IsCompatible(target, id)) ? "incompatible" : !stock.CanTake(demand) ? "notenough" : "ready";
+            demand.Keys.Any(id => !IsCompatible(target, id)) ? "incompatible" : !quote.CanLoad ? "notenough" : "ready";
         loadButton!.Enabled = problem == "ready";
         loadButton.ToolTip = L(problem);
         unloadButton!.Enabled = Ready && IsSynchronized && target?.LoadedCount > 0;
+        unloadButton.ToolTip = L("unloadhint", "unload");
         // Visibility culling during collection needs the new scroll range, including after a list shrinks.
         foreach (var list in new[] { presetList, planList, previewList, stockList, actualList, checkList })
         {

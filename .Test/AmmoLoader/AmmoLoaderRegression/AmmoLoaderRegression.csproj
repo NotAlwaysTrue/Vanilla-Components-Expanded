@@ -9,6 +9,7 @@
     <Compile Include="../../../CsProjectSource/SharedProject/SharedSource/AmmoLoader/AmmoStock.cs" Link="AmmoStock.cs" />
     <Compile Include="../../../CsProjectSource/SharedProject/SharedSource/AmmoLoader/AmmoPlan.cs" Link="AmmoPlan.cs" />
     <Compile Include="../../../CsProjectSource/SharedProject/SharedSource/AmmoLoader/AmmoLoader.cs" Link="AmmoLoader.cs" />
+    <Compile Include="../../../CsProjectSource/SharedProject/SharedSource/AmmoLoader/AmmoLoader.Supply.cs" Link="AmmoLoader.Supply.cs" />
     <Compile Include="../../../CsProjectSource/SharedProject/SharedSource/VirtualizedMagazine/MagazineUtil/AmmoStorage.cs" Link="AmmoStorage.cs" />
     <Compile Include="../../../CsProjectSource/ServerProject/ServerSource/AmmoLoader/AmmoLoader.Server.cs" Link="AmmoLoader.Server.cs" />
   </ItemGroup>

@@ -13,6 +13,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\AmmoLoader\AmmoLoader.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\AmmoLoader\AmmoLoader.Supply.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\AmmoLoader\AmmoPlan.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\AmmoLoader\AmmoStock.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\ActiveProtectionSystem\ActiveProtectionSystem.cs" />
