@@ -7,6 +7,7 @@ using Barotrauma.Items.Components;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using VCE.AmmoLoading;
+using VCE_VirtualizedMagazine;
 
 // Run from the mod root after building WindowsClient; no game window is created.
 string root = Directory.GetCurrentDirectory();
@@ -330,4 +331,108 @@ static void Run()
         }
     }
     Console.WriteLine("PASS: native intake/target slots remain centered at three dock sizes after moving/rebinding.");
+
+    config.Graphics.HUDScale = 1;
+    typeof(GameSettings).GetField("currentConfig", fields)!.SetValue(null, config);
+    var ammoPrefab = (ItemPrefab)RuntimeHelpers.GetUninitializedObject(typeof(ItemPrefab));
+    void SetPrefabField(string name, object value)
+    {
+        for (Type? type = typeof(ItemPrefab); type != null; type = type.BaseType)
+        {
+            if (type.GetField(name, fields | BindingFlags.Public) is not { } field) { continue; }
+            field.SetValue(ammoPrefab, value);
+            return;
+        }
+        throw new MissingFieldException(name);
+    }
+    SetPrefabField("Identifier", "ammoloader_ui_test".ToIdentifier());
+    SetPrefabField("name", (LocalizedString)"Test ammunition");
+    SetPrefabField("wearableDamageModifiers", Array.Empty<DamageModifier>());
+    SetPrefabField("wearableSkillModifiers", new Dictionary<Identifier, float>());
+    var inventoryIcon = (Sprite)RuntimeHelpers.GetUninitializedObject(typeof(Sprite));
+    var worldSprite = (Sprite)RuntimeHelpers.GetUninitializedObject(typeof(Sprite));
+    typeof(ItemPrefab).GetProperty(nameof(ItemPrefab.InventoryIcon))!.SetValue(ammoPrefab, inventoryIcon);
+    typeof(ItemPrefab).GetField("sprite", fields)!.SetValue(ammoPrefab, worldSprite);
+    typeof(ItemPrefab).GetProperty(nameof(ItemPrefab.InventoryIconColor))!.SetValue(ammoPrefab, Color.Red);
+    typeof(ItemPrefab).GetProperty(nameof(ItemPrefab.SpriteColor))!.SetValue(ammoPrefab, Color.Blue);
+    ItemPrefab.Prefabs.Add(ammoPrefab, false);
+    var ammoLabel = typeof(AmmoLoader).GetMethod("AmmoLabel", fields)!;
+    foreach (int height in new[] { 20, 26, 32, 48 })
+    foreach (string iconKind in new[] { "inventory", "sprite", "missing" })
+    {
+        typeof(ItemPrefab).GetProperty(nameof(ItemPrefab.InventoryIcon))!.SetValue(ammoPrefab, iconKind == "inventory" ? inventoryIcon : null);
+        var row = new GUILayoutGroup(new RectTransform(new Point(200, height)), isHorizontal: true);
+        var label = (GUITextBlock)ammoLabel.Invoke(null,
+            new object[] { row, iconKind == "missing" ? "missing_ammo" : ammoPrefab.Identifier.Value, "Test ammunition", 0.55f })!;
+        row.ForceLayoutRecalculation();
+        var cell = label.Parent;
+        var icon = cell.Children.OfType<GUIImage>().Single();
+        var expectedSprite = iconKind == "inventory" ? inventoryIcon : iconKind == "sprite" ? worldSprite : null;
+        if (icon.Sprite != expectedSprite || (expectedSprite != null && icon.Color != (iconKind == "inventory" ? Color.Red : Color.Blue)) ||
+            icon.CanBeFocused || cell.CanBeFocused || label.CanBeFocused ||
+            icon.Rect.Width != icon.Rect.Height || icon.Rect.Top < cell.Rect.Top || icon.Rect.Bottom > cell.Rect.Bottom ||
+            icon.Rect.Right >= label.Rect.Left || label.Rect.Right > cell.Rect.Right || label.Text.SanitizedValue != "Test ammunition")
+        { throw new Exception($"Ammo icon/text layout failed at height {height}, icon kind {iconKind}: cell {cell.Rect}, icon {icon.Rect}, text {label.Rect}, color {icon.Color}, sprite match {icon.Sprite == expectedSprite}, focus {icon.CanBeFocused}/{cell.CanBeFocused}/{label.CanBeFocused}, text '{label.Text.SanitizedValue}'."); }
+    }
+    Console.WriteLine("PASS: ammo labels use the inventory icon/tint, fall back to the sprite, preserve text without assets and leave mouse focus to the row.");
+
+    typeof(GameMain).GetProperty(nameof(GameMain.Instance))!.SetValue(null, headlessGame);
+    typeof(PlayerInput).GetField("allowInput", fields)!.SetValue(null, true);
+    var keyboard = typeof(PlayerInput).GetField("keyboardState", fields)!;
+    var tooltipTile = new GUIButton(new RectTransform(new Point(72)), style: null);
+    typeof(AmmoLoader).GetMethod("BindStockTooltip", fields)!.Invoke(null, new object[] { tooltipTile, ammoPrefab, "fallback" });
+    foreach (Keys? key in new Keys?[] { null, Keys.LeftShift, null, Keys.RightShift, null })
+    {
+        keyboard.SetValue(null, key.HasValue ? new KeyboardState(key.Value) : new KeyboardState());
+        string description = key?.ToString() ?? "released";
+        typeof(ItemPrefab).GetProperty(nameof(ItemPrefab.Description))!.SetValue(ammoPrefab, (LocalizedString)description);
+        tooltipTile.OnDrawToolTip(tooltipTile);
+        if (!tooltipTile.ToolTip.SanitizedValue.Contains(description))
+        { throw new Exception("Stock tooltip did not rebuild after pressing or releasing Shift on the same tile."); }
+        var cachedTooltip = tooltipTile.ToolTip;
+        tooltipTile.OnDrawToolTip(tooltipTile);
+        if (!ReferenceEquals(cachedTooltip, tooltipTile.ToolTip))
+        { throw new Exception("An unchanged stock tooltip was unnecessarily rebuilt every frame."); }
+    }
+    var magazineItem = (Item)RuntimeHelpers.GetUninitializedObject(typeof(Item));
+    typeof(Item).GetProperty(nameof(Item.MaxCondition))!.SetValue(magazineItem, 3f);
+    var magazine = (VirtualizedMagazine)RuntimeHelpers.GetUninitializedObject(typeof(VirtualizedMagazine));
+    typeof(ItemComponent).GetField("item", fields)!.SetValue(magazine, magazineItem);
+    typeof(VirtualizedMagazine).GetProperty(nameof(VirtualizedMagazine.AllowedAmmoTags))!
+        .SetValue(magazine, System.Collections.Immutable.ImmutableHashSet<Identifier>.Empty);
+    typeof(VirtualizedMagazine).GetProperty(nameof(VirtualizedMagazine.LoadedAmmoIdentifiers))!
+        .SetValue(magazine, new Stack<Identifier>(["existing_round".ToIdentifier()]));
+    magazine.LoadedAmmoIdentifiersArray = [ammoPrefab.Identifier];
+    magazine.LoadedAmmoIdentifiersArray = [ammoPrefab.Identifier];
+    if (magazine.LoadedCount != 3 || magazine.LoadedAmmoIdentifiersArray[0] != "existing_round".ToIdentifier())
+    { throw new Exception("Magazine assignment must append to the existing stack while capacity remains."); }
+    var remaining = new List<Identifier> { ammoPrefab.Identifier, "missing_round".ToIdentifier() };
+    magazine.LoadAmmoArray(ref remaining);
+    magazine.LoadedAmmoIdentifiersArray = [];
+    magazine.LoadedAmmoIdentifiersArray = [ammoPrefab.Identifier];
+    if (magazine.LoadedCount != 3 || !remaining.SequenceEqual(new[] { ammoPrefab.Identifier, "missing_round".ToIdentifier() }))
+    { throw new Exception("Full magazines must preserve existing rounds and return rejected input; empty assignment must not clear them."); }
+    Console.WriteLine("PASS: actual magazine assignment appends up to capacity, preserves old rounds and returns rejected LoadAmmoArray input.");
+    ItemPrefab.Prefabs.Remove(ammoPrefab);
+    typeof(GameMain).GetProperty(nameof(GameMain.Instance))!.SetValue(null, null);
+    typeof(PlayerInput).GetField("allowInput", fields)!.SetValue(null, false);
+    Console.WriteLine("PASS: stock tooltip refreshes in place on both Shift keys and release, and reuses text while the key state is unchanged.");
+
+    foreach (bool repeat in new[] { false, true })
+    {
+        var prefab = new MagazinePrefab(new ContentXElement(null, XElement.Parse($"""
+            <MagazinePrefab identifier="loader_sequence_test" AutoRepeat="{repeat}">
+              <StartAmmoGroup><Ammo ProjectileIdentifier="start" /></StartAmmoGroup>
+              <MainAmmoGroup><Ammo ProjectileIdentifier="a" /><Ammo ProjectileIdentifier="b" /></MainAmmoGroup>
+              <EndAmmoGroup><Ammo ProjectileIdentifier="end" /></EndAmmoGroup>
+            </MagazinePrefab>
+            """)), null);
+        string[] expected = repeat ? ["end", "b", "a", "b", "a", "start"] : ["end", "b", "a", "start"];
+        if (!prefab.CreateAmmoArray(6).Select(id => id.Value).SequenceEqual(expected) ||
+            prefab.CreateAmmoArray(0).Length != 0 ||
+            !prefab.CreateAmmoArray(1).Select(id => id.Value).SequenceEqual(new[] { "end" }) ||
+            !prefab.CreateAmmoArray(2).Select(id => id.Value).SequenceEqual(new[] { "end", "start" }))
+        { throw new Exception("Shared magazine preset expansion changed section priority, repetition or insertion order."); }
+    }
+    Console.WriteLine("PASS: shared MagazinePrefab expansion preserves start/end priority, repetition, short capacities and bottom-first insertion order.");
 }

@@ -1,23 +1,39 @@
 # VCE AmmoLoader
 
-装弹机沿用 VCE 的现有工程，代码分别位于：
+## 职责与维护边界
 
-- `ClientProject/ClientSource/AmmoLoader`：界面、玩家预设和客户端同步。
-- `ServerProject/ServerSource/AmmoLoader`：服务端校验与同步。
-- `SharedProject/SharedSource/AmmoLoader`：库存、弹药包、编排和装卸逻辑。
+装弹机仅注册一个 `AmmoLoader` 组件，使用 partial 分文件维护 UI、库存、装卸、存档和网络。装弹机专用代码统一放在各工程的 `AmmoLoader` 目录；后端和网络仍交由 VirtualizedMagazine 维护者负责。
 
-统一编译进 `VanillaComponentsExpandedClient.dll` / `VanillaComponentsExpandedServer.dll`，
-由现有 `VCEPlugin` 注册组件。PluginInfo.xml 每个平台/运行端只指定一个主程序集。
+- `ClientProject/ClientSource/AmmoLoader/AmmoLoader.UI.cs` 与 `AmmoPresets.cs`：界面、编排编辑和玩家本地预设。
+- `SharedProject/SharedSource/AmmoLoader/AmmoLoader.cs`：容器绑定、入库、装卸事务、库存存档及权威端校验。
+- 同目录的 `AmmoStock`、`AmmoPlan` / `AmmoRun`：后端库存及装填计划数据。
+- 客户端 `AmmoLoader/AmmoLoader.Network.cs` 与服务端 `AmmoLoader/AmmoLoader.Server.cs`：库存快照、请求校验与传输。
+- 原有 `VirtualizedMagazine.Network.cs`：弹匣自身弹序同步，取出弹匣后仍然生效。
+
+库存快照与弹匣弹序是两种不同状态，仍各由所属组件同步；两套协议均归 VirtualizedMagazine 模块维护。
+UI 文件只读取状态并调用后端方法，不写库存、不直接修改弹匣栈，也不维护网络编码、分页或重试。
+
+## UI 接口
+
+UI 与后端属于同一个 `AmmoLoader` 实例，直接使用以下接口：
+
+- 读取 `Stock`、`Target`、`InputContainer`、`TargetContainer`、`Ready`、`StateRevision`。
+- 客户端读取 `IsSynchronized`；界面更新时调用 `UpdateClientState(deltaTime)`，由后端处理初始同步及重试。
+- 调用 `RequestLoad(AmmoRun[])`、`RequestUnload()`；单机与联网分支均在后端。
+- `AmmoRun[]` 从上到下表示出膛顺序。后端转换为 VirtualizedMagazine 接口所需的栈底优先顺序。
+
+兼容性由 `VirtualizedMagazine.IsAmmoCompatible` 判断，投射物组件查询复用 `ElementHelper`。
+`LoadedAmmoIdentifiersArray` 保持原有追加语义；完整网络快照和装卸回滚在各自调用处显式清空后恢复弹序。
+模组预设统一通过 `MagazinePrefab.CreateAmmoArray(capacity)` 展开，工厂与 UI 共用；返回数组为栈底优先。
+玩家本地预设仍保存至单机存档目录下的 `VCE/AmmoLoaderPresets.json`。
 
 ## XML 接入
 
-机器的功能标识是 **`<AmmoLoader>` 组件**，不检查物品 identifier。
-和原版 Fabricator 一样，机器另配两个 ItemContainer；索引从 0 开始。
-目标容器必须只有一格，且应禁止堆叠。投料容器的容量可以调整。
+`AmmoLoader` 同时配置容器索引和 GuiFrame。目标容器必须单格、不堆叠。
 
 ```xml
-<AmmoLoader canbeselected="true" msg="ItemMsgInteractSelect"
-            inputcontainerindex="0" targetcontainerindex="1">
+<AmmoLoader inputcontainerindex="0" targetcontainerindex="1"
+            canbeselected="true" msg="ItemMsgInteractSelect">
   <GuiFrame relativesize="0.75,0.78" minsize="900,600" anchor="Center" style="ItemUI" />
 </AmmoLoader>
 <ItemContainer capacity="6" slotsperrow="6" maxstacksize="1"
@@ -30,52 +46,26 @@
 </ItemContainer>
 ```
 
-每个弹药包物品添加 `vceammopackage` tag 和组件：
+弹药来源添加 `vceammopackage` 标签，并使用现有 `<VirtualizedAmmoStorage ProjectileIdentifier="your_round_identifier" />`。
+与现有 VCE 装填器一致，物品当前 Condition 表示剩余发数，MaxCondition 表示容量。
+例如 120 发新弹药包设置 `health="120"`。入库读取剩余整数发数，先清零 Condition，再排队移除物品，防止重复入库。
+没有此组件、弹种无效或包含其他物品的来源不入库。编辑器非试航状态不消耗来源。
+投料口仅允许带 `vceammopackage` 标签的物品；后端仍检查储弹组件和弹药有效性，不符合条件的物品留在原位。
 
-```xml
-<AmmoPackage projectileidentifier="your_round_identifier" amount="120" />
-```
+弹匣继续使用 `<VirtualizedMagazine AllowedAmmoTags="your_ammo_tag" />`。
+`vcevirtualmagazine` 仅为示例目标槽过滤 tag，可改为模组自己的容器条件。
+测试弹匣与两种弹药包在 `.Test/AmmoLoaderItems.xml`，随可选 `VCETESTPACK` 测试依赖加载。
 
-弹种必须是具有 Projectile 组件的具体 ItemPrefab；一包兑换固定整数发数，
-不按耐久百分比折算。无效、破损、包含其他物品的包不消耗。
-`Redeemed` 是内部存档字段，不要在物品预制体中设置。
+删除了独立 `AmmoPackage`，不提供旧组件或旧机器存档迁移。开发测试需要重新放置机器与弹药包。
 
-弹匣使用现有 `<VirtualizedMagazine AllowedAmmoTags="your_ammo_tag" />`，
-并添加 `vcevirtualmagazine` tag，以便放入示例机器。弹匣应使用 `maxstacksize="1"`。
-上述两个 tag 只用于示例机器的容器过滤，其他模组可换成自己的 Containable 条件；
-实际兑换和装填仍检查对应组件。
+## 行为与验证
 
-`XML/Items.xml` 定义了可在编辑器机械分类中放置的 `vceammoloader`，
-随 VCE 默认加载，中文名称为“通用装弹机”。
-没有添加购买、制造配方或替换已有机器。
-`.Test/AmmoLoaderItems.xml` 提供 30 发测试弹匣、120 发普通霰弹包和 24 发钝头弹包，
-随现有可选依赖 `VCELOCALTESTPKG` 的测试内容加载。
-
-## 行为
-
-- 弹药包放入后由服务端/单机逻辑每 0.25 秒扫描入库；兑换标记与库存一起存档，
-  等待删除的包不会重复兑换。编辑器非试航状态不会消耗弹药包。
-- 库存按具体弹种 ID 聚合保存；缺少弹药模组时保留原 ID 和数量。
-  无效库存存档保留原 XML，并停用机器，避免静默清空。
-- 放入弹匣后，库存与预设仅显示兼容项；空槽显示全部。
-  实际弹序只读，装填检查显示“需求 / 库存”。
-- 编排从上到下表示出膛顺序。相邻同弹种合并，支持改数量、上下移动、删除。
-  加载预设只改编排；覆盖未保存编排需要再按一次加载。
-- 完整计划一次完成装填；要求空弹匣，先检查容量、兼容性和全部库存。
-  卸弹直接返还机器库存。第一版没有装填计时、耗电和中途停止任务。
-- 单次计划最多 96 段、4096 发，保持客户端请求小于游戏事件预算。
-  库存与弹匣状态分段同步，服务端重验访问权限、目标实体和机器版本。
-- 玩家预设保存在游戏单机存档目录下的 `VCE/AmmoLoaderPresets.json`，
-  支持保存、删除、排序。已有 MagazinePrefab 作为只读模组预设。
-  写入使用临时文件替换；损坏的预设文件不会自动覆盖。
-- 弹匣恢复字段现在替换原序列，重复恢复不会追加子弹；弹匣自身同步弹序，
-  不依赖它是否仍在机器中。射击、工厂装填、合并等现有更新路径均发送状态。
-
-## 验证
+完整计划要求空弹匣，原子检查容量、兼容性和库存；卸弹直接回库。
+相邻同弹种合并，支持分组/逐发拖拽与删除、预设保存/排序、兼容项过滤和弹药图标。
+库存按具体弹种 ID 保存，未知弹种保留；无效库存数据保留原 XML 并禁用后端。
+请求最多 96 段、4096 发；服务端校验访问权限、目标实体、库存版本及数量。
 
 ```powershell
-dotnet build CsProjectSource/ClientProject/WindowsClient.csproj -c Release
-dotnet build CsProjectSource/ServerProject/WindowsServer.csproj -c Release
 dotnet run --project .Test/AmmoLoaderRegression/AmmoLoaderRegression.csproj
 dotnet run --project .Test/AmmoLoaderNetworkRegression/ClientNetwork.csproj
 dotnet run --project .Test/AmmoLoaderNetworkRegression/ServerNetwork.csproj
@@ -84,15 +74,10 @@ dotnet run --project .Test/PluginLoadRegression/PluginLoadRegression.csproj -- S
 dotnet run --project .Test/AmmoLoaderDragRegression/AmmoLoaderDragRegression.csproj
 ```
 
-离线检查编译实际库存、装填逻辑与服务端请求处理器，游戏 API 使用桩对象。
-覆盖数量守恒、缺弹/溢出时原子拒绝、混装顺序、存档重复恢复、未知弹种保留、
-重复投料/请求、权限与目标校验、外部组件抛错回滚和状态分段大小。
-弹匣网络测试编译实际的客户端/服务端同步代码，检查分段、乱序、旧状态拒绝、空匣、
-射击后的状态更新，以及中途加入时生成的状态。
-插件加载检查使用 .NET 9，从模组根目录运行，直接调用本机游戏 DLL 的插件加载器，
-核对六种平台/运行端的主程序集清单及 SWR、弹匣、装弹机、弹药包的实际注册结果。
-界面回归使用真实游戏 DLL，检查三种分辨率下拖动方向/边界，以及清空后重新输入多位发数。
-2026-11-07 单机编辑器试航已验证居中与四向拖动、弹药包投料、弹匣拖放、多位数量输入、
-编排调序、20 发普通霰弹 + 10 发橡胶弹混装及库存扣减、卸弹全额返还、超容量禁用装填，
-以及预设保存/清空/加载、覆盖提示清除和游戏重启后的预设读取。
-仍需验证机器库存与弹匣的存档重载、真实射击，以及双客户端争用和中途加入。
+库存、装卸与网络回归编译实际后端代码，游戏边界使用桩对象；UI 回归直接加载本机游戏 DLL。
+插件加载回归使用真实游戏插件加载器，核对单个装弹机组件的注册、网络接口及 XML 配置。
+构建覆盖 Windows/Linux/Mac 的 Client/Server。以上离线检查不等于游戏内试航或双客户端验证。
+2026-11-07 实机验证通过：投料过滤、分组/逐发编排、预设保存与加载、混装和卸弹数量守恒、
+超容量/缺弹/非空弹匣拒绝、测试潜艇存档重载，以及通过武器 `Item.Use` 逐发核对六发混装弹序与消耗。
+独立本机服务端与一个客户端的装卸同步、断线重连通过，使用 LuaCs、VCE、测试包的最小模组组合。
+完整模组组合的联机回合在 EA-HI 角色物品栏同步时报数组越界；双客户端争用、公网延迟和战役跨关仍未验证。

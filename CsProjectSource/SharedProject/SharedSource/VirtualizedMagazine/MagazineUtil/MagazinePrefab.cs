@@ -89,6 +89,24 @@ namespace VCE_VirtualizedMagazine
 
         }
 
+        public Identifier[] CreateAmmoArray(int capacity)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(capacity);
+            int takeEnd = Math.Min(EndSection.Count, capacity);
+            int takeStart = Math.Min(StartSection.Count, capacity - takeEnd);
+            int space = capacity - takeEnd - takeStart;
+            var result = new List<Identifier>(capacity);
+            result.AddRange(EndSection.Take(takeEnd));
+            if (MainSection.Count > 0 && space > 0)
+            {
+                result.AddRange(AutoRepeat
+                    ? Enumerable.Range(0, space).Select(i => MainSection[i % MainSection.Count])
+                    : MainSection.Take(space));
+            }
+            result.AddRange(StartSection.Take(takeStart));
+            return result.ToArray();
+        }
+
         private void ParseAmmoData(ContentXElement element,List<Identifier> datalist)
         {
             Identifier projectileid = element.GetAttributeIdentifier("ProjectileIdentifier", Identifier.Empty);

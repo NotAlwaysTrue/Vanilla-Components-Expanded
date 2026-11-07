@@ -98,7 +98,6 @@ namespace VCE_VirtualizedMagazine
             }
             set
             {
-                LoadedAmmoIdentifiers.Clear();
                 var data = value.ToList();
                 LoadAmmoArray(ref data);
             }
@@ -167,8 +166,7 @@ namespace VCE_VirtualizedMagazine
             List<Identifier> outarray = new();
             foreach (var id in inarray)
             {
-                var prefab = ElementHelper.GetItemPrefab(id);
-                if (prefab != null && (AllowedAmmoTags.Count == 0 || PrefabHasTag(prefab, AllowedAmmoTags)) && LoadedAmmoIdentifiers.Count < MaxSize)
+                if (IsAmmoCompatible(id) && LoadedAmmoIdentifiers.Count < MaxSize)
                 {
                     LoadedAmmoIdentifiers.Push(id);
 
@@ -184,6 +182,10 @@ namespace VCE_VirtualizedMagazine
         }
 
         public void PushAmmoArray(ref List<Identifier> inarray) => LoadAmmoArray(ref inarray);
+
+        public bool IsAmmoCompatible(Identifier id) =>
+            ElementHelper.GetItemPrefab(id) is { } prefab &&
+            (AllowedAmmoTags.Count == 0 || PrefabHasTag(prefab, AllowedAmmoTags));
 
         public override void Update(float deltaTime, Camera cam)
         {

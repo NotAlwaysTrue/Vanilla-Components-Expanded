@@ -23,8 +23,11 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
     public int TargetContainerIndex { get; set; }
 
     public VirtualizedMagazine? Target => targetContainer?.Inventory?.GetItemAt(0)?.GetComponent<VirtualizedMagazine>();
+    public ItemContainer? InputContainer => inputContainer;
+    public ItemContainer? TargetContainer => targetContainer;
+    public uint StateRevision => revision;
     private bool IsAuthority => GameMain.NetworkMember is not { IsClient: true };
-    private bool Ready => invalidStock == null && inputContainer != null && targetContainer != null &&
+    public bool Ready => invalidStock == null && inputContainer != null && targetContainer != null &&
         inputContainer != targetContainer && Item.Condition > 0;
 
     public AmmoLoader(Item item, ContentXElement element) : base(item, element)
@@ -49,16 +52,10 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
     partial void InitClient();
 
     public static bool IsProjectile(string id) =>
-        ItemPrefab.Prefabs.TryGet(id.ToIdentifier(), out var prefab) &&
-        prefab.ConfigElement.Elements().Any(e => e.Name.ToString().Equals("Projectile", StringComparison.OrdinalIgnoreCase));
+        ElementHelper.GetFirstComponentElementByID<Projectile>(id.ToIdentifier()) != null;
 
-    public static bool IsCompatible(VirtualizedMagazine? magazine, string id)
-    {
-        if (!IsProjectile(id)) { return false; }
-        var prefab = (ItemPrefab)ItemPrefab.FindByIdentifier(id.ToIdentifier());
-        return magazine == null || magazine.AllowedAmmoTags.Count == 0 ||
-            VirtualizedMagazine.PrefabHasTag(prefab, magazine.AllowedAmmoTags);
-    }
+    public static bool IsCompatible(VirtualizedMagazine? magazine, string id) =>
+        IsProjectile(id) && (magazine == null || magazine.IsAmmoCompatible(id.ToIdentifier()));
 
     public override void Update(float deltaTime, Camera cam)
     {
@@ -74,13 +71,15 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         {
             foreach (var source in inputContainer!.Inventory.AllItems.ToArray())
             {
-                var package = source.GetComponent<AmmoPackage>();
+                var package = source.GetComponent<VirtualizedAmmoStorage>();
                 if (package == null || source.Removed || source.IsInRemoveQueue) { continue; }
-                if (package.Redeemed) { spawner.AddItemToRemoveQueue(source); continue; }
-                string id = package.ProjectileIdentifier.Value;
-                if (source.Condition <= 0 || !IsProjectile(id) || source.ContainedItems.Any()) { continue; }
-                if (!Stock.TryAdd(new Dictionary<string, int> { [id] = package.Amount })) { continue; }
-                package.Redeemed = true;
+                string id = package.AmmoIdentifier.Value;
+                if (!IsProjectile(id) || source.ContainedItems.Any()) { continue; }
+                if (source.Condition <= 0) { spawner.AddItemToRemoveQueue(source); continue; }
+                int amount = (int)source.Condition;
+                if (!Stock.TryAdd(new Dictionary<string, int> { [id] = amount })) { continue; }
+                // Zero the saved VCE storage before queuing removal, so it cannot be deposited twice.
+                source.Condition = 0;
                 spawner.AddItemToRemoveQueue(source);
                 changed = true;
             }
@@ -148,9 +147,7 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
     private static void RestoreMagazine(VirtualizedMagazine magazine, Identifier[] rounds)
     {
         magazine.LoadedAmmoIdentifiers.Clear();
-        foreach (var id in rounds) { magazine.LoadedAmmoIdentifiers.Push(id); }
-        magazine.Item.Condition = rounds.Length;
-        try { magazine.UpdateAmmoData(); }
+        try { magazine.LoadedAmmoIdentifiersArray = rounds; }
         catch (Exception e)
         {
             VanillaComponentsExpanded.VCEPlugin.DebugConsole.AddWarning($"AmmoLoader restored rounds; projectile refresh failed: {e.Message}");

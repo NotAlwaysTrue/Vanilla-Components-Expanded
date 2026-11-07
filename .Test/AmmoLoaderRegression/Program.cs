@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using VCE_VirtualizedMagazine;
 using VCE.AmmoLoading;
 
 int checks = 0;
@@ -79,13 +80,12 @@ var magItem = new Item(20, bulletA);
 var mag = new VCE_VirtualizedMagazine.VirtualizedMagazine(magItem);
 magItem.Components.Add(mag);
 targetSlot.Inventory.AllItems.Add(magItem);
-var packItem = new Item(30, bulletA);
-var pack = new AmmoPackage(packItem, new(new XElement("AmmoPackage")))
-    { ProjectileIdentifier = "a".ToIdentifier(), Amount = 120 };
+var packItem = new Item(30, bulletA) { Condition = 120, MaxCondition = 120 };
+var pack = new VirtualizedAmmoStorage(packItem, new(XElement.Parse("<VirtualizedAmmoStorage ProjectileIdentifier='a' />")));
 packItem.Components.Add(pack);
 intake.Inventory.AllItems.Add(packItem);
 loader.Update(1, new Camera());
-Check(loader.Stock["a"] == 120 && pack.Redeemed && packItem.IsInRemoveQueue, "deposit marks package before deletion");
+Check(loader.Stock["a"] == 120 && packItem.Condition == 0 && packItem.IsInRemoveQueue, "deposit drains VCE storage before deletion");
 packItem.IsInRemoveQueue = false;
 loader.Update(1, new Camera());
 Check(loader.Stock["a"] == 120 && packItem.IsInRemoveQueue, "queued/saved package cannot redeem twice");
@@ -140,3 +140,15 @@ foreach (var data in machine.Events)
     Check(msg.Length < 1024, "snapshot page exceeds game event budget");
 }
 Console.WriteLine($"Ammo loader including actual server handler: {checks} checks passed (game boundary stubbed).");
+
+var partialPackItem = new Item(31, bulletA) { Condition = 7, MaxCondition = 120 };
+partialPackItem.Components.Add(new VirtualizedAmmoStorage(partialPackItem,
+    new(XElement.Parse("<VirtualizedAmmoStorage ProjectileIdentifier='a' />"))));
+var unrelatedItem = new Item(32, bulletA);
+intake.Inventory.AllItems.AddRange([partialPackItem, unrelatedItem]);
+int beforeDeposit = loader.Stock["a"];
+loader.Update(1, new Camera());
+Check(loader.Stock["a"] == beforeDeposit + 7 && partialPackItem.Condition == 0,
+    "existing partially used VCE storage deposits its remaining rounds, not its capacity");
+Check(!unrelatedItem.IsInRemoveQueue && unrelatedItem.Condition == 100, "intake ignores items without VCE storage");
+Console.WriteLine($"Backend including existing VCE storage: {checks} checks passed.");

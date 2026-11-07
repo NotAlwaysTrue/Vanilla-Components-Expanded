@@ -47,6 +47,7 @@ public partial class VirtualizedMagazine
         receivedPages[offset / RoundsPerPage] = true;
         if (receivedPages.All(p => p))
         {
+            LoadedAmmoIdentifiers.Clear();
             LoadedAmmoIdentifiersArray = pendingAmmo;
             receivedAmmoState = true;
         }

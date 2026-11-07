@@ -41,11 +41,25 @@ var contentPath = pathFactory.Invoke(null, new[] { package, Path.Combine(root, "
 var plugin = Activator.CreateInstance(Type("PluginInfoFile"), all, null, new[] { package, contentPath }, null)!;
 Type("PluginInfoFile").GetMethod("LoadFile", all)!.Invoke(plugin, null);
 var loadedData = (IEnumerable)Type("PluginData").GetField("LoadedPluginData", all)!.GetValue(null)!;
-var components = loadedData.Cast<object>().SelectMany(data =>
+var componentTypes = loadedData.Cast<object>().SelectMany(data =>
     ((IEnumerable)Type("PluginData").GetField("ItemComponents", all)!.GetValue(data)!).Cast<Type>())
-    .Select(type => type.Name).ToHashSet();
-foreach (string component in new[] { "SwitchableRangedWeapon", "VirtualizedMagazine", "AmmoLoader", "AmmoPackage" })
+    .ToArray();
+var components = componentTypes.Select(type => type.Name).ToHashSet();
+foreach (string component in new[] { "SwitchableRangedWeapon", "VirtualizedMagazine", "VirtualizedAmmoStorage", "AmmoLoader" })
 {
     if (!components.Contains(component)) { throw new Exception($"Not registered: {component}"); }
 }
-Console.WriteLine($"Real {target} plugin loader: SWR, magazine, AmmoLoader and AmmoPackage registered; all six manifest variants valid.");
+if (components.Contains("AmmoPackage") || components.Contains("VirtualizedAmmoLoader"))
+{ throw new Exception("A redundant ammo package or loader component is still registered."); }
+foreach (string contract in new[] { "IServerSerializable", "IClientSerializable" })
+{
+    if (!componentTypes.Single(t => t.Name == "AmmoLoader").GetInterfaces().Any(t => t.Name == contract))
+    { throw new Exception($"The single AmmoLoader component must implement {contract}."); }
+}
+var loaderItem = XDocument.Load(Path.Combine(root, "XML/Items.xml")).Descendants("Item")
+    .Single(e => (string?)e.Attribute("identifier") == "vceammoloader");
+var loaderConfig = loaderItem.Elements("AmmoLoader").Single();
+if (loaderItem.Element("VirtualizedAmmoLoader") != null || (int?)loaderConfig.Attribute("inputcontainerindex") != 0 ||
+    (int?)loaderConfig.Attribute("targetcontainerindex") != 1 || loaderConfig.Element("GuiFrame") == null)
+{ throw new Exception("Loader XML must bind both containers and the UI on a single AmmoLoader component."); }
+Console.WriteLine($"Real {target} plugin loader: SWR, magazine, VCE storage and single AmmoLoader registered; XML and all six manifest variants valid.");

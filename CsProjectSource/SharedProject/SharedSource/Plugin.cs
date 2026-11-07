@@ -30,7 +30,7 @@ public partial class VCEPlugin : IBarotraumaPlugin
     {
         typeof(SwitchableRangedWeapon), typeof(BackpackFedWeapon), typeof(TrajectoryCalculator),
         typeof(VirtualizedMagazine), typeof(VirtualizedMagazineFactory), typeof(VirtualizedMagazineLoader), typeof(VirtualizedProjectile), typeof(VirtualizedAmmoStorage),
-        typeof(ActiveProtectionSystem), typeof(AmmoLoader), typeof(AmmoPackage)
+        typeof(ActiveProtectionSystem), typeof(AmmoLoader)
     };
 
     public void Init()

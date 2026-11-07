@@ -121,38 +121,7 @@ namespace VCE_VirtualizedMagazine
         private static void LoadAmmoForItem(Item item, MagazinePrefab prefab)
         {
             var vm = item.GetComponent<VirtualizedMagazine>();
-
-            var end = prefab.EndSection;
-            var start = prefab.StartSection;
-            var main = prefab.MainSection;
-            var n = (int)item.MaxCondition;
-
-            int takeEnd = Math.Min(end.Count, n);
-            int takeStart = Math.Min(start.Count, n - takeEnd);
-            int space = n - takeEnd - takeStart;
-
-            var result = new List<Identifier>(n);
-
-            result.AddRange(end.Take(takeEnd));
-
-            if (main.Count > 0 && space > 0)
-            {
-                if (prefab.AutoRepeat)
-                {
-                    for (int i = 0; i < space; i++)
-                    {
-                        result.Add(main[i % main.Count]);
-                    }
-                }
-                else
-                {
-                    result.AddRange(main.Take(space));
-                }
-            }
-
-            result.AddRange(start.Take(takeStart));
-
-            vm.LoadedAmmoIdentifiersArray = result.ToArray();
+            vm.LoadedAmmoIdentifiersArray = prefab.CreateAmmoArray(vm.MaxSize);
         }
     }
 }

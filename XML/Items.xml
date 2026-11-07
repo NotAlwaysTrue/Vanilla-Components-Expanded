@@ -87,7 +87,7 @@
   </Item>
   <Item identifier="vceammoloader" name="" category="Machine" tags="vceammoloader,donttakeitems,dontsellitems" scale="0.5">
     <Sprite texture="Content/Items/Fabricators/FabricatorsAndDeconstructors.png" sourcerect="0,624,336,400" depth="0.8" />
-    <AmmoLoader canbeselected="true" msg="ItemMsgInteractSelect" inputcontainerindex="0" targetcontainerindex="1">
+    <AmmoLoader inputcontainerindex="0" targetcontainerindex="1" canbeselected="true" msg="ItemMsgInteractSelect">
       <GuiFrame relativesize="0.75,0.78" minsize="900,600" anchor="Center" style="ItemUI" />
     </AmmoLoader>
     <ItemContainer capacity="6" slotsperrow="6" maxstacksize="1" canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">

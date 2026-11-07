@@ -41,6 +41,46 @@ Check(mag.LoadedCount == 1 && mag.LoadedAmmoIdentifiers.Peek() == a.Identifier, 
 Receive(4, 0, 0, []);
 Check(mag.LoadedCount == 0, "empty magazine sync");
 Console.WriteLine($"Actual magazine client network: {checks} checks passed (game boundary stubbed).");
+
+GameMain.Client = new();
+var machine = new Item(2, a);
+var intake = new ItemContainer(machine, 6);
+var target = new ItemContainer(machine, 1);
+var loader = new VCE.AmmoLoading.AmmoLoader(machine, new(new System.Xml.Linq.XElement("AmmoLoader"))) { TargetContainerIndex = 1 };
+machine.Components.AddRange([intake, target, loader]);
+target.Inventory.AllItems.Add(item);
+loader.OnItemLoaded();
+loader.UpdateClientState(1);
+Check(!loader.IsSynchronized && machine.Requests.Count == 1, "backend requests its initial stock without a UI");
+void ReceiveStock(uint revision, int index, int count, string data)
+{
+    var packet = new Message();
+    packet.WriteUInt32(revision); packet.WriteInt32(index); packet.WriteInt32(count); packet.WriteString(data);
+    loader.ClientEventRead(packet.Rewind(), 0);
+}
+ReceiveStock(0, 1, 2, "\"a\":120,\"b\":24}}");
+Check(!loader.IsSynchronized && loader.Stock.Counts.Count == 0, "partial backend stock is not exposed");
+ReceiveStock(0, 0, 2, "{\"Revision\":0,\"Stock\":{");
+Check(loader.IsSynchronized && loader.Stock["a"] == 120 && loader.Stock["b"] == 24, "backend publishes a complete initial stock even at revision zero");
+ReceiveStock(1, 0, 1, "{\"Revision\":1,\"Stock\":{\"a\":90}}");
+ReceiveStock(0, 0, 1, "{\"Revision\":0,\"Stock\":{\"a\":120}}");
+Check(loader.StateRevision == 1 && loader.Stock["a"] == 90, "stale stock cannot overwrite the backend snapshot");
+loader.RequestLoad([new("a", 2)]);
+var loadRequest = new Message();
+loader.ClientEventWrite(loadRequest, new NetEntityEvent.Wrapper(machine.Requests[^1]));
+loadRequest.Rewind();
+Check(loadRequest.ReadByte() == 1 && loadRequest.ReadUInt32() == 1 && loadRequest.ReadUInt16() == item.ID &&
+    loadRequest.ReadByte() == 1 && loadRequest.ReadUInt32() == a.UintIdentifier && loadRequest.ReadUInt16() == 2,
+    "public load API owns the command encoding and observed target/revision");
+int requests = machine.Requests.Count;
+loader.RequestLoad(Enumerable.Repeat(new VCE.AmmoLoading.AmmoRun("a", 1), 256).ToArray());
+Check(machine.Requests.Count == requests, "public API rejects plans that cannot be encoded safely");
+loader.RequestUnload();
+var unloadRequest = new Message();
+loader.ClientEventWrite(unloadRequest, new NetEntityEvent.Wrapper(machine.Requests[^1]));
+unloadRequest.Rewind();
+Check(unloadRequest.ReadByte() == 2, "unload API sends the backend command");
+Console.WriteLine($"Actual magazine and loader client network: {checks} checks passed (game boundary stubbed).");
 #else
 mag.LoadedAmmoIdentifiersArray = Enumerable.Range(0, 300).Select(i => i % 2 == 0 ? a.Identifier : b.Identifier).ToArray();
 Check(item.Events.Count == 3, "large magazines are paged");

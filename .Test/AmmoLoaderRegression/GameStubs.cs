@@ -1,4 +1,4 @@
-// Only the game boundary is stubbed; tests compile the actual loader and server command handler.
+// Game and magazine boundaries are stubbed; stock, storage and loader handlers use production code.
 global using Barotrauma;
 global using Barotrauma.Items.Components;
 global using Barotrauma.Networking;
@@ -6,7 +6,11 @@ using System.Xml.Linq;
 
 namespace Barotrauma
 {
-    public readonly record struct Identifier(string Value) { public static Identifier Empty => new(""); }
+    public readonly record struct Identifier(string Value)
+    {
+        public static Identifier Empty => new("");
+        public bool IsEmpty => string.IsNullOrEmpty(Value);
+    }
     public static class Identifiers { public static Identifier ToIdentifier(this string id) => new(id); }
     public enum IsPropertySaveable { No, Yes }
     public sealed class SerializeAttribute : Attribute
@@ -18,12 +22,21 @@ namespace Barotrauma
         public XElement Element = element;
         public XName Name => Element.Name;
         public IEnumerable<ContentXElement> Elements() => Element.Elements().Select(e => new ContentXElement(e));
+        public Identifier GetAttributeIdentifier(string name, Identifier fallback) =>
+            Element.Attributes().FirstOrDefault(a => a.Name.LocalName.Equals(name, StringComparison.OrdinalIgnoreCase)) is { } attribute
+                ? attribute.Value.ToIdentifier() : fallback;
     }
     public sealed class IdRemap { }
     public sealed class Camera { }
     public static class Timing { public static double TotalTime; }
     public sealed class NetworkMember { public bool IsClient; }
-    public static class GameMain { public static object? Server = new(); public static NetworkMember? NetworkMember; }
+    public static class GameMain
+    {
+        public static object? Server = new(), Client;
+        public static NetworkMember? NetworkMember;
+        public static object SubEditorScreen = new();
+    }
+    public static class Screen { public static object? Selected; }
     public sealed class Prefabs
     {
         public readonly List<ItemPrefab> Values = [];
@@ -48,6 +61,7 @@ namespace Barotrauma
         public ushort ID = id;
         public ItemPrefab Prefab = prefab;
         public float Condition = 100;
+        public float MaxCondition = 100;
         public bool Removed, IsInRemoveQueue;
         public readonly List<ItemComponent> Components = [];
         public readonly List<Item> ContainedItems = [];
@@ -83,7 +97,7 @@ namespace Barotrauma.Items.Components
         public interface IEventData { }
         public virtual void OnItemLoaded() { }
         public virtual void Update(float dt, Camera cam) { }
-        public virtual XElement Save(XElement parent) { var saved = new XElement("AmmoLoader"); parent.Add(saved); return saved; }
+        public virtual XElement Save(XElement parent) { var saved = new XElement(GetType().Name); parent.Add(saved); return saved; }
         public virtual void Load(ContentXElement element, bool usePrefabValues, IdRemap remap, bool swap) { }
         public virtual IEventData ServerGetEventData() => null!;
         public virtual bool ValidateEventData(NetEntityEvent.IData data) => true;
@@ -98,6 +112,7 @@ namespace Barotrauma.Items.Components
     {
         public readonly ItemInventory Inventory = new(capacity);
     }
+    public sealed class Projectile(Item item, ContentXElement element) : ItemComponent(item, element) { }
 }
 
 namespace Barotrauma.Networking
@@ -142,6 +157,14 @@ namespace Barotrauma.Networking
 
 namespace VCE_VirtualizedMagazine
 {
+    public static class ElementHelper
+    {
+        public static ContentXElement? GetFirstComponentElementByID<T>(Identifier id) where T : ItemComponent =>
+            ItemPrefab.Prefabs.TryGet(id, out var prefab)
+                ? prefab.ConfigElement.Elements().FirstOrDefault(e => e.Name.LocalName.Equals(typeof(T).Name, StringComparison.OrdinalIgnoreCase))
+                : null;
+    }
+
     public sealed partial class VirtualizedMagazine(Item item) : ItemComponent(item, new(new XElement("VirtualizedMagazine")))
     {
         public readonly Stack<Identifier> LoadedAmmoIdentifiers = new();
@@ -152,9 +175,11 @@ namespace VCE_VirtualizedMagazine
         public Identifier[] LoadedAmmoIdentifiersArray
         {
             get => LoadedAmmoIdentifiers.Reverse().ToArray();
-            set { LoadedAmmoIdentifiers.Clear(); foreach (var id in value) { LoadedAmmoIdentifiers.Push(id); } UpdateAmmoData(); }
+            set { foreach (var id in value) { LoadedAmmoIdentifiers.Push(id); } UpdateAmmoData(); }
         }
         public static bool PrefabHasTag(ItemPrefab prefab, IEnumerable<Identifier> tags) => tags.Any(prefab.Tags.Contains);
+        public bool IsAmmoCompatible(Identifier id) => ItemPrefab.Prefabs.TryGet(id, out var prefab) &&
+            (AllowedAmmoTags.Count == 0 || PrefabHasTag(prefab, AllowedAmmoTags));
         public void LoadAmmoArray(ref List<Identifier> list)
         {
             foreach (var id in list) { LoadedAmmoIdentifiers.Push(id); }
@@ -182,6 +207,11 @@ namespace VanillaComponentsExpanded
     public static class VCEPlugin
     {
         public static readonly Log DebugConsole = new();
-        public sealed class Log { public void AddWarning(string message) { } }
+        public sealed class Log : Barotrauma.Plugins.IDebugConsole { public void AddWarning(string message) { } }
     }
+}
+
+namespace Barotrauma.Plugins
+{
+    public interface IDebugConsole { void AddWarning(string message); }
 }

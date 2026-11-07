@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Barotrauma.Networking;
-using VCE_VirtualizedMagazine;
 
 namespace VCE.AmmoLoading;
 
@@ -11,18 +10,35 @@ public sealed partial class AmmoLoader
     private bool hasSnapshot;
     private float refreshTimer;
 
+    public bool IsSynchronized => GameMain.Client == null || (hasSnapshot && pages.All(p => p != null));
+
+    public void UpdateClientState(float deltaTime)
+    {
+        refreshTimer -= deltaTime;
+        if (GameMain.Client != null && refreshTimer <= 0 && !IsSynchronized)
+        {
+            refreshTimer = 2;
+            Send(Command.Refresh);
+        }
+    }
+
+    public void RequestLoad(AmmoRun[] plan)
+    {
+        if (!IsSynchronized || !AmmoPlan.IsValid(plan, Target?.MaxSize ?? 0)) { return; }
+        Send(Command.Load, plan);
+    }
+    public void RequestUnload() => Send(Command.Unload);
+
     public override bool ValidateEventData(NetEntityEvent.IData data) => TryExtractEventData<Request>(data, out _);
 
     private void Send(Command command, AmmoRun[]? plan = null)
     {
-        if (command != Command.Refresh) { message = ""; }
         if (GameMain.Client != null)
         {
             Item.CreateClientEvent(this, new Request(command, revision, Target?.Item.ID ?? 0, plan ?? []));
         }
         else if (command == Command.Load) { TryLoad(plan ?? [], Target?.Item.ID ?? 0); }
         else if (command == Command.Unload) { TryUnload(Target?.Item.ID ?? 0); }
-        uiDirty = true;
     }
 
     public void ClientEventWrite(IWriteMessage msg, NetEntityEvent.IData extraData = null!)
@@ -63,6 +79,5 @@ public sealed partial class AmmoLoader
         Stock = restored;
         revision = snapshot.Revision;
         hasSnapshot = true;
-        uiDirty = true;
     }
 }

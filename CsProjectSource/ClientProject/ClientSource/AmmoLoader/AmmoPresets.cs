@@ -65,19 +65,8 @@ internal static class AmmoPresets
                 .Any(id => !AmmoLoader.IsCompatible(target, id.Value))) { continue; }
             int size = Math.Min(target?.MaxSize ?? (prefab.StartSection.Count + prefab.MainSection.Count + prefab.EndSection.Count),
                 AmmoPlan.MaxRounds);
-            var bottomFirst = prefab.EndSection.Take(size).ToList();
-            int startCount = Math.Min(prefab.StartSection.Count, size - bottomFirst.Count);
-            int mainCount = size - bottomFirst.Count - startCount;
-            if (prefab.MainSection.Count > 0)
-            {
-                bottomFirst.AddRange(prefab.AutoRepeat
-                    ? Enumerable.Range(0, mainCount).Select(i => prefab.MainSection[i % prefab.MainSection.Count])
-                    : prefab.MainSection.Take(mainCount));
-            }
-            bottomFirst.AddRange(prefab.StartSection.Take(startCount));
-            bottomFirst.Reverse();
             yield return new AmmoPreset(prefab.DisplayName?.Value ?? prefab.Identifier.Value,
-                AmmoPlan.Compact(bottomFirst.Select(id => id.Value)).ToArray(), true);
+                AmmoPlan.Compact(prefab.CreateAmmoArray(size).Reverse().Select(id => id.Value)).ToArray(), true);
         }
     }
 }
