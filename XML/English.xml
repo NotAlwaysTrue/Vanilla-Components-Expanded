@@ -12,14 +12,12 @@
   <entityname.vceluacomponent>Lua Component</entityname.vceluacomponent>
   <entitydescription.vceluacomponent>Using Lua script for embedded programming.</entitydescription.vceluacomponent>
   <entityname.vceammoloader>Universal Ammo Loader</entityname.vceammoloader>
-  <entitydescription.vceammoloader>Stores ammunition packages and loads VCE virtual magazines in the selected firing order.</entitydescription.vceammoloader>
+  <entitydescription.vceammoloader>Stores ammunition packages and loads magazines in the selected firing order.</entitydescription.vceammoloader>
   <vce.ammoloader.title>Universal ammo loader</vce.ammoloader.title>
   <vce.ammoloader.presets>Presets</vce.ammoloader.presets>
   <vce.ammoloader.plan>Sequence</vce.ammoloader.plan>
   <vce.ammoloader.actual>Magazine contents</vce.ammoloader.actual>
   <vce.ammoloader.loadpreset>Load preset</vce.ammoloader.loadpreset>
-  <vce.ammoloader.up>↑</vce.ammoloader.up>
-  <vce.ammoloader.down>↓</vce.ammoloader.down>
   <vce.ammoloader.delete>×</vce.ammoloader.delete>
   <vce.ammoloader.topfirst>Top to bottom: firing order. Fill remaining space; new rounds fire first, excess stays in stock.</vce.ammoloader.topfirst>
   <vce.ammoloader.savepreset>Save preset</vce.ammoloader.savepreset>

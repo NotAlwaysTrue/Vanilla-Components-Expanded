@@ -105,7 +105,7 @@ public sealed partial class AmmoLoader
         var preview = new GUILayoutGroup(new RectTransform(new Point(planColumns.Rect.Width - arrangementWidth - listInset, planColumns.Rect.Height), planColumns.RectTransform)) { RelativeSpacing = 0.015f };
         planLabel = Label(preview, "", 0.06f);
         previewList = List(preview, 0.92f);
-        previewList.ToolTip = $"{L("topfirst")}\n{L("dragorder")}";
+        previewList.ToolTip = L("topfirst");
         previewList.CurrentDragMode = GUIListBox.DragMode.DragWithinBox;
         previewList.CurrentSelectMode = GUIListBox.SelectMode.None;
         previewList.CanTakeKeyBoardFocus = false;
