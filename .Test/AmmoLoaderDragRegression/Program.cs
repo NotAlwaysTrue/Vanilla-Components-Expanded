@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Xml.Linq;
 using Barotrauma;
+using Barotrauma.Items.Components;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using VCE.AmmoLoading;
@@ -97,6 +98,72 @@ static void Run()
     { throw new Exception("Drag reorder did not merge adjacent rounds while conserving ammunition."); }
     draft.Clear();
     Console.WriteLine("PASS: drag reorder moves groups in both directions, rejects stale indices and merges adjacent ammunition.");
+    var reorderRounds = typeof(AmmoLoader).GetMethod("ReorderRounds", fields)!;
+    void RoundOrder(params int[] order) => reorderRounds.Invoke(loader, new object[] { order });
+    var originalPlan = new[] { new AmmoRun("normal", 18), new AmmoRun("ap", 10), new AmmoRun("tracer", 2) };
+    draft.AddRange(originalPlan);
+    var swapBoundaryRounds = Enumerable.Range(0, 17).Concat(new[] { 18, 17 }).Concat(Enumerable.Range(19, 11)).ToArray();
+    RoundOrder(swapBoundaryRounds);
+    if (!draft.SequenceEqual(new[] { new AmmoRun("normal", 17), new AmmoRun("ap", 1),
+        new AmmoRun("normal", 1), new AmmoRun("ap", 9), new AmmoRun("tracer", 2) }))
+    { throw new Exception("Moving one AP round did not split and update the grouped draft."); }
+    RoundOrder(swapBoundaryRounds);
+    if (!draft.SequenceEqual(originalPlan)) { throw new Exception("Moving the round back did not merge the adjacent groups."); }
+    var originalRounds = AmmoPlan.Expand(draft).ToArray();
+    RoundOrder(new[] { 29 }.Concat(Enumerable.Range(0, 29)).ToArray());
+    if (!AmmoPlan.Expand(draft).SequenceEqual(new[] { originalRounds[^1] }.Concat(originalRounds.Take(29))))
+    { throw new Exception("Dragging a round to the beginning changed the other rounds' firing order."); }
+    RoundOrder(Enumerable.Range(1, 29).Append(0).ToArray());
+    if (!draft.SequenceEqual(originalPlan)) { throw new Exception("Dragging the round back did not restore the original plan."); }
+    RoundOrder(0, 1);
+    RoundOrder(Enumerable.Repeat(0, 30).ToArray());
+    RoundOrder(Enumerable.Range(0, 29).Append(30).ToArray());
+    RoundOrder(Enumerable.Range(0, 29).Append(-1).ToArray());
+    if (!draft.SequenceEqual(originalPlan)) { throw new Exception("An invalid or stale per-round edit modified the plan."); }
+    draft.Clear();
+    for (int i = 0; i < AmmoPlan.MaxGroups; i++) { draft.Add(new AmmoRun(i % 2 == 0 ? "normal" : "ap", 2)); }
+    var beforeSplitLimit = draft.ToArray();
+    typeof(AmmoLoader).GetField("draftDirty", fields)!.SetValue(loader, false);
+    typeof(AmmoLoader).GetField("uiDirty", fields)!.SetValue(loader, false);
+    RoundOrder(new[] { 0, 2, 1 }.Concat(Enumerable.Range(3, AmmoPlan.MaxGroups * 2 - 3)).ToArray());
+    if (!draft.SequenceEqual(beforeSplitLimit) || (bool)typeof(AmmoLoader).GetField("draftDirty", fields)!.GetValue(loader)! ||
+        !(bool)typeof(AmmoLoader).GetField("uiDirty", fields)!.GetValue(loader)!)
+    { throw new Exception("An over-limit split changed the draft or failed to restore the displayed order."); }
+    draft.Clear();
+    draft.AddRange(new[] { new AmmoRun("normal", AmmoPlan.MaxRounds - 1), new AmmoRun("ap", 1) });
+    RoundOrder(Enumerable.Range(0, AmmoPlan.MaxRounds - 2).Concat(new[] { AmmoPlan.MaxRounds - 1, AmmoPlan.MaxRounds - 2 }).ToArray());
+    if (!draft.SequenceEqual(new[] { new AmmoRun("normal", AmmoPlan.MaxRounds - 2), new AmmoRun("ap", 1), new AmmoRun("normal", 1) }))
+    { throw new Exception("Editing the final round at maximum capacity lost or duplicated ammunition."); }
+    draft.Clear();
+    RoundOrder();
+    if (draft.Count != 0) { throw new Exception("A stale per-round callback restored a cleared plan."); }
+    Console.WriteLine("PASS: per-round drag splits and merges the draft, preserves firing order/counts, and rejects stale or over-limit edits.");
+    var removeRound = typeof(AmmoLoader).GetMethod("RemoveRound", fields)!;
+    void RemoveRound(int index) => removeRound.Invoke(loader, new object[] { index });
+    draft.AddRange(new[] { new AmmoRun("normal", 3), new AmmoRun("ap", 1), new AmmoRun("normal", 2), new AmmoRun("tracer", 2) });
+    RemoveRound(3);
+    if (!draft.SequenceEqual(new[] { new AmmoRun("normal", 5), new AmmoRun("tracer", 2) }))
+    { throw new Exception("Deleting a single intervening round did not merge the neighboring groups."); }
+    RemoveRound(0);
+    RemoveRound(5);
+    if (!draft.SequenceEqual(new[] { new AmmoRun("normal", 4), new AmmoRun("tracer", 1) }))
+    { throw new Exception("Deleting the first/last round removed the wrong ammunition or more than one round."); }
+    var beforeInvalidRemoval = draft.ToArray();
+    RemoveRound(-1);
+    RemoveRound(5);
+    RemoveRound(int.MaxValue);
+    if (!draft.SequenceEqual(beforeInvalidRemoval)) { throw new Exception("An invalid single-round deletion changed the draft."); }
+    draft.Clear();
+    draft.Add(new AmmoRun("normal", 1));
+    typeof(AmmoLoader).GetField("draftDirty", fields)!.SetValue(loader, false);
+    typeof(AmmoLoader).GetField("uiDirty", fields)!.SetValue(loader, false);
+    RemoveRound(0);
+    if (draft.Count != 0 || !(bool)typeof(AmmoLoader).GetField("draftDirty", fields)!.GetValue(loader)! ||
+        !(bool)typeof(AmmoLoader).GetField("uiDirty", fields)!.GetValue(loader)!)
+    { throw new Exception("Deleting the final round did not clear the plan and schedule both views to refresh."); }
+    RemoveRound(0);
+    if (draft.Count != 0) { throw new Exception("A stale single-round deletion restored a cleared plan."); }
+    Console.WriteLine("PASS: single-round deletion updates/merges groups, preserves the remaining rounds, and safely clears the final round.");
     var presetType = typeof(AmmoLoader).Assembly.GetType("VCE.AmmoLoading.AmmoPreset")!;
     var presetsType = typeof(AmmoLoader).Assembly.GetType("VCE.AmmoLoading.AmmoPresets")!;
     var savedField = presetsType.GetField("saved", fields)!;
@@ -159,9 +226,14 @@ static void Run()
         { CanBeFocused = true, UserData = 0 };
     _ = new GUIFrame(new RectTransform(new Point(350, 32), dragList.Content.RectTransform), style: null)
         { CanBeFocused = true, UserData = 1 };
+    draft.AddRange(new[] { new AmmoRun("normal", 1), new AmmoRun("ap", 1) });
     bool reordered = false;
-    dragList.OnRearranged = (list, _) => reordered = list.HasDraggedElementIndexChanged &&
-        list.Content.Children.Select(c => (int)c.UserData).SequenceEqual(new[] { 1, 0 });
+    dragList.OnRearranged = (list, _) =>
+    {
+        var order = list.Content.Children.Select(c => (int)c.UserData).ToArray();
+        reordered = list.HasDraggedElementIndexChanged && order.SequenceEqual(new[] { 1, 0 });
+        if (list.HasDraggedElementIndexChanged) { RoundOrder(order); }
+    };
     void MouseAt(Point point, ButtonState button)
     {
         var mouse = typeof(PlayerInput).GetField("mouseState", fields)!;
@@ -191,6 +263,9 @@ static void Run()
     MouseAt(dragStart + new Point(0, 70), ButtonState.Released);
     dragList.UpdateManually(1f / 60);
     if (!reordered || dragList.DraggedElement != null) { throw new Exception("Native list did not publish the reordered rows on release."); }
+    if (!draft.SequenceEqual(new[] { new AmmoRun("ap", 1), new AmmoRun("normal", 1) }))
+    { throw new Exception("Releasing a native per-round drag did not update the grouped draft."); }
+    draft.Clear();
     GUI.ForceMouseOn(null);
     typeof(GameMain).GetProperty(nameof(GameMain.Instance))!.SetValue(null, null);
     typeof(PlayerInput).GetField("allowInput", fields)!.SetValue(null, false);
@@ -229,4 +304,30 @@ static void Run()
         }
     }
     Console.WriteLine("PASS: native drag follows all four directions and screen bounds at 720p, 1080p and 1440p after HUD bounds reset.");
+    var config = GameSettings.CurrentConfig;
+    config.Graphics.InventoryScale = 1;
+    typeof(GameSettings).GetField("currentConfig", fields)!.SetValue(null, config);
+    Inventory.DraggableIndicator ??= (Sprite)RuntimeHelpers.GetUninitializedObject(typeof(Sprite));
+    var bindInventory = typeof(AmmoLoader).GetMethod("BindInventory", fields)!;
+    foreach (int height in new[] { 42, 63, 84 })
+    foreach (int capacity in new[] { 1, 6 })
+    {
+        var container = (ItemContainer)RuntimeHelpers.GetUninitializedObject(typeof(ItemContainer));
+        var inventory = new ItemInventory(null, container, capacity, capacity);
+        typeof(ItemContainer).GetField(nameof(ItemContainer.Inventory))!.SetValue(container, inventory);
+        var panel = new GUIFrame(new RectTransform(new Point(capacity * 120, height + 4)), style: null);
+        var holder = new GUIFrame(new RectTransform(new Point(capacity * 100, height), panel.RectTransform, Anchor.Center), style: null);
+        foreach (int offset in new[] { 0, 47, -23 })
+        {
+            panel.RectTransform.AbsoluteOffset = new Point(0, offset);
+            bindInventory.Invoke(null, new object[] { container, holder });
+            inventory.CreateSlots();
+            if (inventory.visualSlots.Any(slot => slot.Rect.Center.Y != panel.Rect.Center.Y ||
+                slot.Rect.Top < panel.Rect.Top || slot.Rect.Bottom > panel.Rect.Bottom))
+            {
+                throw new Exception($"{capacity} slots at height {height}, offset {offset}: panel {panel.Rect}, holder {holder.Rect}, slot {inventory.visualSlots[0].Rect}.");
+            }
+        }
+    }
+    Console.WriteLine("PASS: native intake/target slots remain centered at three dock sizes after moving/rebinding.");
 }

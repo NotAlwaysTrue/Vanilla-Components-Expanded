@@ -47,12 +47,14 @@ public sealed partial class AmmoLoader
         GUILayoutGroup PanelRow(int height) => new(new RectTransform(new Point(root.Rect.Width, height), root.RectTransform),
             isHorizontal: true) { AbsoluteSpacing = gap };
         int presetWidth = (int)(root.Rect.Width * 0.2f);
+        // Preserve the preset panel's original inset as the common list spacing.
+        int listInset = presetWidth / 2 - (int)(presetWidth * 0.96f) / 2;
         int magazineWidth = (int)(root.Rect.Width * 0.22f);
         int supplyWidth = root.Rect.Width - magazineWidth - gap;
         int upperHeight = (int)(root.Rect.Height * 0.56f);
         int dockHeight = (int)(66 * GUI.Scale);
         var upper = PanelRow(upperHeight);
-        var presets = Column(upper, presetWidth);
+        var presets = Column(upper, presetWidth, listInset);
         presetScope = Label(presets, "", 0.055f);
         presetList = new GUIListBox(new RectTransform(new Vector2(1, 0.83f), presets.RectTransform), useMouseDownToSelect: true)
         {
@@ -99,12 +101,11 @@ public sealed partial class AmmoLoader
         });
         presetDelete = Button(presetActions, "delete", 0.22f, 1, DeletePreset);
 
-        var editor = Column(upper, supplyWidth - presetWidth - gap);
-        editor.RectTransform.Resize(new Point(editor.RectTransform.Parent.Rect.Width - gap * 2, editor.Rect.Height));
+        var editor = Column(upper, supplyWidth - presetWidth - gap, listInset);
         var planColumns = Row(editor, 0.89f);
         planColumns.RelativeSpacing = 0;
-        planColumns.AbsoluteSpacing = gap;
-        int arrangementWidth = (int)((planColumns.Rect.Width - gap) * 0.58f);
+        planColumns.AbsoluteSpacing = listInset;
+        int arrangementWidth = (int)((planColumns.Rect.Width - listInset) * 0.58f);
         var arrangement = new GUILayoutGroup(new RectTransform(new Point(arrangementWidth, planColumns.Rect.Height), planColumns.RectTransform)) { RelativeSpacing = 0.015f };
         draftLabel = Label(arrangement, "", 0.06f);
         draftLabel.ToolTip = L("dragorder");
@@ -119,23 +120,41 @@ public sealed partial class AmmoLoader
                 ReorderRuns(list.Content.Children.Select(c => c.UserData).OfType<int>().ToArray());
             }
         };
-        var preview = new GUILayoutGroup(new RectTransform(new Point(planColumns.Rect.Width - arrangementWidth - gap, planColumns.Rect.Height), planColumns.RectTransform)) { RelativeSpacing = 0.015f };
+        var preview = new GUILayoutGroup(new RectTransform(new Point(planColumns.Rect.Width - arrangementWidth - listInset, planColumns.Rect.Height), planColumns.RectTransform)) { RelativeSpacing = 0.015f };
         planLabel = Label(preview, "", 0.06f);
         previewList = List(preview, 0.92f);
-        previewList.ToolTip = L("topfirst");
-        var saveActions = Row(editor, 0.085f);
-        saveActions.RelativeSpacing = 0;
-        saveActions.AbsoluteSpacing = gap;
-        var nameLabel = Label(saveActions, L("presetname"), 1);
+        previewList.ToolTip = $"{L("topfirst")}\n{L("dragorder")}";
+        previewList.CurrentDragMode = GUIListBox.DragMode.DragWithinBox;
+        previewList.CurrentSelectMode = GUIListBox.SelectMode.None;
+        previewList.CanTakeKeyBoardFocus = false;
+        previewList.OnRearranged = (list, _) =>
+        {
+            if (list.HasDraggedElementIndexChanged)
+            {
+                ReorderRounds(list.Content.Children.Select(c => c.UserData).OfType<int>().ToArray());
+            }
+        };
+        var editorActions = Row(editor, 0.08f);
+        editorActions.RelativeSpacing = 0;
+        editorActions.AbsoluteSpacing = listInset;
+        var nameActions = new GUILayoutGroup(new RectTransform(new Point(arrangementWidth, editorActions.Rect.Height),
+            editorActions.RectTransform), isHorizontal: true, childAnchor: Anchor.CenterLeft) { AbsoluteSpacing = gap };
+        var nameLabel = Label(nameActions, L("presetname"), 1);
         nameLabel.Padding = Vector4.Zero;
-        nameLabel.RectTransform.Resize(new Point((int)Math.Ceiling(nameLabel.TextSize.X), saveActions.Rect.Height));
-        presetName = new GUITextBox(new RectTransform(new Vector2(0.5f, 1), saveActions.RectTransform), name, font: GUIStyle.SmallFont) { MaxTextLength = 48 };
+        nameLabel.RectTransform.Resize(new Point((int)Math.Ceiling(nameLabel.TextSize.X), nameActions.Rect.Height));
+        presetName = new GUITextBox(new RectTransform(new Point(arrangementWidth - nameLabel.Rect.Width - gap, nameActions.Rect.Height),
+            nameActions.RectTransform), name, font: GUIStyle.SmallFont) { MaxTextLength = 48 };
         presetName.OnTextChanged += (_, _) => { draftDirty = uiDirty = true; confirmingReplace = false; message = ""; return true; };
-        saveButton = Button(saveActions, "savepreset", 0.2f, 1, SavePreset);
-        clearButton = Button(saveActions, "clear", 0.12f, 1, () => { draft.Clear(); DraftChanged(); });
-        presetName.RectTransform.Resize(new Point(saveActions.Rect.Width - nameLabel.Rect.Width - saveButton.Rect.Width - clearButton.Rect.Width - gap * 3, saveActions.Rect.Height));
+        var saveActions = new GUILayoutGroup(new RectTransform(new Point(preview.Rect.Width, editorActions.Rect.Height),
+            editorActions.RectTransform), isHorizontal: true, childAnchor: Anchor.CenterLeft);
+        var saveButtonSize = new Point((saveActions.Rect.Width - listInset) / 2, saveActions.Rect.Height);
+        saveActions.AbsoluteSpacing = saveActions.Rect.Width - saveButtonSize.X * 2;
+        saveButton = Button(saveActions, "savepreset", 0.5f, 1, SavePreset);
+        clearButton = Button(saveActions, "clear", 0.5f, 1, () => { draft.Clear(); DraftChanged(); });
+        saveButton.RectTransform.Resize(saveButtonSize);
+        clearButton.RectTransform.Resize(saveButtonSize);
 
-        var magazine = Column(upper, magazineWidth);
+        var magazine = Column(upper, magazineWidth, listInset);
         targetLabel = Label(magazine, "", 0.055f);
         actualList = List(magazine, 0.83f);
         actualList.ToolTip = L("topfirst");
@@ -144,7 +163,7 @@ public sealed partial class AmmoLoader
         loadButton = Button(magazineActions, "load", 0.49f, 1, () => Send(Command.Load, draft.ToArray()));
 
         var lower = PanelRow(root.Rect.Height - upperHeight - dockHeight - gap * 2);
-        var supply = Column(lower, supplyWidth);
+        var supply = Column(lower, supplyWidth, listInset);
         var supplyOptions = Row(supply, 0.14f);
         stockSummary = Label(supplyOptions, "", 1, 0.6f);
         Label(supplyOptions, L("addquantity"), 1, 0.18f).TextAlignment = Alignment.CenterRight;
@@ -153,20 +172,46 @@ public sealed partial class AmmoLoader
         quantity.OnValueChanged += _ => { if (quantity.IntValue > 0) { addCount = quantity.IntValue; uiDirty = true; } };
         stockList = List(supply, 0.84f);
         stockList.ToolTip = L("addhint");
-        var checks = Column(lower, magazineWidth);
-        Label(checks, $"{L("check")} · {L("needstock")}", 0.14f);
+        stockList.Spacing = (int)(4 * GUI.Scale);
+        stockList.CurrentSelectMode = GUIListBox.SelectMode.None;
+        stockList.CanTakeKeyBoardFocus = false;
+        var checks = Column(lower, magazineWidth, listInset);
+        var checkHeader = Row(checks, 0.14f);
         checkList = List(checks, 0.84f);
+        checkList.UpdateDimensions();
+        checkHeader.RectTransform.Resize(new Point(checkList.Content.Rect.Width, checkHeader.Rect.Height));
+        checkHeader.RectTransform.AbsoluteOffset = new Point(checkList.Content.RectTransform.AbsoluteOffset.X, 0);
+        checkHeader.RelativeSpacing = 0.01f;
+        Label(checkHeader, L("check"), 1, 0.55f);
+        Label(checkHeader, L("needstock"), 1, 0.43f);
 
         var dock = PanelRow(dockHeight);
-        var intake = Row(Column(dock, supplyWidth), 1);
+        var intake = Row(Column(dock, supplyWidth, listInset), 1);
         Label(intake, L("intake"), 1, 0.17f);
-        inputHolder = new GUIFrame(new RectTransform(new Vector2(0.81f, 1), intake.RectTransform), style: null);
+        inputHolder = new GUIFrame(new RectTransform(new Vector2(0.62f, 1), intake.RectTransform, Anchor.Center), style: null)
+            { IgnoreLayoutGroups = true };
         inputHolder.ToolTip = L("intakehint");
-        var target = Row(Column(dock, magazineWidth), 1);
-        Label(target, L("targetslot"), 1, 0.55f);
-        targetHolder = new GUIFrame(new RectTransform(new Vector2(0.43f, 1), target.RectTransform), style: null);
+        var target = Row(Column(dock, magazineWidth, listInset), 1);
+        Label(target, L("targetslot"), 1, 0.27f);
+        targetHolder = new GUIFrame(new RectTransform(new Vector2(0.43f, 1), target.RectTransform, Anchor.Center), style: null)
+            { IgnoreLayoutGroups = true };
         targetHolder.ToolTip = L("targetslot");
 
+        root.ForceLayoutRecalculation();
+        int listBottom = presetList.Rect.Bottom;
+        foreach (var list in new[] { planList, previewList, actualList })
+        {
+            list.RectTransform.Resize(new Point(list.Rect.Width, listBottom - list.Rect.Top));
+        }
+        int actionCenter = (listBottom + lower.Rect.Top) / 2;
+        foreach (var actions in new[] { presetActions, editorActions, magazineActions })
+        {
+            actions.IgnoreLayoutGroups = true;
+            actions.RectTransform.RelativeOffset = Vector2.Zero;
+            actions.RectTransform.AbsoluteOffset = new Point(0,
+                actionCenter - actions.RectTransform.Parent.Rect.Top - actions.Rect.Height / 2);
+        }
+        root.ForceLayoutRecalculation();
         BindInventory(inputContainer, inputHolder);
         BindInventory(targetContainer, targetHolder);
         uiDirty = true;
@@ -178,13 +223,21 @@ public sealed partial class AmmoLoader
         container.AllowUIOverlap = true;
         container.Inventory.DrawWhenEquipped = true;
         container.Inventory.RectTransform = holder.RectTransform;
+        container.Inventory.CreateSlots();
+        if (container.Inventory.visualSlots.FirstOrDefault() is { } slot)
+        {
+            // Native inventory padding reserves extra space above the visible slots.
+            holder.RectTransform.AbsoluteOffset += new Point(0, holder.RectTransform.Parent.Rect.Center.Y - slot.Rect.Center.Y);
+            container.Inventory.CreateSlots();
+        }
     }
 
-    private static GUILayoutGroup Column(GUILayoutGroup parent, int width)
+    private static GUILayoutGroup Column(GUILayoutGroup parent, int width, int horizontalInset)
     {
         var panel = new GUIFrame(new RectTransform(new Point(width, parent.Rect.Height), parent.RectTransform), style: null, color: new Color(24, 33, 33))
             { OutlineColor = new Color(65, 78, 73), OutlineThickness = 1 };
-        var group = new GUILayoutGroup(new RectTransform(new Vector2(0.96f, 0.95f), panel.RectTransform, Anchor.Center)) { RelativeSpacing = 0.012f };
+        var group = new GUILayoutGroup(new RectTransform(new Point(width - horizontalInset * 2, (int)(panel.Rect.Height * 0.95f)),
+            panel.RectTransform, Anchor.Center)) { RelativeSpacing = 0.012f };
         return group;
     }
 
@@ -193,7 +246,7 @@ public sealed partial class AmmoLoader
             { AutoScaleHorizontal = true, CanBeFocused = false };
 
     private static GUILayoutGroup Row(GUILayoutGroup parent, float height) =>
-        new(new RectTransform(new Vector2(1, height), parent.RectTransform), isHorizontal: true) { RelativeSpacing = 0.02f };
+        new(new RectTransform(new Vector2(1, height), parent.RectTransform), isHorizontal: true, childAnchor: Anchor.CenterLeft) { RelativeSpacing = 0.02f };
 
     private static GUIListBox List(GUILayoutGroup parent, float height) =>
         new(new RectTransform(new Vector2(1, height), parent.RectTransform)) { AutoHideScrollBar = false, KeepSpaceForScrollBar = true };
@@ -268,7 +321,7 @@ public sealed partial class AmmoLoader
             uiDirty = true;
         }
         if (uiDirty && presetList != null && GUI.KeyboardDispatcher.Subscriber is not GUITextBox &&
-            presetList.DraggedElement == null && planList?.DraggedElement == null)
+            presetList.DraggedElement == null && planList?.DraggedElement == null && previewList?.DraggedElement == null)
         {
             RefreshUI();
             uiDirty = false;
@@ -331,25 +384,59 @@ public sealed partial class AmmoLoader
             number.OnValueChanged += _ => ChangeRunCount(index, number.IntValue);
             Button(row, "delete", 0.1f, 1, () => { draft.RemoveAt(index); DraftChanged(); });
         }
-        SequenceRows(previewList, draft);
+        var rounds = AmmoPlan.Expand(draft).ToArray();
+        for (int i = 0; i < rounds.Length; i++)
+        {
+            int index = i;
+            var card = new GUIFrame(new RectTransform(new Vector2(1, 0), previewList.Content.RectTransform,
+                minSize: new Point(0, (int)(32 * GUI.Scale))), style: "ListBoxElement")
+                { UserData = index, CanBeFocused = true, ToolTip = $"{AmmoName(rounds[i])}\n{L("dragorder")}" };
+            var row = new GUILayoutGroup(new RectTransform(new Vector2(0.98f, 0.9f), card.RectTransform, Anchor.Center),
+                isHorizontal: true, childAnchor: Anchor.CenterLeft) { RelativeSpacing = 0.01f, CanBeFocused = false };
+            var ammoLabel = Label(row, $"≡ {i + 1:D2} · {AmmoName(rounds[i])}", 1, 0.86f);
+            if (!IsCompatible(target, rounds[i])) { ammoLabel.TextColor = Color.OrangeRed; }
+            Button(row, "delete", 0.13f, 1, () => RemoveRound(index));
+        }
         stockList!.Content.ClearChildren();
         var demand = AmmoStock.Count(AmmoPlan.Expand(draft));
         var visibleStock = Stock.Counts.Where(p => target == null || IsCompatible(target, p.Key)).OrderBy(p => AmmoName(p.Key)).ToArray();
+        stockList.UseGridLayout = visibleStock.Length > 0;
         stockSummary!.Text = message.Length > 0 ? message : $"{L(target == null ? "allstock" : "compatiblestock")} · {visibleStock.Length} {L("types")} · {visibleStock.Sum(p => (long)p.Value):N0} {L("rounds")}";
         stockSummary.ToolTip = stockSummary.Text;
         if (visibleStock.Length == 0) { TextRow(stockList, L("emptystock").Value); }
+        int stockCellSize = (int)(72 * GUI.Scale);
         foreach (var p in visibleStock)
         {
-            var row = ListRow(stockList, 30);
-            var prefab = ItemPrefab.FindByIdentifier(p.Key.ToIdentifier());
-            Label(row, AmmoName(p.Key), 1, 0.65f).ToolTip = $"{p.Key}\n{prefab?.ContentPackage?.Name}";
-            Label(row, $"{p.Value:N0} {L("rounds")}", 1, 0.18f);
-            var add = Button(row, "add", 0.15f, 1, () => AddRun(p.Key, addCount));
-            add.Text = $"+ {addCount} {L("rounds")}";
-            add.ToolTip = L("addhint");
-            add.Enabled = IsCompatible(target, p.Key) &&
-                (draft.Count < AmmoPlan.MaxGroups || string.Equals(draft.LastOrDefault()?.Id, p.Key, StringComparison.OrdinalIgnoreCase)) &&
-                draft.Sum(r => r.Count) <= AmmoPlan.MaxRounds - addCount;
+            var prefab = ItemPrefab.FindByIdentifier(p.Key.ToIdentifier()) as ItemPrefab;
+            var tile = new GUIButton(new RectTransform(new Point(stockCellSize, stockCellSize), stockList.Content.RectTransform),
+                style: "GUIButtonSmallFreeScale")
+            {
+                ToolTip = RichString.Rich(prefab?.GetTooltip(Character.Controlled) ?? AmmoName(p.Key)),
+                OnClicked = (_, _) => { AddRun(p.Key, addCount); return true; },
+                Enabled = IsCompatible(target, p.Key) &&
+                    (draft.Count < AmmoPlan.MaxGroups || string.Equals(draft.LastOrDefault()?.Id, p.Key, StringComparison.OrdinalIgnoreCase)) &&
+                    draft.Sum(r => r.Count) <= AmmoPlan.MaxRounds - addCount
+            };
+            if (prefab != null && (prefab.InventoryIcon ?? prefab.Sprite) is { } icon)
+            {
+                new GUIImage(new RectTransform(new Vector2(0.8f), tile.RectTransform, Anchor.Center), icon, scaleToFit: true)
+                {
+                    CanBeFocused = false,
+                    Color = (icon == prefab.InventoryIcon ? prefab.InventoryIconColor : prefab.SpriteColor) * (tile.Enabled ? 1f : 0.4f)
+                };
+            }
+            else
+            {
+                new GUITextBlock(new RectTransform(new Vector2(0.9f, 0.7f), tile.RectTransform, Anchor.TopCenter),
+                    AmmoName(p.Key), font: GUIStyle.SmallFont, textAlignment: Alignment.Center, wrap: true)
+                    { CanBeFocused = false, AutoScaleHorizontal = true };
+            }
+            new GUITextBlock(new RectTransform(new Vector2(0.94f, 0.3f), tile.RectTransform, Anchor.BottomRight),
+                $"{p.Value:N0}", font: GUIStyle.SmallFont, textAlignment: Alignment.BottomRight)
+            {
+                CanBeFocused = false, AutoScaleHorizontal = true, Shadow = true,
+                Padding = new Vector4(0, 0, 4 * GUI.Scale, 2 * GUI.Scale)
+            };
         }
         checkList!.Content.ClearChildren();
         foreach (var id in Stock.Counts.Keys.Concat(demand.Keys).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(AmmoName))
@@ -409,6 +496,33 @@ public sealed partial class AmmoLoader
         if (order.Length != draft.Count || order.Distinct().Count() != order.Length ||
             order.Any(i => i < 0 || i >= draft.Count) || order.SequenceEqual(Enumerable.Range(0, draft.Count))) { return; }
         var reordered = order.Select(i => draft[i]).ToArray();
+        draft.Clear();
+        draft.AddRange(reordered);
+        DraftChanged();
+    }
+
+    private void RemoveRound(int index)
+    {
+        var rounds = AmmoPlan.Expand(draft).ToList();
+        if (index < 0 || index >= rounds.Count) { return; }
+        rounds.RemoveAt(index);
+        draft.Clear();
+        draft.AddRange(AmmoPlan.Compact(rounds));
+        DraftChanged();
+    }
+
+    private void ReorderRounds(int[] order)
+    {
+        var rounds = AmmoPlan.Expand(draft).ToArray();
+        if (order.Length != rounds.Length || order.Distinct().Count() != order.Length ||
+            order.Any(i => i < 0 || i >= rounds.Length) || order.SequenceEqual(Enumerable.Range(0, rounds.Length))) { return; }
+        var reordered = AmmoPlan.Compact(order.Select(i => rounds[i]));
+        if (!AmmoPlan.IsValid(reordered, AmmoPlan.MaxRounds))
+        {
+            message = L("invalidplan").Value;
+            uiDirty = true;
+            return;
+        }
         draft.Clear();
         draft.AddRange(reordered);
         DraftChanged();
