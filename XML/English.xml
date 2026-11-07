@@ -27,6 +27,13 @@
   <vce.ammoloader.stock>Machine ammunition stock</vce.ammoloader.stock>
   <vce.ammoloader.intake>Ammo intake</vce.ammoloader.intake>
   <vce.ammoloader.intakehint>Deposited ammo packages are consumed and added to stock</vce.ammoloader.intakehint>
+  <vce.ammoloader.output>Ammo pickup</vce.ammoloader.output>
+  <vce.ammoloader.outputhint>Packed ammunition appears here; drag it out or return it to the intake</vce.ammoloader.outputhint>
+  <vce.ammoloader.withdrawmodehint>When checked, click ammunition in stock to withdraw one package, using the largest package capacity or the remaining stock. Uncheck to add ammunition to the sequence.</vce.ammoloader.withdrawmodehint>
+  <vce.ammoloader.withdraw>Click to withdraw one package</vce.ammoloader.withdraw>
+  <vce.ammoloader.nooutput>No separate pickup slots configured</vce.ammoloader.nooutput>
+  <vce.ammoloader.nopackage>No available package for this ammunition</vce.ammoloader.nopackage>
+  <vce.ammoloader.outputfull>Pickup slots are full or cannot accept this package</vce.ammoloader.outputfull>
   <vce.ammoloader.check>Loading check</vce.ammoloader.check>
   <vce.ammoloader.needstock>Required / Stock</vce.ammoloader.needstock>
   <vce.ammoloader.targetslot>Magazine</vce.ammoloader.targetslot>

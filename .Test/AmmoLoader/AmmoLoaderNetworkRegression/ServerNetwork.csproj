@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="../AmmoLoaderRegression/GameStubs.cs" />
     <Compile Include="../../../CsProjectSource/ServerProject/ServerSource/VirtualizedMagazine.Network.cs" />
+    <Compile Include="../../../CsProjectSource/SharedProject/SharedSource/VirtualizedMagazine/MagazineUtil/AmmoStorage.cs" />
     <Compile Include="Program.cs" />
   </ItemGroup>
 </Project>

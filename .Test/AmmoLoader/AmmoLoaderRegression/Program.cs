@@ -197,3 +197,122 @@ Check(loader.Stock["a"] == beforeDeposit + 7 && partialPackItem.Condition == 0,
     "existing partially used VCE storage deposits its remaining rounds, not its capacity");
 Check(!unrelatedItem.IsInRemoveQueue && unrelatedItem.Condition == 100, "intake ignores items without VCE storage");
 Console.WriteLine($"Backend including existing VCE storage: {checks} checks passed.");
+
+ItemPrefab Package(string id, uint number, float health, string ammo, bool tagged = true, bool container = false)
+{
+    var prefab = new ItemPrefab(id, number, tagged ? ["vceammopackage"] : [])
+    {
+        Health = health,
+        ConfigElement = new(new XElement("Item",
+            new XElement("VirtualizedAmmoStorage", new XAttribute("ProjectileIdentifier", ammo)),
+            container ? new XElement("ItemContainer") : null))
+    };
+    ItemPrefab.Prefabs.Values.Add(prefab);
+    return prefab;
+}
+var largest = Package("a_package", 10, 120, "a");
+Package("z_package", 11, 120, "a");
+Package("small_package", 12, 24, "a");
+Package("untagged_package", 13, 1000, "a", tagged: false);
+Package("container_package", 14, 1000, "a", container: true);
+Package("infinite_package", 15, float.PositiveInfinity, "a");
+Package("oversized_package", 16, float.MaxValue, "a");
+var bPackage = Package("b_package", 17, 100, "b");
+Check(AmmoLoader.FindWithdrawalPackage("a") == largest, "largest valid package wins with a stable identifier tie-break");
+Check(AmmoLoader.FindWithdrawalPackage("wrong") == null && AmmoLoader.FindWithdrawalPackage("unknown") == null,
+    "missing packages and unknown projectile types cannot be withdrawn");
+machine = new Item(40, bulletA);
+intake = new ItemContainer(machine, 6);
+var pickup = new ItemContainer(machine, 3);
+targetSlot = new ItemContainer(machine, 1);
+loader = new AmmoLoader(machine, new(new XElement("AmmoLoader")));
+machine.Components.AddRange([intake, pickup, targetSlot, loader]);
+loader.OnItemLoaded();
+Check(loader.InputContainer == intake && loader.OutputContainer == pickup && loader.TargetContainer == targetSlot,
+    "default container indices match the left-to-right intake, pickup, magazine order");
+loader.Stock.TryAdd(Amount("a", 300));
+loader.Stock.TryAdd(Amount("b", 37));
+Entity.Spawner = new();
+uint beforeWithdraw = Revision();
+Send(3, beforeWithdraw, 0, false, (1, 1));
+Send(3, beforeWithdraw, 0, true, (1, 2));
+Send(3, beforeWithdraw, 0, true, (1, 1), (2, 1));
+Send(3, beforeWithdraw, 0, true, (99, 1));
+Check(Entity.Spawner.Pending.Count == 0, "withdraw rejects inaccessible clients, forged counts, multiple types and unknown identifiers");
+Send(3, beforeWithdraw, 0, true, (1, 1));
+Send(3, beforeWithdraw, 0, true, (1, 1));
+Check(Entity.Spawner.Pending.Count == 1 && loader.Stock["a"] == 300,
+    "concurrent withdrawal requests queue one package without charging unspawned stock");
+var pendingSave = loader.Save(new XElement("Item"));
+Check((int)pendingSave.Element("Stock")!.Elements("Ammo").Single(e => (string?)e.Attribute("id") == "a").Attribute("count")! == 300,
+    "saving before the spawn retains all stock");
+Entity.Spawner.ProcessQueue();
+Check(pickup.Inventory.AllItems.Single().Prefab == largest && pickup.Inventory.AllItems[0].Condition == 120 && loader.Stock["a"] == 180,
+    "withdraw creates a full largest package with exact debit and no magazine");
+Send(3, beforeWithdraw, 0, true, (1, 1));
+Check(Entity.Spawner.Pending.Count == 0, "a completed withdrawal cannot be replayed with its old revision");
+Send(3, Revision(), 0, true, (1, 1));
+Entity.Spawner.ProcessQueue();
+Send(3, Revision(), 0, true, (2, 1));
+Entity.Spawner.ProcessQueue();
+Check(pickup.Inventory.AllItems.Count == 3 && pickup.Inventory.AllItems[^1].Prefab == bPackage &&
+    pickup.Inventory.AllItems[^1].Condition == 37 && loader.Stock["b"] == 0 && loader.Stock["a"] == 60,
+    "custom pickup capacity holds multiple packages, including a partial final package");
+Send(3, Revision(), 0, true, (1, 1));
+Check(Entity.Spawner.Pending.Count == 0 && loader.Stock["a"] == 60, "full pickup slots cannot consume stock");
+var returnedPackage = pickup.Inventory.AllItems[0];
+pickup.Inventory.AllItems.Remove(returnedPackage);
+returnedPackage.ParentInventory = intake.Inventory;
+intake.Inventory.AllItems.Add(returnedPackage);
+loader.Update(1, new Camera());
+Check(loader.Stock["a"] == 180 && returnedPackage.Condition == 0,
+    "withdrawn packages can be redeposited without creating or losing ammunition");
+intake.Inventory.AllItems.Clear();
+pickup.Inventory.AllItems.Clear();
+
+Send(3, Revision(), 0, true, (1, 1));
+pickup.Inventory.Accepts = _ => false;
+Entity.Spawner.ProcessQueue();
+Check(loader.Stock["a"] == 180 && pickup.Inventory.AllItems.Count == 0 && Entity.Spawner.Pending.Count == 0,
+    "a slot becoming unavailable before spawn cancels without a debit or stuck pending flag");
+pickup.Inventory.Accepts = null;
+pickup.Inventory.RejectInsertion = true;
+Send(3, Revision(), 0, true, (1, 1));
+Entity.Spawner.ProcessQueue();
+Check(loader.Stock["a"] == 180 && Entity.Spawner.Spawned[^1].Removed && Entity.Spawner.Spawned[^1].Condition == 0,
+    "an item that fails actual insertion is removed without granting free ammunition or charging stock");
+pickup.Inventory.RejectInsertion = false;
+Send(3, Revision(), 0, true, (1, 1));
+machine.Condition = 0;
+Entity.Spawner.ProcessQueue();
+Check(loader.Stock["a"] == 180 && pickup.Inventory.AllItems.Count == 0, "a machine breaking while queued cancels delivery");
+machine.Condition = 100;
+Send(3, Revision(), 0, true, (1, 1));
+Entity.Spawner.Pending.Clear();
+loader.Load(new(loader.Save(new XElement("Item"))), false, new IdRemap(), false);
+Check(loader.Stock["a"] == 180, "discarding the spawn queue and reloading cannot lose reserved rounds");
+
+loader.Stock.Load(new XElement("Stock", new XElement("Ammo", new XAttribute("id", "a"), new XAttribute("count", 50))));
+mag = new VirtualizedMagazine(magItem);
+magItem.Components.Clear();
+magItem.Components.Add(mag);
+targetSlot.Inventory.AllItems.Add(magItem);
+Send(3, Revision(), 20, true, (1, 1));
+Send(1, Revision(), 20, true, (1, 25));
+Entity.Spawner.ProcessQueue();
+Check(mag.LoadedCount == 25 && pickup.Inventory.AllItems.Single().Condition == 25 && loader.Stock["a"] == 0,
+    "a load between queueing and delivery leaves only current stock in the package, conserving all 50 rounds");
+var completedSave = loader.Save(new XElement("Item"));
+loader.Load(new(completedSave), false, new IdRemap(), false);
+Check(loader.Stock["a"] == 0 && pickup.Inventory.AllItems.Single().Condition == 25,
+    "reloading completed stock does not restore ammunition already packed");
+Package("large_condition_package", 18, 20_000_000, "wrong");
+loader.Stock.TryAdd(Amount("wrong", 16_777_217));
+Send(3, Revision(), 20, true, (3, 1));
+Entity.Spawner.ProcessQueue();
+Check(loader.Stock["wrong"] == 16_777_217 && Entity.Spawner.Spawned[^1].Removed,
+    "a count that cannot be represented exactly by Condition must not lose or create ammunition");
+loader.OutputContainerIndex = 0;
+loader.OnItemLoaded();
+Check(loader.OutputContainer == null && loader.Ready, "overlapping output and intake disables withdrawal without disabling magazine loading");
+Console.WriteLine($"Backend including package withdrawal: {checks} checks passed (spawn queue and game boundary stubbed).");

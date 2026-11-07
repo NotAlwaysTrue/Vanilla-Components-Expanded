@@ -28,6 +28,10 @@ public sealed partial class AmmoLoader
         Send(Command.Load, plan);
     }
     public void RequestUnload() => Send(Command.Unload);
+    public void RequestWithdraw(string id)
+    {
+        if (IsSynchronized && IsProjectile(id)) { Send(Command.Withdraw, [new(id, 1)]); }
+    }
 
     public override bool ValidateEventData(NetEntityEvent.IData data) => TryExtractEventData<Request>(data, out _);
 
@@ -39,6 +43,7 @@ public sealed partial class AmmoLoader
         }
         else if (command == Command.Load) { TryLoad(plan ?? [], Target?.Item.ID ?? 0); }
         else if (command == Command.Unload) { TryUnload(Target?.Item.ID ?? 0); }
+        else if (command == Command.Withdraw && plan is { Length: 1 }) { TryWithdraw(plan[0].Id); }
     }
 
     public void ClientEventWrite(IWriteMessage msg, NetEntityEvent.IData extraData = null!)

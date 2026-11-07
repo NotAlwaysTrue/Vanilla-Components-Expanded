@@ -346,26 +346,88 @@ static void Run()
     Inventory.DraggableIndicator ??= (Sprite)RuntimeHelpers.GetUninitializedObject(typeof(Sprite));
     var bindInventory = typeof(AmmoLoader).GetMethod("BindInventory", fields)!;
     foreach (int height in new[] { 42, 63, 84 })
-    foreach (int capacity in new[] { 1, 6 })
+    foreach (var (capacity, columns) in new[] { (1, 1), (3, 3), (6, 6), (8, 4), (12, 6) })
     {
         var container = (ItemContainer)RuntimeHelpers.GetUninitializedObject(typeof(ItemContainer));
-        var inventory = new ItemInventory(null, container, capacity, capacity);
+        var inventory = new ItemInventory(null, container, capacity, columns);
         typeof(ItemContainer).GetField(nameof(ItemContainer.Inventory))!.SetValue(container, inventory);
-        var panel = new GUIFrame(new RectTransform(new Point(capacity * 120, height + 4)), style: null);
-        var holder = new GUIFrame(new RectTransform(new Point(capacity * 100, height), panel.RectTransform, Anchor.Center), style: null);
+        var panel = new GUIFrame(new RectTransform(new Point(columns * 120, height + 4)), style: null);
+        var holder = new GUIFrame(new RectTransform(new Point(columns * 100, height), panel.RectTransform, Anchor.Center), style: null);
         foreach (int offset in new[] { 0, 47, -23 })
         {
             panel.RectTransform.AbsoluteOffset = new Point(0, offset);
             bindInventory.Invoke(null, new object[] { container, holder });
             inventory.CreateSlots();
-            if (inventory.visualSlots.Any(slot => slot.Rect.Center.Y != panel.Rect.Center.Y ||
-                slot.Rect.Top < panel.Rect.Top || slot.Rect.Bottom > panel.Rect.Bottom))
+            int slotCenterY = (inventory.visualSlots.Min(s => s.Rect.Top) + inventory.visualSlots.Max(s => s.Rect.Bottom)) / 2;
+            if (slotCenterY != panel.Rect.Center.Y || inventory.visualSlots.Any(slot =>
+                slot.Rect.Top < panel.Rect.Top || slot.Rect.Bottom > panel.Rect.Bottom ||
+                slot.Rect.Left < panel.Rect.Left || slot.Rect.Right > panel.Rect.Right))
             {
                 throw new Exception($"{capacity} slots at height {height}, offset {offset}: panel {panel.Rect}, holder {holder.Rect}, slot {inventory.visualSlots[0].Rect}.");
             }
         }
     }
-    Console.WriteLine("PASS: native intake/target slots remain centered at three dock sizes after moving/rebinding.");
+    Console.WriteLine("PASS: native intake/pickup/target slots with configurable counts and rows remain centered at three dock sizes after moving/rebinding.");
+
+    var layoutLoader = (AmmoLoader)RuntimeHelpers.GetUninitializedObject(typeof(AmmoLoader));
+    typeof(ItemComponent).GetField("GuiFrameSource", fields)!.SetValue(layoutLoader, new XElement("GuiFrame", new XAttribute("draggable", false)));
+    var layoutContainers = new List<ItemContainer>();
+    foreach (var (name, capacity, columns) in new[] { ("inputContainer", 6, 6), ("outputContainer", 8, 4), ("targetContainer", 1, 1) })
+    {
+        var container = (ItemContainer)RuntimeHelpers.GetUninitializedObject(typeof(ItemContainer));
+        typeof(ItemContainer).GetField(nameof(ItemContainer.Inventory))!.SetValue(container, new ItemInventory(null, container, capacity, columns));
+        typeof(AmmoLoader).GetField(name, fields)!.SetValue(layoutLoader, container);
+        layoutContainers.Add(container);
+    }
+    typeof(AmmoLoader).GetField("addCount", fields)!.SetValue(layoutLoader, 5);
+    var layoutKeyboard = GUI.KeyboardDispatcher;
+    var dispatcherProperty = typeof(GUI).GetProperty(nameof(GUI.KeyboardDispatcher))!;
+    dispatcherProperty.SetValue(null, RuntimeHelpers.GetUninitializedObject(dispatcherProperty.PropertyType));
+    foreach (var size in new[] { new Point(900, 600), new Point(1450, 840), new Point(1800, 1000) })
+    {
+        layoutLoader.GuiFrame = new GUIFrame(new RectTransform(size), style: null);
+        layoutLoader.CreateGUI();
+        var holders = new[] { "inputHolder", "outputHolder", "targetHolder" }
+            .Select(name => (GUIFrame)typeof(AmmoLoader).GetField(name, fields)!.GetValue(layoutLoader)!).ToArray();
+        if (!(holders[0].Rect.Right < holders[1].Rect.Left && holders[1].Rect.Right < holders[2].Rect.Left))
+        { throw new Exception("The native dock does not keep intake, pickup and target separate and ordered left to right."); }
+        for (int i = 0; i < holders.Length; i++)
+        {
+            var dock = holders[i].Parent;
+            var label = dock.Children.OfType<GUITextBlock>().Single();
+            if (layoutContainers[i].Inventory.visualSlots.Any(slot => slot.Rect.Left < label.Rect.Right ||
+                slot.Rect.Right > dock.Rect.Right || slot.Rect.Top < dock.Rect.Top || slot.Rect.Bottom > dock.Rect.Bottom))
+            { throw new Exception($"Dock {i} at {size} overlaps its label or panel edges."); }
+        }
+        var checkbox = layoutLoader.GuiFrame.GetAllChildren().OfType<GUITickBox>().Single();
+        if (checkbox.Parent != holders[1].Parent || checkbox.TextBlock.Text.SanitizedValue.Length != 0)
+        { throw new Exception("The withdrawal checkbox must be unlabeled and belong to the pickup panel."); }
+        int dockGap = (int)(10 * GUI.SlicedSpriteScale);
+        for (int i = 0; i < 2; i++)
+        {
+            var label = holders[i].Parent.Children.OfType<GUITextBlock>().Single();
+            var preceding = i == 0 ? (GUIComponent)label : checkbox;
+            if (Math.Abs(holders[i].Rect.Left - preceding.Rect.Right - dockGap) > 1 ||
+                (i == 1 && Math.Abs(checkbox.Rect.Left - label.Rect.Right - dockGap) > 1))
+            { throw new Exception("The dock reserves blank columns after its caption or checkbox."); }
+            var slots = layoutContainers[i].Inventory.visualSlots;
+            if (Math.Abs((slots.Min(s => s.Rect.Left) + slots.Max(s => s.Rect.Right)) / 2 - holders[i].Rect.Center.X) > 1 ||
+                Math.Abs((slots.Min(s => s.Rect.Top) + slots.Max(s => s.Rect.Bottom)) / 2 - holders[i].Parent.Rect.Center.Y) > 1)
+            { throw new Exception("The dock slots lost their horizontal or vertical centering."); }
+        }
+        var quantityInput = (GUINumberInput)typeof(AmmoLoader).GetField("addQuantity", fields)!.GetValue(layoutLoader)!;
+        checkbox.Selected = true;
+        if (quantityInput.TextBox.Enabled || quantityInput.PlusButton.Enabled || quantityInput.MinusButton.Enabled || quantityInput.IntValue != 5)
+        { throw new Exception("Withdrawal must disable, but preserve, the add quantity."); }
+        layoutLoader.CreateGUI();
+        if (!layoutLoader.GuiFrame.GetAllChildren().OfType<GUITickBox>().Single().Selected)
+        { throw new Exception("Recreating the window lost withdrawal mode."); }
+        layoutLoader.GuiFrame.GetAllChildren().OfType<GUITickBox>().Single().Selected = false;
+        if (!((GUINumberInput)typeof(AmmoLoader).GetField("addQuantity", fields)!.GetValue(layoutLoader)!).TextBox.Enabled)
+        { throw new Exception("Leaving withdrawal mode must re-enable the add quantity."); }
+    }
+    GUI.KeyboardDispatcher = layoutKeyboard;
+    Console.WriteLine("PASS: native dock panels fit configurable multi-row slots at three window sizes; checkbox switches and preserves mode/quantity.");
 
     config.Graphics.HUDScale = 1;
     typeof(GameSettings).GetField("currentConfig", fields)!.SetValue(null, config);
@@ -434,7 +496,7 @@ static void Run()
     typeof(PlayerInput).GetField("allowInput", fields)!.SetValue(null, true);
     var keyboard = typeof(PlayerInput).GetField("keyboardState", fields)!;
     var tooltipTile = new GUIButton(new RectTransform(new Point(72)), style: null);
-    typeof(AmmoLoader).GetMethod("BindStockTooltip", fields)!.Invoke(null, new object[] { tooltipTile, ammoPrefab, "fallback" });
+    typeof(AmmoLoader).GetMethod("BindStockTooltip", fields)!.Invoke(null, new object?[] { tooltipTile, ammoPrefab, "fallback", null });
     foreach (Keys? key in new Keys?[] { null, Keys.LeftShift, null, Keys.RightShift, null })
     {
         keyboard.SetValue(null, key.HasValue ? new KeyboardState(key.Value) : new KeyboardState());
@@ -589,6 +651,20 @@ static void Run()
             lists[2].BarScroll = 0.5f;
         }
         Console.WriteLine("PASS: native refresh registers all visible row controls in the same frame, with stable layout after adding, shrinking and clearing a scrolled plan.");
+        SetRefreshField("addCount", 5);
+        SetRefreshField("withdrawMode", true);
+        SetRefreshField("uiDirty", true);
+        Tick();
+        var stockTile = lists[3].Content.Children.OfType<GUIButton>().First();
+        stockTile.OnClicked(stockTile, null);
+        if (refreshDraft.Count != 0) { throw new Exception("Clicking stock in withdrawal mode changed the loading draft."); }
+        SetRefreshField("withdrawMode", false);
+        SetRefreshField("uiDirty", true);
+        Tick();
+        stockTile = lists[3].Content.Children.OfType<GUIButton>().First();
+        stockTile.OnClicked(stockTile, null);
+        if (refreshDraft.Sum(r => r.Count) != 5) { throw new Exception("Leaving withdrawal mode did not restore stock-to-draft clicks."); }
+        Console.WriteLine("PASS: stock clicks route to withdrawal without changing the draft and return to adding the configured batch when unchecked.");
     }
     finally
     {

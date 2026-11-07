@@ -10,8 +10,9 @@ public sealed partial class AmmoLoader
     private GUITextBox? presetName;
     private GUITextBlock? targetLabel, planLabel, draftLabel, stockSummary, presetScope;
     private GUIButton? loadButton, unloadButton, presetLoadButton, saveButton, clearButton, presetDelete;
-    private GUIFrame? inputHolder, targetHolder;
-    private bool uiDirty = true, draftDirty;
+    private GUIFrame? inputHolder, targetHolder, outputHolder;
+    private GUINumberInput? addQuantity;
+    private bool uiDirty = true, draftDirty, withdrawMode;
     private bool displayedSynchronized;
     private AmmoPreset? selectedPreset;
     private ushort displayedTarget;
@@ -151,9 +152,9 @@ public sealed partial class AmmoLoader
         var supplyOptions = Row(supply, 0.14f);
         stockSummary = Label(supplyOptions, "", 1, 0.6f);
         Label(supplyOptions, L("addquantity"), 1, 0.18f).TextAlignment = Alignment.CenterRight;
-        var quantity = new GUINumberInput(new RectTransform(new Vector2(0.18f, 1), supplyOptions.RectTransform), NumberType.Int)
-            { MinValueInt = 1, MaxValueInt = AmmoPlan.MaxRounds, IntValue = addCount };
-        quantity.OnValueChanged += _ => { if (quantity.IntValue > 0) { addCount = quantity.IntValue; uiDirty = true; } };
+        addQuantity = new GUINumberInput(new RectTransform(new Vector2(0.18f, 1), supplyOptions.RectTransform), NumberType.Int)
+            { MinValueInt = 1, MaxValueInt = AmmoPlan.MaxRounds, IntValue = addCount, Enabled = !withdrawMode };
+        addQuantity.OnValueChanged += _ => { if (addQuantity.IntValue > 0) { addCount = addQuantity.IntValue; uiDirty = true; } };
         stockList = List(supply, 0.84f);
         stockList.ToolTip = L("addhint");
         stockList.Spacing = (int)(4 * GUI.Scale);
@@ -170,11 +171,34 @@ public sealed partial class AmmoLoader
         Label(checkHeader, L("needstock"), 1, 0.43f);
 
         var dock = PanelRow(dockHeight);
-        var intake = Row(Column(dock, supplyWidth, listInset), 1);
-        Label(intake, L("intake"), 1, 0.17f);
-        inputHolder = new GUIFrame(new RectTransform(new Vector2(0.62f, 0.84f), intake.RectTransform, Anchor.Center), style: null)
+        int intakeWidth = (supplyWidth - gap) / 2;
+        var intake = Row(Column(dock, intakeWidth, listInset), 1);
+        var intakeLabel = Label(intake, L("intake"), 1);
+        intakeLabel.Padding = Vector4.Zero;
+        intakeLabel.RectTransform.Resize(new Point((int)Math.Ceiling(intakeLabel.TextSize.X), intake.Rect.Height));
+        inputHolder = new GUIFrame(new RectTransform(new Point(intake.Rect.Width - intakeLabel.Rect.Width - gap,
+            (int)(intake.Rect.Height * 0.84f)), intake.RectTransform, Anchor.CenterRight), style: null)
             { IgnoreLayoutGroups = true };
         inputHolder.ToolTip = L("intakehint");
+        var output = Row(Column(dock, supplyWidth - intakeWidth - gap, listInset), 1);
+        output.RelativeSpacing = 0;
+        output.AbsoluteSpacing = gap;
+        var outputLabel = Label(output, L("output"), 1);
+        outputLabel.Padding = Vector4.Zero;
+        outputLabel.RectTransform.Resize(new Point((int)Math.Ceiling(outputLabel.TextSize.X), output.Rect.Height));
+        var withdrawToggle = new GUITickBox(new RectTransform(new Point((int)(20 * GUI.Scale)), output.RectTransform),
+            "", font: GUIStyle.SmallFont) { Selected = withdrawMode, ToolTip = L("withdrawmodehint") };
+        withdrawToggle.OnSelected = tickBox =>
+        {
+            withdrawMode = tickBox.Selected;
+            addQuantity!.Enabled = !withdrawMode;
+            message = "";
+            uiDirty = true;
+            return true;
+        };
+        outputHolder = new GUIFrame(new RectTransform(new Point(output.Rect.Width - outputLabel.Rect.Width - withdrawToggle.Rect.Width - gap * 2,
+            (int)(output.Rect.Height * 0.84f)), output.RectTransform, Anchor.CenterRight), style: null)
+            { IgnoreLayoutGroups = true, ToolTip = L("outputhint") };
         var target = Row(Column(dock, magazineWidth, listInset), 1);
         Label(target, L("targetslot"), 1, 0.27f);
         targetHolder = new GUIFrame(new RectTransform(new Vector2(0.43f, 0.84f), target.RectTransform, Anchor.Center), style: null)
@@ -197,6 +221,7 @@ public sealed partial class AmmoLoader
         }
         root.ForceLayoutRecalculation();
         BindInventory(InputContainer, inputHolder);
+        BindInventory(OutputContainer, outputHolder);
         BindInventory(TargetContainer, targetHolder);
         uiDirty = true;
     }
@@ -208,10 +233,12 @@ public sealed partial class AmmoLoader
         container.Inventory.DrawWhenEquipped = true;
         container.Inventory.RectTransform = holder.RectTransform;
         container.Inventory.CreateSlots();
-        if (container.Inventory.visualSlots.FirstOrDefault() is { } slot)
+        var slots = container.Inventory.visualSlots;
+        if (slots.Length > 0)
         {
             // Native inventory padding reserves extra space above the visible slots.
-            holder.RectTransform.AbsoluteOffset += new Point(0, holder.RectTransform.Parent.Rect.Center.Y - slot.Rect.Center.Y);
+            int centerY = (slots.Min(s => s.Rect.Top) + slots.Max(s => s.Rect.Bottom)) / 2;
+            holder.RectTransform.AbsoluteOffset += new Point(0, holder.RectTransform.Parent.Rect.Center.Y - centerY);
             container.Inventory.CreateSlots();
         }
     }
@@ -256,15 +283,19 @@ public sealed partial class AmmoLoader
             { Padding = Vector4.Zero, AutoScaleHorizontal = true, CanBeFocused = false, ToolTip = text };
     }
 
-    private static void BindStockTooltip(GUIComponent tile, ItemPrefab? prefab, string fallback)
+    private static void BindStockTooltip(GUIComponent tile, ItemPrefab? prefab, string fallback, Func<LocalizedString>? hint = null)
     {
         bool? tooltipShift = null;
+        string? previousHint = null;
         tile.OnDrawToolTip = component =>
         {
             bool shift = PlayerInput.IsShiftDown();
-            if (tooltipShift == shift) { return; }
-            component.ToolTip = RichString.Rich(prefab?.GetTooltip(Character.Controlled) ?? fallback);
+            LocalizedString extra = hint?.Invoke() ?? "";
+            if (tooltipShift == shift && previousHint == extra.Value) { return; }
+            component.ToolTip = RichString.Rich(prefab?.GetTooltip(Character.Controlled) ?? fallback) +
+                (extra.Length > 0 ? "\n" + extra : "");
             tooltipShift = shift;
+            previousHint = extra.Value;
         };
     }
 
@@ -337,6 +368,7 @@ public sealed partial class AmmoLoader
             saveButton.Enabled = !string.IsNullOrWhiteSpace(presetName?.Text) && AmmoPlan.IsValid(draft, AmmoPlan.MaxRounds);
         }
         UpdateClientState(deltaTime);
+        UpdateWithdrawalButtons();
         var target = Target;
         bool synchronized = IsSynchronized;
         if (displayedTarget != (target?.Item.ID ?? 0) || displayedCount != (target?.LoadedCount ?? 0) ||
@@ -347,6 +379,20 @@ public sealed partial class AmmoLoader
             displayedRevision = StateRevision;
             displayedSynchronized = synchronized;
             uiDirty = true;
+        }
+    }
+
+    private void UpdateWithdrawalButtons()
+    {
+        if (!withdrawMode || stockList == null) { return; }
+        foreach (var tile in stockList.Content.Children.OfType<GUIButton>())
+        {
+            if (tile.UserData is ValueTuple<string, ItemPrefab?> package)
+            {
+                tile.Enabled = IsSynchronized && WithdrawalProblem(package.Item1, package.Item2) == "withdraw";
+                foreach (var image in tile.Children.OfType<GUIImage>())
+                { if (image.UserData is Color tint) { image.Color = tint * (tile.Enabled ? 1f : 0.4f); } }
+            }
         }
     }
 
@@ -427,29 +473,41 @@ public sealed partial class AmmoLoader
         }
         stockList!.Content.ClearChildren();
         var demand = AmmoStock.Count(rounds.TakeLast(capacity));
-        var visibleStock = stock.Counts.Where(p => target == null || IsCompatible(target, p.Key)).OrderBy(p => AmmoName(p.Key)).ToArray();
+        var visibleStock = stock.Counts.Where(p => withdrawMode || target == null || IsCompatible(target, p.Key)).OrderBy(p => AmmoName(p.Key)).ToArray();
         stockList.UseGridLayout = visibleStock.Length > 0;
-        stockSummary!.Text = message.Length > 0 ? message : $"{L(target == null ? "allstock" : "compatiblestock")} · {visibleStock.Length} {L("types")} · {visibleStock.Sum(p => (long)p.Value):N0} {L("rounds")}";
+        stockList.ToolTip = L(withdrawMode ? "withdrawmodehint" : "addhint");
+        stockSummary!.Text = message.Length > 0 ? message : $"{L(withdrawMode || target == null ? "allstock" : "compatiblestock")} · {visibleStock.Length} {L("types")} · {visibleStock.Sum(p => (long)p.Value):N0} {L("rounds")}";
         stockSummary.ToolTip = stockSummary.Text;
         if (visibleStock.Length == 0) { TextRow(stockList, L("emptystock").Value); }
         int stockCellSize = (int)(72 * GUI.Scale);
         foreach (var p in visibleStock)
         {
             var prefab = ItemPrefab.FindByIdentifier(p.Key.ToIdentifier()) as ItemPrefab;
+            var package = withdrawMode ? FindWithdrawalPackage(p.Key) : null;
             var tile = new GUIButton(new RectTransform(new Point(stockCellSize, stockCellSize), stockList.Content.RectTransform),
                 style: "GUIButtonSmallFreeScale")
             {
-                OnClicked = (_, _) => { AddRun(p.Key, addCount); return true; },
-                Enabled = IsCompatible(target, p.Key) &&
+                UserData = (p.Key, package),
+                OnClicked = (_, _) =>
+                {
+                    if (withdrawMode) { RequestWithdraw(p.Key); uiDirty = true; }
+                    else { AddRun(p.Key, addCount); }
+                    return true;
+                },
+                Enabled = withdrawMode ? IsSynchronized && WithdrawalProblem(p.Key, package) == "withdraw" : IsCompatible(target, p.Key) &&
                     (draft.Count < AmmoPlan.MaxGroups || string.Equals(draft.FirstOrDefault()?.Id, p.Key, StringComparison.OrdinalIgnoreCase)) &&
                     planned < capacity
             };
-            BindStockTooltip(tile, prefab, AmmoName(p.Key));
+            BindStockTooltip(tile, prefab, AmmoName(p.Key), withdrawMode
+                ? () => L(!IsSynchronized ? "syncing" : WithdrawalProblem(p.Key, package)) +
+                    (package == null ? "" : $"\n{package.Name} · {Math.Min(Stock[p.Key], (int)package.Health)} {L("rounds")}")
+                : null);
             if (prefab != null && (prefab.InventoryIcon ?? prefab.Sprite) is { } icon)
             {
                 new GUIImage(new RectTransform(new Vector2(0.8f), tile.RectTransform, Anchor.Center), icon, scaleToFit: true)
                 {
                     CanBeFocused = false,
+                    UserData = icon == prefab.InventoryIcon ? prefab.InventoryIconColor : prefab.SpriteColor,
                     Color = (icon == prefab.InventoryIcon ? prefab.InventoryIconColor : prefab.SpriteColor) * (tile.Enabled ? 1f : 0.4f)
                 };
             }

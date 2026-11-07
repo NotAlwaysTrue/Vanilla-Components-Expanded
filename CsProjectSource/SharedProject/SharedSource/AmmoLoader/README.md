@@ -17,9 +17,9 @@ UI 文件只读取状态并调用后端方法，不写库存、不直接修改�
 
 UI 与后端属于同一个 `AmmoLoader` 实例，直接使用以下接口：
 
-- 读取 `Stock`、`Target`、`InputContainer`、`TargetContainer`、`Ready`、`StateRevision`。
+- 读取 `Stock`、`Target`、`InputContainer`、`OutputContainer`、`TargetContainer`、`Ready`、`StateRevision`。
 - 客户端读取 `IsSynchronized`；界面更新时调用 `UpdateClientState(deltaTime)`，由后端处理初始同步及重试。
-- 调用 `RequestLoad(AmmoRun[])`、`RequestUnload()`；单机与联网分支均在后端。
+- 调用 `RequestLoad(AmmoRun[])`、`RequestUnload()`、`RequestWithdraw(projectileId)`；单机与联网分支均在后端。
 - `AmmoRun[]` 从上到下表示出膛顺序。后端转换为 VirtualizedMagazine 接口所需的栈底优先顺序。
 
 兼容性由 `VirtualizedMagazine.IsAmmoCompatible` 判断，投射物组件查询复用 `ElementHelper`。
@@ -29,13 +29,18 @@ UI 与后端属于同一个 `AmmoLoader` 实例，直接使用以下接口：
 
 ## XML 接入
 
-`AmmoLoader` 同时配置容器索引和 GuiFrame。目标容器必须单格、不堆叠。
+`AmmoLoader` 同时配置容器索引和 GuiFrame。XML 容器按界面从左到右排列：投料 0、取货 1、弹匣 2。
+投料和取货各自使用 `capacity`、`slotsperrow` 定义槽数与行数；目标弹匣容器必须单格、不堆叠。
 
 ```xml
-<AmmoLoader inputcontainerindex="0" targetcontainerindex="1"
+<AmmoLoader inputcontainerindex="0" outputcontainerindex="1" targetcontainerindex="2"
             canbeselected="true" msg="ItemMsgInteractSelect">
   <GuiFrame relativesize="0.75,0.78" minsize="900,600" anchor="Center" style="ItemUI" />
 </AmmoLoader>
+<ItemContainer capacity="6" slotsperrow="6" maxstacksize="1"
+               canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
+  <Containable items="vceammopackage" />
+</ItemContainer>
 <ItemContainer capacity="6" slotsperrow="6" maxstacksize="1"
                canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
   <Containable items="vceammopackage" />
@@ -51,6 +56,14 @@ UI 与后端属于同一个 `AmmoLoader` 实例，直接使用以下接口：
 例如 120 发新弹药包设置 `health="120"`。入库读取剩余整数发数，先清零 Condition，再排队移除物品，防止重复入库。
 没有此组件、弹种无效或包含其他物品的来源不入库。编辑器非试航状态不消耗来源。
 投料口仅允许带 `vceammopackage` 标签的物品；后端仍检查储弹组件和弹药有效性，不符合条件的物品留在原位。
+
+勾选底部“弹药包取货”文字后的方框，点击库存弹种取出一包；不修改编排，不使用“每次添加”数量，也不受当前弹匣容量或弹种过滤限制。
+取货包从同投射物 ID、带 `vceammopackage` 标签且具有 `VirtualizedAmmoStorage` 的无容器物品中选择 `health` 最大者；
+容量相同时按物品 ID 排序。`health` 必须为有限正数且至少 1 发。每次取 `min(库存, floor(health))` 发，普通品质，剩余不足一满包时设置对应 Condition。
+包只生成在独立取货槽；没有可用包、没有独立取货容器或槽位放不下时禁止取货。取货槽不会自动入库，可以手动拖回投料槽。
+服务端处理取货并校验访问权限和库存版本；每台机器同一时刻只排队一个包，库存直到包实际放入才扣除。
+排队期间其他装填仍可使用库存，交付时重新限制可取数量；生成取消或放入失败不扣库存，失败物品清零并移除。
+旧的两容器配置可保留显式 `targetcontainerindex="1"` 继续装弹；要启用取货，需配置第三个独立容器与对应索引。
 
 弹匣继续使用 `<VirtualizedMagazine AllowedAmmoTags="your_ammo_tag" />`。
 `vcevirtualmagazine` 仅为示例目标槽过滤 tag，可改为模组自己的容器条件。
@@ -83,3 +96,5 @@ dotnet run --project .Test/AmmoLoader/AmmoLoaderDragRegression/AmmoLoaderDragReg
 独立本机服务端与一个客户端的装卸同步、断线重连通过，使用 LuaCs、VCE、测试包的最小模组组合。
 完整模组组合的联机回合在 EA-HI 角色物品栏同步时报数组越界；双客户端争用、公网延迟和战役跨关仍未验证。
 非空补装和超容量截取已纳入离线回归，尚未重新进行游戏内或联机验证。
+取货新增离线回归覆盖最大包装选择、余量包、容器索引、满槽/放入失败、重复及无权限请求、排队期间装填、库存保存重载；
+原生 GUI 回归覆盖多种槽数/行数、三种窗口尺寸、模式切换与库存点击路由。以上取货检查尚未替代实机存档和联机验证。

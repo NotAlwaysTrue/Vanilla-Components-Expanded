@@ -37,7 +37,7 @@ namespace Barotrauma
         public static object SubEditorScreen = new();
     }
     public static class Screen { public static object? Selected; }
-    public sealed class Prefabs
+    public sealed class Prefabs : IEnumerable<ItemPrefab>
     {
         public readonly List<ItemPrefab> Values = [];
         public bool TryGet(Identifier id, out ItemPrefab prefab)
@@ -46,12 +46,15 @@ namespace Barotrauma
             return prefab != null;
         }
         public ItemPrefab? Find(Predicate<ItemPrefab> predicate) => Values.Find(predicate);
+        public IEnumerator<ItemPrefab> GetEnumerator() => Values.GetEnumerator();
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
     public sealed class ItemPrefab(string id, uint number, params string[] tags)
     {
         public static readonly Prefabs Prefabs = new();
         public Identifier Identifier = new(id);
         public uint UintIdentifier = number;
+        public float Health = 100;
         public HashSet<Identifier> Tags = tags.Select(t => t.ToIdentifier()).ToHashSet();
         public ContentXElement ConfigElement = new(XElement.Parse("<Item><Projectile /></Item>"));
         public static ItemPrefab FindByIdentifier(Identifier id) => Prefabs.Values.Single(p => p.Identifier == id);
@@ -63,6 +66,7 @@ namespace Barotrauma
         public float Condition = 100;
         public float MaxCondition = 100;
         public bool Removed, IsInRemoveQueue;
+        public ItemInventory? ParentInventory;
         public readonly List<ItemComponent> Components = [];
         public readonly List<Item> ContainedItems = [];
         public readonly List<ItemComponent.IEventData> Events = [];
@@ -78,13 +82,53 @@ namespace Barotrauma
         public int Capacity = capacity;
         public readonly List<Item> AllItems = [];
         public Item? GetItemAt(int slot) => AllItems.ElementAtOrDefault(slot);
+        public Func<ItemPrefab, bool>? Accepts;
+        public bool RejectInsertion;
+        public bool CanProbablyBePut(ItemPrefab prefab, float? condition = null, int? quality = null) =>
+            AllItems.Count < Capacity && (Accepts?.Invoke(prefab) ?? true);
     }
-    public sealed class Spawner
+    public sealed class EntitySpawner
     {
         public bool Removed;
+        public interface IEntitySpawnInfo { }
+        public sealed record ItemSpawnInfo(ItemPrefab Prefab, ItemInventory Inventory, float? Condition,
+            Action<Item>? OnSpawned, bool SpawnIfInventoryFull) : IEntitySpawnInfo;
+        public readonly Queue<ItemSpawnInfo> Pending = [];
+        public readonly List<Item> Spawned = [];
+        public Action<Item>? BeforeCallback;
+        public bool IsInSpawnQueue(Predicate<IEntitySpawnInfo> predicate) => Pending.Any(p => predicate(p));
+        public void AddItemToSpawnQueue(ItemPrefab prefab, ItemInventory inventory, float? condition = null,
+            int? quality = null, Action<Item>? onSpawned = null, bool spawnIfInventoryFull = true) =>
+            Pending.Enqueue(new(prefab, inventory, condition, onSpawned, spawnIfInventoryFull));
+        public void ProcessQueue()
+        {
+            while (Pending.TryDequeue(out var spawn))
+            {
+                // The native spawner does not invoke the callback when this preflight fails.
+                if (!spawn.SpawnIfInventoryFull && !spawn.Inventory.CanProbablyBePut(spawn.Prefab)) { continue; }
+                var item = new Item((ushort)(100 + Spawned.Count), spawn.Prefab)
+                    { MaxCondition = spawn.Prefab.Health, Condition = spawn.Condition ?? spawn.Prefab.Health };
+                if (VCE_VirtualizedMagazine.ElementHelper.GetFirstComponentElementByID<VCE_VirtualizedMagazine.VirtualizedAmmoStorage>(spawn.Prefab.Identifier) is { } storage)
+                { item.Components.Add(new VCE_VirtualizedMagazine.VirtualizedAmmoStorage(item, storage)); }
+                Spawned.Add(item);
+                if (!spawn.Inventory.RejectInsertion && spawn.Inventory.CanProbablyBePut(spawn.Prefab, item.Condition, 0))
+                {
+                    spawn.Inventory.AllItems.Add(item);
+                    item.ParentInventory = spawn.Inventory;
+                }
+                BeforeCallback?.Invoke(item);
+                spawn.OnSpawned?.Invoke(item);
+            }
+            foreach (var item in Spawned.Where(i => i.IsInRemoveQueue && !i.Removed))
+            {
+                item.ParentInventory?.AllItems.Remove(item);
+                item.ParentInventory = null;
+                item.Removed = true;
+            }
+        }
         public void AddItemToRemoveQueue(Item item) => item.IsInRemoveQueue = true;
     }
-    public static class Entity { public static Spawner Spawner = new(); }
+    public static class Entity { public static EntitySpawner Spawner = new(); }
 }
 
 namespace Barotrauma.Items.Components

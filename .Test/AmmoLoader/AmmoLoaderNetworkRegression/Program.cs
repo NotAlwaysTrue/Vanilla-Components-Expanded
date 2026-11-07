@@ -85,6 +85,21 @@ var unloadRequest = new Message();
 loader.ClientEventWrite(unloadRequest, new NetEntityEvent.Wrapper(machine.Requests[^1]));
 unloadRequest.Rewind();
 Check(unloadRequest.ReadByte() == 2, "unload API sends the backend command");
+loader.RequestWithdraw("a");
+var withdrawRequest = new Message();
+loader.ClientEventWrite(withdrawRequest, new NetEntityEvent.Wrapper(machine.Requests[^1]));
+withdrawRequest.Rewind();
+Check(withdrawRequest.ReadByte() == 3 && withdrawRequest.ReadUInt32() == loader.StateRevision &&
+    withdrawRequest.ReadUInt16() == item.ID && withdrawRequest.ReadByte() == 1 &&
+    withdrawRequest.ReadUInt32() == a.UintIdentifier && withdrawRequest.ReadUInt16() == 1 &&
+    loader.Stock["a"] == 90 && Entity.Spawner.Pending.Count == 0,
+    "withdraw sends one projectile identifier without predicting packages, choosing capacities or debiting stock");
+requests = machine.Requests.Count;
+loader.RequestWithdraw("missing");
+Check(machine.Requests.Count == requests, "withdraw rejects unknown projectile identifiers");
+ReceiveStock(2, 0, 2, "{\"Revision\":2,\"Stock\":{");
+loader.RequestWithdraw("a");
+Check(machine.Requests.Count == requests, "withdraw waits for a complete stock snapshot");
 Console.WriteLine($"Actual magazine and loader client network: {checks} checks passed (game boundary stubbed).");
 #else
 mag.LoadedAmmoIdentifiersArray = Enumerable.Range(0, 300).Select(i => i % 2 == 0 ? a.Identifier : b.Identifier).ToArray();

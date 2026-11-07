@@ -62,6 +62,7 @@ public sealed partial class AmmoLoader
         {
             Command.Load => TryLoad(plan, targetId),
             Command.Unload => TryUnload(targetId),
+            Command.Withdraw => plan.Count == 1 && plan[0].Count == 1 && TryWithdraw(plan[0].Id),
             _ => false
         };
         if (!success) { PublishState(); }
