@@ -24,7 +24,7 @@ public sealed partial class AmmoLoader
 
     public void RequestLoad(AmmoRun[] plan)
     {
-        if (!IsSynchronized || !AmmoPlan.IsValid(plan, Target?.MaxSize ?? 0)) { return; }
+        if (!IsSynchronized || Target == null || !AmmoPlan.IsValid(plan, AmmoPlan.MaxRounds)) { return; }
         Send(Command.Load, plan);
     }
     public void RequestUnload() => Send(Command.Unload);

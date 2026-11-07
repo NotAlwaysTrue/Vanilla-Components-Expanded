@@ -98,26 +98,27 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
     private bool TryLoad(IReadOnlyList<AmmoRun> plan, ushort targetId)
     {
         var magazine = Target;
-        if (!Ready || magazine == null || magazine.Item.ID != targetId || magazine.LoadedCount != 0 ||
-            !AmmoPlan.IsValid(plan, magazine.MaxSize) || plan.Any(r => !IsCompatible(magazine, r.Id)))
+        if (!Ready || magazine == null || magazine.Item.ID != targetId || magazine.LoadedCount >= magazine.MaxSize ||
+            !AmmoPlan.IsValid(plan, AmmoPlan.MaxRounds))
         {
             return false;
         }
-        var rounds = AmmoPlan.Expand(plan).ToArray();
+        var rounds = AmmoPlan.Expand(plan).Take(magazine.MaxSize - magazine.LoadedCount).ToArray();
         var demand = AmmoStock.Count(rounds);
-        if (!Stock.CanTake(demand)) { return false; }
-        // The UI is top-first; the magazine API pushes bottom-first.
+        if (demand.Keys.Any(id => !IsCompatible(magazine, id)) || !Stock.CanTake(demand)) { return false; }
+        var original = magazine.LoadedAmmoIdentifiersArray;
+        // Push the fitting top-first prefix bottom-first, above the existing rounds.
         var toLoad = rounds.Reverse().Select(id => id.ToIdentifier()).ToList();
         try { magazine.LoadAmmoArray(ref toLoad); }
         catch (Exception e)
         {
-            RestoreMagazine(magazine, []);
+            RestoreMagazine(magazine, original);
             VanillaComponentsExpanded.VCEPlugin.DebugConsole.AddWarning($"AmmoLoader load rolled back: {e.Message}");
             return false;
         }
         if (toLoad.Count != 0)
         {
-            RestoreMagazine(magazine, []);
+            RestoreMagazine(magazine, original);
             return false;
         }
         Stock.TryTake(demand);

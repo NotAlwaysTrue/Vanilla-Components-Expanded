@@ -116,6 +116,42 @@ uint beforeUnload = Revision();
 Send(2, beforeUnload, 20);
 Send(2, beforeUnload, 20);
 Check(mag.LoadedCount == 0 && loader.Stock["a"] == 120 && loader.Stock["b"] == 24, "repeated unload returns once");
+mag.MaxSize = 6;
+Send(1, Revision(), 20, true, (2, 1), (1, 1));
+uint beforeTopUp = Revision();
+mag.ThrowOnRefresh = true;
+Send(1, beforeTopUp, 20, true, (1, 2), (2, 3), (3, 2));
+Check(mag.LoadedAmmoIdentifiers.Select(id => id.Value).SequenceEqual(new[] { "b", "a" }) &&
+    loader.Stock["a"] == 119 && loader.Stock["b"] == 23 && Revision() == beforeTopUp,
+    "failed top-up restores existing rounds and order without charging stock");
+mag.ThrowOnRefresh = false;
+Send(1, beforeTopUp, 20, true, (1, 2), (2, 3), (3, 2));
+Check(mag.LoadedAmmoIdentifiers.Select(id => id.Value).SequenceEqual(new[] { "a", "a", "b", "b", "b", "a" }),
+    "top-up takes the plan prefix within remaining capacity and preserves the old rounds underneath");
+Check(loader.Stock["a"] == 117 && loader.Stock["b"] == 21 && loader.Stock["wrong"] == 0,
+    "top-up charges only inserted rounds, ignoring incompatible excess");
+uint fullRevision = Revision();
+Send(1, fullRevision, 20, true, (1, 1));
+Check(mag.LoadedCount == 6 && loader.Stock["a"] == 117 && Revision() == fullRevision,
+    "a full magazine rejects loading without changing stock or revision");
+Send(2, Revision(), 20);
+Check(loader.Stock["a"] == 120 && loader.Stock["b"] == 24, "top-up/unload conserves both old and new rounds");
+Send(1, Revision(), 20, true, (1, 6), (2, 100), (3, 1));
+Check(mag.LoadedCount == 6 && mag.LoadedAmmoIdentifiers.All(id => id.Value == "a") &&
+    loader.Stock["a"] == 114 && loader.Stock["b"] == 24,
+    "an oversized plan fills an empty magazine without requiring stock or compatibility for excess rounds");
+Send(2, Revision(), 20);
+mag.MaxSize = 30;
+Send(1, Revision(), 20, true, (1, 1));
+uint beforeShortage = Revision();
+Send(1, beforeShortage, 20, true, (2, 25));
+Check(mag.LoadedCount == 1 && mag.LoadedAmmoIdentifiers.Peek().Value == "a" &&
+    loader.Stock["a"] == 119 && loader.Stock["b"] == 24 && Revision() == beforeShortage,
+    "insufficient stock for the fitting prefix rejects the whole top-up and keeps existing rounds");
+Send(1, beforeShortage, 20, true, (1, AmmoPlan.MaxRounds + 1));
+Check(mag.LoadedCount == 1 && loader.Stock["a"] == 119,
+    "capacity clipping does not bypass the request round limit");
+Send(2, Revision(), 20);
 mag.ThrowOnRefresh = true;
 Send(1, Revision(), 20, true, (1, 5));
 Check(mag.LoadedCount == 0 && loader.Stock["a"] == 120, "external failure rolls back load");

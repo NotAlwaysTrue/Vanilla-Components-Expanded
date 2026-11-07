@@ -182,8 +182,13 @@ namespace VCE_VirtualizedMagazine
             (AllowedAmmoTags.Count == 0 || PrefabHasTag(prefab, AllowedAmmoTags));
         public void LoadAmmoArray(ref List<Identifier> list)
         {
-            foreach (var id in list) { LoadedAmmoIdentifiers.Push(id); }
-            list.Clear();
+            var rejected = new List<Identifier>();
+            foreach (var id in list)
+            {
+                if (IsAmmoCompatible(id) && LoadedCount < MaxSize) { LoadedAmmoIdentifiers.Push(id); }
+                else { rejected.Add(id); }
+            }
+            list = rejected;
             UpdateAmmoData();
         }
         public void UnLoadAmmoArray(out List<Identifier> list)

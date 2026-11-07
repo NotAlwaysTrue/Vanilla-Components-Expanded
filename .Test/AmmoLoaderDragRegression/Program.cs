@@ -56,10 +56,15 @@ static void Run()
     Add("tracer", 0);
     Add("tracer", -1);
     Add("tracer", int.MaxValue);
-    if (draft.Count != 2 || draft[0].Count != 15 || draft[1].Count != 2)
+    if (draft.Count != 2 || draft[0] != new AmmoRun("tracer", 2) ||
+        !string.Equals(draft[1].Id, "normal", StringComparison.OrdinalIgnoreCase) || draft[1].Count != 15)
     {
-        throw new Exception("Batch additions did not merge adjacent ammunition or rejected values changed the plan.");
+        throw new Exception("Batch additions did not prepend and merge adjacent ammunition or rejected values changed the plan.");
     }
+    Add("ap", 3);
+    if (!AmmoPlan.Expand(draft).SequenceEqual(Enumerable.Repeat("ap", 3).Concat(Enumerable.Repeat("tracer", 2))
+        .Concat(Enumerable.Repeat("normal", 15)), StringComparer.OrdinalIgnoreCase))
+    { throw new Exception("Prepending ammunition changed the existing rounds' firing order."); }
     draft.Clear();
     Add("normal", AmmoPlan.MaxRounds - 1);
     Add("normal", 2);
@@ -74,12 +79,12 @@ static void Run()
         throw new Exception("Batch addition exceeded the group limit.");
     }
     Add("tracer", 5);
-    if (draft.Count != AmmoPlan.MaxGroups || draft[^1].Count != 6)
+    if (draft.Count != AmmoPlan.MaxGroups || draft[0] != new AmmoRun("tracer", 6))
     {
-        throw new Exception("Appending to the last group was rejected at the group limit.");
+        throw new Exception("Adding to the first group was rejected at the group limit.");
     }
     draft.Clear();
-    Console.WriteLine("PASS: batch additions merge adjacent rounds and atomically respect round/group limits.");
+    Console.WriteLine("PASS: batch additions prepend without reordering existing rounds, merge the first group and atomically respect round/group limits.");
     var reorderRuns = typeof(AmmoLoader).GetMethod("ReorderRuns", fields)!;
     void Reorder(params int[] order) => reorderRuns.Invoke(loader, new object[] { order });
     draft.AddRange(new[] { new AmmoRun("normal", 20), new AmmoRun("tracer", 5), new AmmoRun("blunt", 10) });
@@ -215,14 +220,41 @@ static void Run()
     var selectionOwner = RuntimeHelpers.GetUninitializedObject(selectionCallback.DeclaringType!);
     selectionCallback.DeclaringType!.GetFields(fields | BindingFlags.Public).Single(f => f.FieldType == typeof(AmmoLoader))
         .SetValue(selectionOwner, loader);
-    var confirming = typeof(AmmoLoader).GetField("confirmingReplace", fields)!;
-    typeof(AmmoLoader).GetField("selectedPreset", fields)!.SetValue(loader, a);
-    confirming.SetValue(loader, true);
+    var selectedPresetField = typeof(AmmoLoader).GetField("selectedPreset", fields)!;
+    var dirtyField = typeof(AmmoLoader).GetField("draftDirty", fields)!;
+    selectedPresetField.SetValue(loader, a);
     selectionCallback.Invoke(selectionOwner, new[] { null, a });
-    if (!(bool)confirming.GetValue(loader)!) { throw new Exception("Refreshing the selected preset canceled replacement confirmation."); }
     selectionCallback.Invoke(selectionOwner, new[] { null, b });
-    if ((bool)confirming.GetValue(loader)!) { throw new Exception("Selecting another preset retained stale replacement confirmation."); }
-    Console.WriteLine("PASS: preset reselection preserves replacement confirmation; changing selection clears it.");
+    if (selectedPresetField.GetValue(loader) != b) { throw new Exception("Selecting a preset did not update the load target."); }
+    var nameBox = new GUITextBox(new RectTransform(new Point(200, 30)), text: "Unsaved", style: null);
+    typeof(AmmoLoader).GetField("presetName", fields)!.SetValue(loader, nameBox);
+    var loadPreset = typeof(AmmoLoader).GetMethod("LoadSelectedPreset", fields)!;
+    var unsavedPlan = new[] { new AmmoRun("normal", 2), new AmmoRun("ap", 1) };
+    draft.AddRange(unsavedPlan);
+    dirtyField.SetValue(loader, true);
+    int messageCount = GUIMessageBox.MessageBoxes.Count;
+    loadPreset.Invoke(loader, null);
+    var confirmation = GUIMessageBox.VisibleBox as GUIMessageBox;
+    if (confirmation == null || GUIMessageBox.MessageBoxes.Count != messageCount + 1 || !confirmation.DrawOnTop ||
+        confirmation.Buttons.Count != 2 || !draft.SequenceEqual(unsavedPlan) || nameBox.Text != "Unsaved")
+    { throw new Exception("Loading over an unsaved plan did not show a modal before changing the draft."); }
+    confirmation.Buttons[1].OnClicked(confirmation.Buttons[1], null);
+    if (!confirmation.Closed || !draft.SequenceEqual(unsavedPlan) || nameBox.Text != "Unsaved" ||
+        !(bool)dirtyField.GetValue(loader)!)
+    { throw new Exception("Canceling preset replacement changed the unsaved draft or name."); }
+    loadPreset.Invoke(loader, null);
+    confirmation = (GUIMessageBox)GUIMessageBox.VisibleBox;
+    selectedPresetField.SetValue(loader, c);
+    confirmation.Buttons[0].OnClicked(confirmation.Buttons[0], null);
+    if (!confirmation.Closed || !draft.SequenceEqual(new[] { new AmmoRun("normal", 1) }) || nameBox.Text != "B" ||
+        selectedPresetField.GetValue(loader) != b || (bool)dirtyField.GetValue(loader)!)
+    { throw new Exception("Confirming did not load the preset captured when the prompt opened."); }
+    selectedPresetField.SetValue(loader, a);
+    loadPreset.Invoke(loader, null);
+    if (nameBox.Text != "A" || GUIMessageBox.MessageBoxes.Count != messageCount)
+    { throw new Exception("A saved plan unnecessarily prompted before loading a preset."); }
+    draft.Clear();
+    Console.WriteLine("PASS: native preset confirmation waits before replacing, cancel preserves edits, confirm uses the captured preset, and clean plans load directly.");
     var firstRow = new GUIFrame(new RectTransform(new Point(350, 32), dragList.Content.RectTransform), style: null)
         { CanBeFocused = true, UserData = 0 };
     _ = new GUIFrame(new RectTransform(new Point(350, 32), dragList.Content.RectTransform), style: null)
@@ -334,6 +366,24 @@ static void Run()
 
     config.Graphics.HUDScale = 1;
     typeof(GameSettings).GetField("currentConfig", fields)!.SetValue(null, config);
+    var dragMarker = typeof(AmmoLoader).GetMethod("DragMarker", fields)!;
+    foreach (int width in new[] { 180, 300, 440 })
+    foreach (int height in new[] { 26, 32, 48 })
+    {
+        var row = new GUILayoutGroup(new RectTransform(new Point(width, height)),
+            isHorizontal: true, childAnchor: Anchor.CenterLeft) { RelativeSpacing = 0.01f };
+        var marker = (GUITextBlock)dragMarker.Invoke(null, new object[] { row })!;
+        _ = new GUIFrame(new RectTransform(new Vector2(0.95f, 1), row.RectTransform), style: null);
+        foreach (int offset in new[] { 0, 47, -23 })
+        {
+            row.RectTransform.AbsoluteOffset = new Point(0, offset);
+            row.ForceLayoutRecalculation();
+            if (!marker.RectTransform.IsFixedSize || marker.Rect.Width != (int)(16 * GUI.Scale) ||
+                marker.Rect.Center.Y != row.Rect.Center.Y || marker.CanBeFocused || marker.Text.SanitizedValue != "≡")
+            { throw new Exception($"Drag marker compressed or off-center: row {row.Rect}, marker {marker.Rect}."); }
+        }
+    }
+    Console.WriteLine("PASS: three-line drag markers retain their width and vertical center in narrow/wide rows after moving.");
     var ammoPrefab = (ItemPrefab)RuntimeHelpers.GetUninitializedObject(typeof(ItemPrefab));
     void SetPrefabField(string name, object value)
     {
@@ -371,6 +421,7 @@ static void Run()
         if (icon.Sprite != expectedSprite || (expectedSprite != null && icon.Color != (iconKind == "inventory" ? Color.Red : Color.Blue)) ||
             icon.CanBeFocused || cell.CanBeFocused || label.CanBeFocused ||
             icon.Rect.Width != icon.Rect.Height || icon.Rect.Top < cell.Rect.Top || icon.Rect.Bottom > cell.Rect.Bottom ||
+            icon.Rect.Center.Y > cell.Rect.Center.Y || cell.Rect.Center.Y - icon.Rect.Center.Y > 2 * GUI.Scale ||
             icon.Rect.Right >= label.Rect.Left || label.Rect.Right > cell.Rect.Right || label.Text.SanitizedValue != "Test ammunition")
         { throw new Exception($"Ammo icon/text layout failed at height {height}, icon kind {iconKind}: cell {cell.Rect}, icon {icon.Rect}, text {label.Rect}, color {icon.Color}, sprite match {icon.Sprite == expectedSprite}, focus {icon.CanBeFocused}/{cell.CanBeFocused}/{label.CanBeFocused}, text '{label.Text.SanitizedValue}'."); }
     }

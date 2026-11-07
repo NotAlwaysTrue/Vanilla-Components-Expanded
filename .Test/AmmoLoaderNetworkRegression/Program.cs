@@ -73,6 +73,11 @@ Check(loadRequest.ReadByte() == 1 && loadRequest.ReadUInt32() == 1 && loadReques
     loadRequest.ReadByte() == 1 && loadRequest.ReadUInt32() == a.UintIdentifier && loadRequest.ReadUInt16() == 2,
     "public load API owns the command encoding and observed target/revision");
 int requests = machine.Requests.Count;
+mag.LoadedAmmoIdentifiers.Push(a.Identifier);
+loader.RequestLoad([new("a", mag.MaxSize + 1)]);
+Check(machine.Requests.Count == requests + 1 && mag.LoadedCount == 1 && loader.Stock["a"] == 90,
+    "client forwards oversized plans for nonempty magazines without predicting stock or magazine changes");
+requests = machine.Requests.Count;
 loader.RequestLoad(Enumerable.Repeat(new VCE.AmmoLoading.AmmoRun("a", 1), 256).ToArray());
 Check(machine.Requests.Count == requests, "public API rejects plans that cannot be encoded safely");
 loader.RequestUnload();

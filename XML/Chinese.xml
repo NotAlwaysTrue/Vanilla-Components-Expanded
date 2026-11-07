@@ -22,7 +22,7 @@
   <vce.ammoloader.up>↑</vce.ammoloader.up>
   <vce.ammoloader.down>↓</vce.ammoloader.down>
   <vce.ammoloader.delete>×</vce.ammoloader.delete>
-  <vce.ammoloader.topfirst>从上到下依次出膛</vce.ammoloader.topfirst>
+  <vce.ammoloader.topfirst>从上到下依次出膛；按剩余容量补装，新装弹药先出膛，超出部分留在库存</vce.ammoloader.topfirst>
   <vce.ammoloader.savepreset>保存预设</vce.ammoloader.savepreset>
   <vce.ammoloader.presetname>名称</vce.ammoloader.presetname>
   <vce.ammoloader.clear>清空</vce.ammoloader.clear>
@@ -34,15 +34,15 @@
   <vce.ammoloader.needstock>需求 / 库存</vce.ammoloader.needstock>
   <vce.ammoloader.targetslot>目标弹匣</vce.ammoloader.targetslot>
   <vce.ammoloader.load>开始装填</vce.ammoloader.load>
-  <vce.ammoloader.confirmreplace>再点一次“加载预设”替换未保存的编排</vce.ammoloader.confirmreplace>
+  <vce.ammoloader.confirmreplace>当前编排有未保存的修改，确定覆盖并加载所选预设？</vce.ammoloader.confirmreplace>
   <vce.ammoloader.nopresets>暂无兼容预设</vce.ammoloader.nopresets>
   <vce.ammoloader.add>+ 添加</vce.ammoloader.add>
   <vce.ammoloader.nomagazine>未放入弹匣</vce.ammoloader.nomagazine>
   <vce.ammoloader.empty>空弹匣</vce.ammoloader.empty>
   <vce.ammoloader.unavailable>机器损坏或配置无效</vce.ammoloader.unavailable>
   <vce.ammoloader.syncing>正在同步库存</vce.ammoloader.syncing>
-  <vce.ammoloader.unloadfirst>请先卸弹回库</vce.ammoloader.unloadfirst>
-  <vce.ammoloader.invalidplan>编排为空或超出容量/限制</vce.ammoloader.invalidplan>
+  <vce.ammoloader.full>弹匣已满</vce.ammoloader.full>
+  <vce.ammoloader.invalidplan>编排为空或超出编排限制</vce.ammoloader.invalidplan>
   <vce.ammoloader.incompatible>编排含不兼容弹药</vce.ammoloader.incompatible>
   <vce.ammoloader.notenough>库存不足</vce.ammoloader.notenough>
   <vce.ammoloader.ready>库存充足，可以装填</vce.ammoloader.ready>
@@ -70,7 +70,6 @@
   <vce.ammoloader.execution>装填执行</vce.ammoloader.execution>
   <vce.ammoloader.emptyplan>编排为空，请添加弹药</vce.ammoloader.emptyplan>
   <vce.ammoloader.emptystock>暂无可用库存，请从投料口放入弹药包</vce.ammoloader.emptystock>
-  <vce.ammoloader.overcapacity>编排超过弹匣容量，请减少发数</vce.ammoloader.overcapacity>
   <vce.ammoloader.moveup>向前移动</vce.ammoloader.moveup>
   <vce.ammoloader.movedown>向后移动</vce.ammoloader.movedown>
   <vce.ammoloader.remove>删除</vce.ammoloader.remove>

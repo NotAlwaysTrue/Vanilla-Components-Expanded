@@ -21,7 +21,7 @@
   <vce.ammoloader.up>↑</vce.ammoloader.up>
   <vce.ammoloader.down>↓</vce.ammoloader.down>
   <vce.ammoloader.delete>×</vce.ammoloader.delete>
-  <vce.ammoloader.topfirst>Top to bottom: firing order</vce.ammoloader.topfirst>
+  <vce.ammoloader.topfirst>Top to bottom: firing order. Fill remaining space; new rounds fire first, excess stays in stock.</vce.ammoloader.topfirst>
   <vce.ammoloader.savepreset>Save preset</vce.ammoloader.savepreset>
   <vce.ammoloader.presetname>Name</vce.ammoloader.presetname>
   <vce.ammoloader.clear>Clear</vce.ammoloader.clear>
@@ -33,15 +33,15 @@
   <vce.ammoloader.needstock>Required / Stock</vce.ammoloader.needstock>
   <vce.ammoloader.targetslot>Magazine</vce.ammoloader.targetslot>
   <vce.ammoloader.load>Load</vce.ammoloader.load>
-  <vce.ammoloader.confirmreplace>Click Load preset again to replace the unsaved plan</vce.ammoloader.confirmreplace>
+  <vce.ammoloader.confirmreplace>The current plan has unsaved changes. Replace it with the selected preset?</vce.ammoloader.confirmreplace>
   <vce.ammoloader.nopresets>No compatible presets</vce.ammoloader.nopresets>
   <vce.ammoloader.add>+ Add</vce.ammoloader.add>
   <vce.ammoloader.nomagazine>Insert a magazine</vce.ammoloader.nomagazine>
   <vce.ammoloader.empty>Empty magazine</vce.ammoloader.empty>
   <vce.ammoloader.unavailable>Machine broken or configuration invalid</vce.ammoloader.unavailable>
   <vce.ammoloader.syncing>Synchronizing stock</vce.ammoloader.syncing>
-  <vce.ammoloader.unloadfirst>Unload the magazine first</vce.ammoloader.unloadfirst>
-  <vce.ammoloader.invalidplan>Plan is empty or exceeds capacity/limits</vce.ammoloader.invalidplan>
+  <vce.ammoloader.full>Magazine is full</vce.ammoloader.full>
+  <vce.ammoloader.invalidplan>Plan is empty or exceeds plan limits</vce.ammoloader.invalidplan>
   <vce.ammoloader.incompatible>Plan contains incompatible ammunition</vce.ammoloader.incompatible>
   <vce.ammoloader.notenough>Insufficient stock</vce.ammoloader.notenough>
   <vce.ammoloader.ready>Ready to load</vce.ammoloader.ready>
@@ -69,7 +69,6 @@
   <vce.ammoloader.execution>Loading</vce.ammoloader.execution>
   <vce.ammoloader.emptyplan>Empty plan: add ammunition</vce.ammoloader.emptyplan>
   <vce.ammoloader.emptystock>No available stock: deposit ammo packages below</vce.ammoloader.emptystock>
-  <vce.ammoloader.overcapacity>Plan exceeds magazine capacity: reduce round count</vce.ammoloader.overcapacity>
   <vce.ammoloader.moveup>Move earlier</vce.ammoloader.moveup>
   <vce.ammoloader.movedown>Move later</vce.ammoloader.movedown>
   <vce.ammoloader.remove>Delete</vce.ammoloader.remove>
