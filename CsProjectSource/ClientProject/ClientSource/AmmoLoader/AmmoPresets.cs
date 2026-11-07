@@ -36,6 +36,17 @@ internal static class AmmoPresets
         }
     }
 
+    public static bool Reorder(IReadOnlyList<AmmoPreset> visible)
+    {
+        var order = visible.Where(p => !p.BuiltIn).ToArray();
+        var slots = Enumerable.Range(0, Saved.Count).Where(i => order.Contains(Saved[i])).ToArray();
+        if (slots.Length != order.Length || order.Distinct().Count() != order.Length ||
+            slots.Select(i => Saved[i]).SequenceEqual(order)) { return false; }
+        // Keep presets hidden by the magazine filter in their original slots.
+        for (int i = 0; i < slots.Length; i++) { Saved[slots[i]] = order[i]; }
+        return true;
+    }
+
     public static void Save()
     {
         if (loadError != null) { throw new IOException(loadError); }
