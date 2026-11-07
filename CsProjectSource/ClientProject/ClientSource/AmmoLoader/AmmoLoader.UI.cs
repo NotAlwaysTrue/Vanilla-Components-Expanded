@@ -199,6 +199,8 @@ public sealed partial class AmmoLoader
         outputHolder = new GUIFrame(new RectTransform(new Point(output.Rect.Width - outputLabel.Rect.Width - withdrawToggle.Rect.Width - gap * 2,
             (int)(output.Rect.Height * 0.84f)), output.RectTransform, Anchor.CenterRight), style: null)
             { IgnoreLayoutGroups = true, ToolTip = L("outputhint") };
+        intakeLabel.RectTransform.Resize(new Point(intake.Rect.Width - outputHolder.Rect.Width - gap, intake.Rect.Height));
+        inputHolder.RectTransform.Resize(new Point(outputHolder.Rect.Width, inputHolder.Rect.Height));
         var target = Row(Column(dock, magazineWidth, listInset), 1);
         Label(target, L("targetslot"), 1, 0.27f);
         targetHolder = new GUIFrame(new RectTransform(new Vector2(0.43f, 0.84f), target.RectTransform, Anchor.Center), style: null)
