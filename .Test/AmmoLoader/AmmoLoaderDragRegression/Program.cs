@@ -31,7 +31,7 @@ catch (Exception e)
 static void Run()
 {
     const BindingFlags fields = BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
-    var source = XDocument.Load(".Test/AmmoLoaderItems.xml").Descendants("Item")
+    var source = XDocument.Load(".Test/AmmoLoader/AmmoLoaderItems.xml").Descendants("Item")
         .Single(e => (string?)e.Attribute("identifier") == "vceammoloader").Element("AmmoLoader")!.Element("GuiFrame")!;
     var loader = (AmmoLoader)RuntimeHelpers.GetUninitializedObject(typeof(AmmoLoader));
     var draft = new List<AmmoRun> { new("shotgunammo", 1), new("shotgunammoblunt", 1) };

@@ -54,7 +54,7 @@ UI 与后端属于同一个 `AmmoLoader` 实例，直接使用以下接口：
 
 弹匣继续使用 `<VirtualizedMagazine AllowedAmmoTags="your_ammo_tag" />`。
 `vcevirtualmagazine` 仅为示例目标槽过滤 tag，可改为模组自己的容器条件。
-装弹机 `vceammoloader`、测试弹匣与两种弹药包统一放在 `.Test/AmmoLoaderItems.xml`，仅启用可选 `VCETESTPACK` 测试依赖时加载。
+装弹机 `vceammoloader`、测试弹匣与两种弹药包统一放在 `.Test/AmmoLoader/AmmoLoaderItems.xml`，仅启用可选 `VCETESTPACK` 测试依赖时加载。
 
 删除了独立 `AmmoPackage`，不提供旧组件或旧机器存档迁移。开发测试需要重新放置机器与弹药包。
 
@@ -70,16 +70,13 @@ UI 与后端属于同一个 `AmmoLoader` 实例，直接使用以下接口：
 请求最多 96 段、4096 发；服务端校验访问权限、目标实体、库存版本及数量。
 
 ```powershell
-dotnet run --project .Test/AmmoLoaderRegression/AmmoLoaderRegression.csproj
-dotnet run --project .Test/AmmoLoaderNetworkRegression/ClientNetwork.csproj
-dotnet run --project .Test/AmmoLoaderNetworkRegression/ServerNetwork.csproj
-dotnet run --project .Test/PluginLoadRegression/PluginLoadRegression.csproj -- Client
-dotnet run --project .Test/PluginLoadRegression/PluginLoadRegression.csproj -- Server
-dotnet run --project .Test/AmmoLoaderDragRegression/AmmoLoaderDragRegression.csproj
+dotnet run --project .Test/AmmoLoader/AmmoLoaderRegression/AmmoLoaderRegression.csproj
+dotnet run --project .Test/AmmoLoader/AmmoLoaderNetworkRegression/ClientNetwork.csproj
+dotnet run --project .Test/AmmoLoader/AmmoLoaderNetworkRegression/ServerNetwork.csproj
+dotnet run --project .Test/AmmoLoader/AmmoLoaderDragRegression/AmmoLoaderDragRegression.csproj
 ```
 
 库存、装卸与网络回归编译实际后端代码，游戏边界使用桩对象；UI 回归直接加载本机游戏 DLL。
-插件加载回归使用真实游戏插件加载器，核对单个装弹机组件的注册、网络接口及 XML 配置。
 构建覆盖 Windows/Linux/Mac 的 Client/Server。以上离线检查不等于游戏内试航或双客户端验证。
 2026-11-07 补装改动前的实机验证通过：投料过滤、分组/逐发编排、预设保存与加载、混装和卸弹数量守恒、
 超容量/缺弹/非空弹匣拒绝、测试潜艇存档重载，以及通过武器 `Item.Use` 逐发核对六发混装弹序与消耗。

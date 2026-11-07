@@ -8,7 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../AmmoLoaderRegression/GameStubs.cs" />
-    <Compile Include="../../CsProjectSource/ServerProject/ServerSource/VirtualizedMagazine.Network.cs" />
+    <Compile Include="../../../CsProjectSource/ServerProject/ServerSource/VirtualizedMagazine.Network.cs" />
     <Compile Include="Program.cs" />
   </ItemGroup>
 </Project>
