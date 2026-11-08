@@ -263,7 +263,7 @@ public sealed partial class AmmoLoader
 
     private static GUITextBlock DragMarker(GUILayoutGroup parent) =>
         new(new RectTransform(new Point((int)(16 * GUI.Scale)), parent.RectTransform, isFixedSize: true),
-            "≡", font: GUIStyle.SmallFont, textAlignment: Alignment.Center)
+            "=", font: GUIStyle.SmallFont, textAlignment: Alignment.Center)
             { Padding = Vector4.Zero, CanBeFocused = false };
 
     private static GUITextBlock CheckAmountLabel(GUILayoutGroup parent, LocalizedString text) =>
@@ -340,8 +340,8 @@ public sealed partial class AmmoLoader
         foreach (var run in sequence)
         {
             int last = first + run.Count - 1;
-            string range = first == last ? $"{first:D2}" : $"{first:D2}–{last:D2}";
-            AmmoLabel(ListRow(list, 26), run.Id, $"{range} · {AmmoName(run.Id)} × {run.Count}");
+            string range = first == last ? $"{first:D2}" : $"{first:D2}-{last:D2}";
+            AmmoLabel(ListRow(list, 26), run.Id, $"{range} | {AmmoName(run.Id)} x {run.Count}");
             first = last + 1;
         }
     }
@@ -430,11 +430,11 @@ public sealed partial class AmmoLoader
                 minSize: new Point(0, (int)(32 * GUI.Scale))), style: "ListBoxElement")
             {
                 UserData = preset,
-                ToolTip = $"{preset.Name}\n{string.Join("\n", preset.Rounds.Select(r => $"{AmmoName(r.Id)} × {r.Count}"))}\n{L(preset.BuiltIn ? "builtin" : "dragorder")}",
+                ToolTip = $"{preset.Name}\n{string.Join("\n", preset.Rounds.Select(r => $"{AmmoName(r.Id)} x {r.Count}"))}\n{L(preset.BuiltIn ? "builtin" : "dragorder")}",
                 CanBeFocused = true
             };
             new GUITextBlock(new RectTransform(new Vector2(0.96f, 1), row.RectTransform, Anchor.Center),
-                $"{preset.Name} · {preset.Rounds.Sum(r => r.Count)} {L("rounds")}", font: GUIStyle.SmallFont)
+                $"{preset.Name} | {preset.Rounds.Sum(r => r.Count)} {L("rounds")}", font: GUIStyle.SmallFont)
                 { AutoScaleHorizontal = true, CanBeFocused = false };
         }
         if (selectedPreset != null) { presetList.Select(selectedPreset, autoScroll: GUIListBox.AutoScroll.Disabled); }
@@ -477,7 +477,7 @@ public sealed partial class AmmoLoader
             var row = new GUILayoutGroup(new RectTransform(new Vector2(0.98f, 0.9f), card.RectTransform, Anchor.Center),
                 isHorizontal: true, childAnchor: Anchor.CenterLeft) { RelativeSpacing = 0.01f, CanBeFocused = false };
             DragMarker(row);
-            var ammoLabel = AmmoLabel(row, rounds[i], $"{i + 1:D2} · {AmmoName(rounds[i])}", 0.80f);
+            var ammoLabel = AmmoLabel(row, rounds[i], $"{i + 1:D2} | {AmmoName(rounds[i])}", 0.80f);
             if (!IsCompatible(target, rounds[i])) { ammoLabel.TextColor = Color.OrangeRed; }
             Button(row, "delete", 0.13f, 1, () => RemoveRound(index));
         }
@@ -492,9 +492,9 @@ public sealed partial class AmmoLoader
         stockList.UseGridLayout = visibleStock.Length > 0;
         stockList.ToolTip = L(withdrawMode ? "withdrawmodehint" : "addhint");
         bool hasSupply = (!withdrawMode || UseSupplyStorage) && supplies.Length > 0;
-        stockSummary!.Text = message.Length > 0 ? message : $"{L(hasSupply ? "availableammo" : withdrawMode || target == null ? "allstock" : "compatiblestock")} · {visibleStock.Length} {L("types")} · {(hasSupply ? L("stored") + " " : "")}{visibleStock.Sum(p => (long)p.Value):N0} {L("rounds")}";
+        stockSummary!.Text = message.Length > 0 ? message : $"{L(hasSupply ? "availableammo" : withdrawMode || target == null ? "allstock" : "compatiblestock")} | {visibleStock.Length} {L("types")} | {(hasSupply ? L("stored") + " " : "")}{visibleStock.Sum(p => (long)p.Value):N0} {L("rounds")}";
         stockSummary.ToolTip = stockSummary.Text + (hasSupply ? "\n" + L(withdrawMode ? "withdrawmodehint" : "supplyhint") + "\n" +
-            string.Join("\n", supplies.Select(p => $"{AmmoName(p.Prefab)} · {p.Amount:N2}/{p.Capacity:N2}")) : "");
+            string.Join("\n", supplies.Select(p => $"{AmmoName(p.Prefab)} | {p.Amount:N2}/{p.Capacity:N2}")) : "");
         if (visibleStock.Length == 0) { TextRow(stockList, L("emptystock").Value); }
         int stockCellSize = (int)(72 * GUI.Scale);
         foreach (var p in visibleStock)
@@ -523,7 +523,7 @@ public sealed partial class AmmoLoader
             };
             BindStockTooltip(tile, prefab, AmmoName(p.Key), withdrawMode
                 ? () => L(!IsSynchronized ? "syncing" : WithdrawalProblem(p.Key, package)) +
-                    (package == null ? "" : $"\n{package.Name} · {Math.Min(WithdrawalAmount(p.Key), (int)package.Health)} {L("rounds")}")
+                    (package == null ? "" : $"\n{package.Name} | {Math.Min(WithdrawalAmount(p.Key), (int)package.Health)} {L("rounds")}")
                 : fromSupply ? () => $"{L("stored")}: {p.Value:N0}\n{L("supplied")}: {available:N0}\n{L("supplyhint")}" : null);
             if (prefab != null && (prefab.InventoryIcon ?? prefab.Sprite) is { } icon)
             {
@@ -593,9 +593,9 @@ public sealed partial class AmmoLoader
         var actual = AmmoPlan.Compact(target?.LoadedAmmoIdentifiers.Select(id => id.Value) ?? []);
         if (actual.Count == 0) { TextRow(actualList, L(target == null ? "nomagazine" : "empty").Value); }
         SequenceRows(actualList, actual);
-        targetLabel!.Text = target == null ? L("actual") : $"{L("actual")} · {target.LoadedCount}/{target.MaxSize}";
+        targetLabel!.Text = target == null ? L("actual") : $"{L("actual")} | {target.LoadedCount}/{target.MaxSize}";
         targetLabel.ToolTip = target == null ? L("nomagazine") : target.Item.Name;
-        planLabel!.Text = $"{L("preview")} · {planned} {L("rounds")}";
+        planLabel!.Text = $"{L("preview")} | {planned} {L("rounds")}";
         planLabel.ToolTip = L("topfirst");
         draftLabel!.Text = $"{L("plan")}{(draftDirty ? " *" : "")}";
         draftLabel.ToolTip = $"{L("dragorder")}\n{L(draftDirty ? "unsaved" : "savedstate")}";

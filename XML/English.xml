@@ -18,7 +18,7 @@
   <vce.ammoloader.plan>Sequence</vce.ammoloader.plan>
   <vce.ammoloader.actual>Magazine contents</vce.ammoloader.actual>
   <vce.ammoloader.loadpreset>Load preset</vce.ammoloader.loadpreset>
-  <vce.ammoloader.delete>×</vce.ammoloader.delete>
+  <vce.ammoloader.delete>x</vce.ammoloader.delete>
   <vce.ammoloader.topfirst>Top to bottom: firing order. Fill remaining space; new rounds fire first, excess stays in stock.</vce.ammoloader.topfirst>
   <vce.ammoloader.savepreset>Save preset</vce.ammoloader.savepreset>
   <vce.ammoloader.presetname>Name</vce.ammoloader.presetname>
@@ -71,7 +71,7 @@
   <vce.ammoloader.compatiblestock>Compatible stock</vce.ammoloader.compatiblestock>
   <vce.ammoloader.allpresets>All presets</vce.ammoloader.allpresets>
   <vce.ammoloader.compatiblepresets>Compatible presets</vce.ammoloader.compatiblepresets>
-  <vce.ammoloader.builtin>Mod preset · read only</vce.ammoloader.builtin>
+  <vce.ammoloader.builtin>Mod preset | read only</vce.ammoloader.builtin>
   <vce.ammoloader.allscope>Showing all stock and presets</vce.ammoloader.allscope>
   <vce.ammoloader.compatiblescope>Showing compatible stock and presets</vce.ammoloader.compatiblescope>
   <vce.ammoloader.capacity>Capacity</vce.ammoloader.capacity>
