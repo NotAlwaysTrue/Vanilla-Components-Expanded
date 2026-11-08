@@ -6,7 +6,9 @@ namespace VCE_VirtualizedMagazine;
 
 /// <summary>
 /// Player-made loadout presets. Every preset is a <see cref="MagazinePrefab"/> backed by one XML file named
-/// "[Name]_Magazine.xml" inside the <see cref="FolderName"/> folder under <c>SettingsService.SaveFolder</c>.
+/// "[Name]_Magazine.xml" inside <see cref="FolderName"/> under <c>SettingsService.SaveFolder</c>. Only the server side
+/// of a multiplayer session writes into the <see cref="ServerFolderName"/> subfolder; singleplayer and a multiplayer
+/// client use the <see cref="FolderName"/> root (a client's files are presets waiting to be uploaded).
 /// Files are only touched by <see cref="Load"/> and <see cref="Save"/>, which the game save/load hooks call;
 /// editing a preset in the UI stays in memory. Multiplayer writes are performed by the server only.
 /// </summary>
@@ -14,8 +16,10 @@ public static class MagazinePresetLibrary
 {
     public const string FileSuffix = "_Magazine.xml";
     public const int MaxNameLength = 48;
-    /// <summary>Custom presets live in their own folder, so they stay apart from the other VCE settings files.</summary>
+    /// <summary>A client's own presets, kept apart so they can be listed as upload candidates.</summary>
     public const string FolderName = "CustomMagazinePrefab";
+    /// <summary>Multiplayer server presets, inside <see cref="FolderName" />: the list the server publishes and writes back.</summary>
+    public const string ServerFolderName = "Server";
 
     private static readonly List<MagazinePrefab> custom = [];
     // Presets found in this machine's folder. On the authority they are the same objects as `custom`; on a client they
@@ -29,9 +33,13 @@ public static class MagazinePresetLibrary
     public static string? LoadError => loadError;
 
     public static bool IsAuthority => GameMain.NetworkMember is not { IsClient: true };
+    /// <summary>True only when this machine runs the server side of a multiplayer session (host or dedicated server).</summary>
+    private static bool IsMultiplayerServer => GameMain.NetworkMember is { IsClient: false };
 
+    // Only a multiplayer server writes the published list into <FolderName>/<ServerFolderName>. Singleplayer keeps its
+    // presets in the <FolderName> root, next to the files a client would offer for upload.
     private static string? Folder => VanillaComponentsExpanded.VCEPlugin.SettingsService?.SaveFolder is { Length: > 0 } root
-        ? Path.Combine(root, FolderName) : null;
+        ? Path.Combine(IsMultiplayerServer ? Path.Combine(root, FolderName, ServerFolderName) : Path.Combine(root, FolderName)) : null;
 
     /// <summary>Drops the in-memory lists when the plugin unloads or reloads; the files stay on disk.</summary>
     public static void Dispose()
