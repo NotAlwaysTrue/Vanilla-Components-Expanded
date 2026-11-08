@@ -4,8 +4,8 @@
 
 装弹机仅注册一个 `AmmoLoader` 组件，使用 partial 分文件维护 UI、库存、装卸、存档和网络。装弹机专用代码统一放在各工程的 `AmmoLoader` 目录；后端和网络仍交由 VirtualizedMagazine 维护者负责。
 
-- `ClientProject/ClientSource/AmmoLoader/AmmoLoader.UI.cs` 与 `AmmoPresets.cs`：界面、编排编辑和玩家本地预设。
-- `SharedProject/SharedSource/AmmoLoader/AmmoLoader.cs`：容器绑定、入库、装卸事务、库存存档及权威端校验。
+- `ClientProject/ClientSource/VirtualizedMagazine/AmmoLoader/AmmoLoader.UI.cs` 与 `AmmoPresets.cs`：界面、编排编辑和玩家本地预设。
+- `SharedProject/SharedSource/VirtualizedMagazine/AmmoLoader/AmmoLoader.cs`：容器绑定、入库、装卸事务、库存存档及权威端校验。
 - 同目录的 `AmmoStock`、`AmmoPlan` / `AmmoRun`：后端库存及装填计划数据。
 - 客户端 `AmmoLoader/AmmoLoader.Network.cs` 与服务端 `AmmoLoader/AmmoLoader.Server.cs`：库存快照、请求校验与传输。
 - 原有 `VirtualizedMagazine.Network.cs`：弹匣自身弹序同步，取出弹匣后仍然生效。

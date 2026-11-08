@@ -1,4 +1,4 @@
-namespace VCE.AmmoLoading;
+namespace VCE_VirtualizedMagazine;
 
 public sealed record AmmoRun(string Id, int Count);
 

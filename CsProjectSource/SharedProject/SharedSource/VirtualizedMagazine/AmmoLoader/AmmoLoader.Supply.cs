@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Barotrauma.Items.Components;
 
-namespace VCE.AmmoLoading;
+namespace VCE_VirtualizedMagazine;
 
 /// <summary>One shared Condition budget. Costs are Condition consumed per projectile.</summary>
 public sealed record AmmoSupplyDefinition(string PoolId, IReadOnlyDictionary<string, double> Costs);

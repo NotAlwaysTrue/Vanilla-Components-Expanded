@@ -1,6 +1,6 @@
 using System.Xml.Linq;
 
-namespace VCE.AmmoLoading;
+namespace VCE_VirtualizedMagazine;
 
 public sealed class AmmoStock
 {

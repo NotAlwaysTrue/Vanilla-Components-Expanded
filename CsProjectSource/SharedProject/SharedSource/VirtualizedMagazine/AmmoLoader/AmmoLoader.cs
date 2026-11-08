@@ -2,9 +2,8 @@ using System.Text.Json;
 using System.Xml.Linq;
 using Barotrauma.Items.Components;
 using Barotrauma.Networking;
-using VCE_VirtualizedMagazine;
 
-namespace VCE.AmmoLoading;
+namespace VCE_VirtualizedMagazine;
 
 public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, IClientSerializable
 {

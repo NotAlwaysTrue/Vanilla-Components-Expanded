@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Barotrauma.Networking;
 
-namespace VCE.AmmoLoading;
+namespace VCE_VirtualizedMagazine;
 
 public sealed partial class AmmoLoader
 {

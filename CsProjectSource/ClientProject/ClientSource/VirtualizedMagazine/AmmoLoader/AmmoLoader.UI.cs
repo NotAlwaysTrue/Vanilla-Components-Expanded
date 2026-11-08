@@ -1,7 +1,6 @@
 using Barotrauma.Items.Components;
-using VCE_VirtualizedMagazine;
 
-namespace VCE.AmmoLoading;
+namespace VCE_VirtualizedMagazine;
 
 public sealed partial class AmmoLoader
 {

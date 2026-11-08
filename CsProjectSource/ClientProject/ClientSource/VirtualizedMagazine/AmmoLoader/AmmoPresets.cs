@@ -1,7 +1,6 @@
 using System.Text.Json;
-using VCE_VirtualizedMagazine;
 
-namespace VCE.AmmoLoading;
+namespace VCE_VirtualizedMagazine;
 
 internal sealed record AmmoPreset(string Name, AmmoRun[] Rounds, bool BuiltIn = false);
 

@@ -6,7 +6,6 @@ using System.Runtime.CompilerServices;
 using VCE_APS;
 using VCE_SRW;
 using VCE_VirtualizedMagazine;
-using VCE.AmmoLoading;
 
 
 [assembly: IgnoresAccessChecksTo("Barotrauma")]
