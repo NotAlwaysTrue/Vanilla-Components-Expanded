@@ -7,7 +7,12 @@ public sealed partial class AmmoLoader
     private double nextRefresh;
 
     public override IEventData ServerGetEventData() => CapturePages()[0];
-    public override bool ValidateEventData(NetEntityEvent.IData data) => TryExtractEventData<SnapshotPage>(data, out _);
+    /// <summary>
+    /// <c>Item.CreateServerEvent</c> runs this before queueing and throws when it returns false, so every kind this
+    /// component publishes has to be accepted here: the stock snapshot pages and the preset (arrangement) list.
+    /// </summary>
+    public override bool ValidateEventData(NetEntityEvent.IData data) =>
+        TryExtractEventData<SnapshotPage>(data, out _) || TryExtractEventData<PresetListSnapshot>(data, out _);
 
     partial void PublishState()
     {

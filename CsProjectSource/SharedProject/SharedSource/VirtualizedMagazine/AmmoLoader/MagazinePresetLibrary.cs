@@ -6,7 +6,7 @@ namespace VCE_VirtualizedMagazine;
 
 /// <summary>
 /// Player-made loadout presets. Every preset is a <see cref="MagazinePrefab"/> backed by one XML file named
-/// "[Name]_Magazine.xml" inside <c>SettingsService.SaveFolder</c>.
+/// "[Name]_Magazine.xml" inside the <see cref="FolderName"/> folder under <c>SettingsService.SaveFolder</c>.
 /// Files are only touched by <see cref="Load"/> and <see cref="Save"/>, which the game save/load hooks call;
 /// editing a preset in the UI stays in memory. Multiplayer writes are performed by the server only.
 /// </summary>
@@ -14,8 +14,24 @@ public static class MagazinePresetLibrary
 {
     public const string FileSuffix = "_Magazine.xml";
     public const int MaxNameLength = 48;
+    /// <summary>Custom presets live in their own folder, so they stay apart from the other VCE settings files.</summary>
+    public const string FolderName = "CustomMagazinePrefab";
+#if DEBUG
+    /// <summary>
+    /// Debug-only drop folder. Its presets are listed as local (grey, uploadable) but never become the authority's list,
+    /// so the upload path can be tested without touching the real preset folder.
+    /// </summary>
+    public const string TestFolderName = "LocalTEST";
+#endif
 
     private static readonly List<MagazinePrefab> custom = [];
+    // Presets found in this machine's folder. On the authority they are the same objects as `custom`; on a client they
+    // are only candidates for upload, so they are kept apart and never replace the server's list.
+    private static readonly List<MagazinePrefab> local = [];
+#if DEBUG
+    // Presets dropped into the debug test folder: always upload candidates, even on the authority.
+    private static readonly List<MagazinePrefab> test = [];
+#endif
     // Files this session read successfully; only these may be deleted when their preset is gone.
     private static readonly HashSet<string> known = new(StringComparer.OrdinalIgnoreCase);
     private static string? loadError;
@@ -25,7 +41,26 @@ public static class MagazinePresetLibrary
 
     public static bool IsAuthority => GameMain.NetworkMember is not { IsClient: true };
 
-    private static string? Folder => VanillaComponentsExpanded.VCEPlugin.SettingsService?.SaveFolder;
+    private static string? SaveRoot => VanillaComponentsExpanded.VCEPlugin.SettingsService?.SaveFolder is { Length: > 0 } root
+        ? root : null;
+
+    private static string? Folder => SaveRoot is { } root ? Path.Combine(root, FolderName) : null;
+#if DEBUG
+    /// <summary>Debug-only second source: presets dropped here are offered for upload, never written back.</summary>
+    private static string? TestFolder => SaveRoot is { } root ? Path.Combine(root, TestFolderName) : null;
+#endif
+
+    /// <summary>Drops the in-memory lists when the plugin unloads or reloads; the files stay on disk.</summary>
+    public static void Dispose()
+    {
+        custom.Clear();
+        local.Clear();
+#if DEBUG
+        test.Clear();
+#endif
+        known.Clear();
+        loadError = null;
+    }
 
     public static bool IsCustom(MagazinePrefab prefab) => custom.Contains(prefab);
 
@@ -50,14 +85,14 @@ public static class MagazinePresetLibrary
     private static AmmoRun[] Runs(IEnumerable<Identifier> ids) =>
         AmmoPlan.Compact(ids.Select(id => id.Value)).ToArray();
 
-    /// <summary>Custom presets first, then the prefabs shipped with content. Rounds are in firing order.</summary>
+    /// <summary>
+    /// The presets this machine owns: only the ones built here (save folder / network), never the prefabs that other
+    /// content files register in <see cref="MagazinePrefab.Prefabs" />. Rounds are in firing order.
+    /// </summary>
     public static IEnumerable<MagazinePrefab> All(VirtualizedMagazine? target)
     {
-        foreach (var prefab in custom.ToArray()) { yield return prefab; }
-
-        foreach (var prefab in MagazinePrefab.Prefabs)
+        foreach (var prefab in custom.ToArray())
         {
-            if (prefab.TotalCount <= 0 || custom.Contains(prefab)) { continue; }
             if (target != null && prefab.StartSection.Concat(prefab.MainSection).Concat(prefab.EndSection)
                 .Any(id => !AmmoLoader.IsCompatible(target, id.Value))) { continue; }
 
@@ -67,6 +102,37 @@ public static class MagazinePresetLibrary
 
     public static MagazinePrefab? Find(string name) =>
         custom.FirstOrDefault(p => string.Equals(GetName(p), (name ?? "").Trim(), StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Presets that exist only in this machine's folder: the UI lists them greyed out with an upload button, because the
+    /// list this machine actually uses (the server's, in multiplayer) does not contain them yet. On the authority the
+    /// local presets are already in <see cref="custom" />, so nothing is returned there.
+    /// </summary>
+    public static IEnumerable<MagazinePrefab> LocalOnly(VirtualizedMagazine? target)
+    {
+#if DEBUG
+        // The debug test folder is offered even on the authority: its presets are never part of the list there.
+        foreach (var prefab in test.ToArray())
+        {
+            if (Find(GetName(prefab)) != null) { continue; }
+            if (target != null && prefab.StartSection.Concat(prefab.MainSection).Concat(prefab.EndSection)
+                .Any(id => !AmmoLoader.IsCompatible(target, id.Value))) { continue; }
+
+            yield return prefab;
+        }
+#endif
+        // On the authority the main folder already is the list, so there is never anything left to upload from it.
+        if (IsAuthority) { yield break; }
+
+        foreach (var prefab in local.ToArray())
+        {
+            if (Find(GetName(prefab)) != null) { continue; }
+            if (target != null && prefab.StartSection.Concat(prefab.MainSection).Concat(prefab.EndSection)
+                .Any(id => !AmmoLoader.IsCompatible(target, id.Value))) { continue; }
+
+            yield return prefab;
+        }
+    }
 
     /// <summary>Creates or replaces the preset with this name. No file is written here.</summary>
     public static MagazinePrefab? Create(string name, IReadOnlyList<AmmoRun> runs) => Create(name, [], runs, []);
@@ -86,7 +152,13 @@ public static class MagazinePresetLibrary
         return prefab;
     }
 
-    public static bool Remove(MagazinePrefab prefab) => custom.Remove(prefab);
+    public static bool Remove(MagazinePrefab prefab)
+    {
+        // The same name must stop being offered as a local preset too, otherwise deleting it would resurrect it as grey.
+        string name = GetName(prefab);
+        local.RemoveAll(p => string.Equals(GetName(p), name, StringComparison.OrdinalIgnoreCase));
+        return custom.Remove(prefab);
+    }
 
     /// <summary>Moves one preset to <paramref name="index" /> inside the custom list.</summary>
     public static bool Move(MagazinePrefab prefab, int index)
@@ -141,21 +213,39 @@ public static class MagazinePresetLibrary
     /// <summary>Reads every preset file. Called when the game loads.</summary>
     public static void Load()
     {
-        // Multiplayer clients receive the server's list; the folder belongs to the server.
-        if (!IsAuthority) { return; }
         custom.Clear();
         known.Clear();
+        local.Clear();
+#if DEBUG
+        test.Clear();
+#endif
         loadError = null;
-        if (Folder is not { } folder || !Directory.Exists(folder)) { return; }
+        // Every file is remembered as a local preset. Only the authority also makes them the list it publishes, because
+        // a client's list is replaced by the server's and its files are merely presets waiting to be uploaded.
+        bool authority = IsAuthority;
+        ReadFolder(Folder, (prefab, fileName) =>
+        {
+            local.Add(prefab);
+            if (!authority) { return; }
+            custom.Add(prefab);
+            known.Add(fileName);
+        });
+#if DEBUG
+        // Test presets stay in `test` only: they are never published, never tracked as known files, so Save() neither
+        // writes nor deletes them.
+        ReadFolder(TestFolder, (prefab, _) => test.Add(prefab));
+#endif
+    }
+
+    /// <summary>Parses every preset file of one folder and hands it to <paramref name="accept" />.</summary>
+    private static void ReadFolder(string? folder, Action<MagazinePrefab, string> accept)
+    {
+        if (folder == null || !Directory.Exists(folder)) { return; }
         try
         {
             foreach (string path in Directory.GetFiles(folder, "*" + FileSuffix).OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
             {
-                try
-                {
-                    custom.Add(Parse(path));
-                    known.Add(Path.GetFileName(path));
-                }
+                try { accept(Parse(path), Path.GetFileName(path)); }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException or XmlException or FormatException or ArgumentException)
                 {
                     // Unreadable files are never deleted, so a broken preset can still be fixed by hand.

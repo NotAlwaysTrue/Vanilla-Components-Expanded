@@ -23,6 +23,8 @@ public sealed partial class AmmoLoader
     private GUITextBox? presetName;
     private GUITextBlock? targetLabel, draftLabel, stockSummary, presetScope, checkAmountHeader;
     private GUIButton? loadButton, unloadButton, presetLoadButton, saveButton, clearButton, presetDelete;
+    // Presets that only exist in this machine's folder are listed greyed out, with an upload button on the right.
+    private static readonly Color LocalPresetColor = new(150, 150, 150);
     // Rack selector: vanilla up/down arrows level with the gap between the second and third slot.
     private GUIButton? slotUpButton, slotDownButton;
     private GUITextBlock? magazineCaption;
@@ -748,7 +750,7 @@ public sealed partial class AmmoLoader
         }
         string name = MagazinePresetLibrary.GetName(preset);
         // The authority edits the library directly; clients ask the server, which owns the files.
-        if (MagazinePresetLibrary.IsAuthority) { MagazinePresetLibrary.AppendToMain(preset, gestureId); Changed(); }
+        if (MagazinePresetLibrary.IsAuthority) { MagazinePresetLibrary.AppendToMain(preset, gestureId); PresetChanged(); }
         else { RequestSavePreset(name, start, updatedMain.ToArray(), end); }
         message = L("saved").Value;
         uiDirty = true;
@@ -804,7 +806,8 @@ public sealed partial class AmmoLoader
         presetLoadButton!.Enabled = selectedPreset != null;
         presetScope!.Text = L(target == null ? "allpresets" : "compatiblepresets");
         presetDelete!.Enabled = selectedPreset != null && MagazinePresetLibrary.IsCustom(selectedPreset);
-        if (visiblePresets.Count == 0) { TextRow(presetList, L("nopresets").Value); }
+        var localPresets = MagazinePresetLibrary.LocalOnly(target).ToList();
+        if (visiblePresets.Count == 0 && localPresets.Count == 0) { TextRow(presetList, L("nopresets").Value); }
         foreach (var preset in visiblePresets)
         {
             var runs = MagazinePresetLibrary.GetRuns(preset);
@@ -818,6 +821,28 @@ public sealed partial class AmmoLoader
             new GUITextBlock(new RectTransform(new Vector2(0.96f, 1), row.RectTransform, Anchor.Center),
                 $"{MagazinePresetLibrary.GetName(preset)} | {runs.Sum(r => r.Count)} {L("rounds")}", font: GUIStyle.SmallFont)
                 { AutoScaleHorizontal = true, CanBeFocused = false };
+        }
+        // Local-only presets: the machine has the file, but the list it uses (the server's, in multiplayer) does not
+        // contain it yet. Greyed out and not selectable, with an upload button on the right of the row.
+        foreach (var preset in localPresets)
+        {
+            var runs = MagazinePresetLibrary.GetRuns(preset);
+            var row = new GUIFrame(new RectTransform(new Vector2(1, 0), presetList.Content.RectTransform,
+                minSize: new Point(0, (int)(32 * GUI.Scale))), style: "ListBoxElement")
+            {
+                UserData = preset,
+                ToolTip = $"{MagazinePresetLibrary.GetName(preset)}\n{string.Join("\n", runs.Select(r => $"{AmmoName(r.Id)} x {r.Count}"))}\n{L("localpreset")}",
+                CanBeFocused = false
+            };
+            new GUITextBlock(new RectTransform(new Vector2(0.70f, 1), row.RectTransform, Anchor.CenterLeft),
+                $"{MagazinePresetLibrary.GetName(preset)} | {runs.Sum(r => r.Count)} {L("rounds")}", font: GUIStyle.SmallFont)
+                { AutoScaleHorizontal = true, CanBeFocused = false, TextColor = LocalPresetColor };
+            new GUIButton(new RectTransform(new Vector2(0.28f, 0.78f), row.RectTransform, Anchor.CenterRight),
+                L("upload"), style: "GUIButtonSmallFreeScale")
+            {
+                ToolTip = L("uploadhint"),
+                OnClicked = (_, _) => { UploadPreset(preset); return true; }
+            };
         }
         if (selectedPreset != null) { presetList.Select(selectedPreset, autoScroll: GUIListBox.AutoScroll.Disabled); }
         // The Start/End blocks keep their own lists at the frame edges, so they can never scroll out of sight.
@@ -1293,11 +1318,12 @@ public sealed partial class AmmoLoader
             return;
         }
         // The authority edits the in-memory library directly; clients ask the server, which owns the files.
+        // Either way the new list reaches the clients right away and no file is written here.
         if (MagazinePresetLibrary.IsAuthority)
         {
             selectedPreset = MagazinePresetLibrary.Create(name, SectionRuns(SectionStart), SectionRuns(SectionMain),
                 SectionRuns(SectionEnd));
-            Changed();
+            PresetChanged();
         }
         else
         {
@@ -1313,10 +1339,37 @@ public sealed partial class AmmoLoader
     private void DeletePreset()
     {
         if (selectedPreset == null || !MagazinePresetLibrary.IsCustom(selectedPreset)) { return; }
-        if (MagazinePresetLibrary.IsAuthority) { MagazinePresetLibrary.Remove(selectedPreset); Changed(); }
+        if (MagazinePresetLibrary.IsAuthority) { MagazinePresetLibrary.Remove(selectedPreset); PresetChanged(); }
         else { RequestDeletePreset(MagazinePresetLibrary.GetName(selectedPreset)); }
 
         selectedPreset = null;
+        uiDirty = true;
+    }
+
+    /// <summary>
+    /// Sends a preset that only exists in this machine's folder to the list the machine actually uses. On the authority
+    /// the local files already are that list, so it just re-adds it; a client asks the server through Command.SavePreset.
+    /// </summary>
+    private void UploadPreset(MagazinePrefab preset)
+    {
+        var (start, main, end) = MagazinePresetLibrary.GetSections(preset);
+        string name = MagazinePresetLibrary.GetName(preset);
+        if (MagazinePresetLibrary.IsAuthority)
+        {
+            if (MagazinePresetLibrary.Create(name, start, main, end) != null) { PresetChanged(); }
+        }
+        else if (IsSynchronized)
+        {
+            RequestSavePreset(name, start, main, end);
+        }
+        else
+        {
+            message = L("syncing").Value;
+            uiDirty = true;
+            return;
+        }
+
+        message = L("saved").Value;
         uiDirty = true;
     }
 
@@ -1342,7 +1395,7 @@ public sealed partial class AmmoLoader
 
         if (MagazinePresetLibrary.IsAuthority)
         {
-            if (MagazinePresetLibrary.Move(moved, slots[index])) { Changed(); }
+            if (MagazinePresetLibrary.Move(moved, slots[index])) { PresetChanged(); }
         }
         else { RequestMovePreset(MagazinePresetLibrary.GetName(moved), slots[index]); }
     }

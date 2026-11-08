@@ -68,4 +68,7 @@
   <vce.ammoloader.emptystock>暂无可用库存，请从投料口放入弹药包</vce.ammoloader.emptystock>
   <vce.ammoloader.remove>删除</vce.ammoloader.remove>
   <vce.ammoloader.dragorder>拖动名称调整顺序</vce.ammoloader.dragorder>
+  <vce.ammoloader.upload>上传</vce.ammoloader.upload>
+  <vce.ammoloader.uploadhint>把本地预设上传到预设列表</vce.ammoloader.uploadhint>
+  <vce.ammoloader.localpreset>本地预设 | 尚未加入列表</vce.ammoloader.localpreset>
 </infotexts>

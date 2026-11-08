@@ -45,6 +45,8 @@ public partial class VCEPlugin : IBarotraumaPlugin
     public void Dispose()
     {
         DisposePatchHooks();
+        MagazinePresetLibrary.Dispose();
+        MagazinePrefabFile.Dispose();
     }
 
     public void OnContentLoaded()

@@ -305,6 +305,17 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         PublishState();
     }
 
+    /// <summary>
+    /// A preset edit is published as soon as it is applied, on the command path and on the authority's own UI path
+    /// alike. Nothing is written to disk here: the files are only touched by <see cref="MagazinePresetLibrary.Save" />
+    /// and <see cref="MagazinePresetLibrary.Load" />, which the game save/load hooks call.
+    /// </summary>
+    private void PresetChanged()
+    {
+        Changed();
+        PublishPresets();
+    }
+
     partial void PublishState();
 
     public override XElement Save(XElement parentElement)
@@ -354,7 +365,8 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
             Command.MovePreset => MagazinePresetLibrary.Find(name) is { } moved && MagazinePresetLibrary.Move(moved, index),
             _ => false
         };
-        if (applied) { Changed(); PublishPresets(); }
+        // The list goes out immediately; the preset files stay untouched until the game itself saves.
+        if (applied) { PresetChanged(); }
         return applied;
     }
 

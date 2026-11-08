@@ -68,4 +68,7 @@
   <vce.ammoloader.emptystock>No available stock: deposit ammo packages below</vce.ammoloader.emptystock>
   <vce.ammoloader.remove>Delete</vce.ammoloader.remove>
   <vce.ammoloader.dragorder>Drag the name to reorder</vce.ammoloader.dragorder>
+  <vce.ammoloader.upload>Upload</vce.ammoloader.upload>
+  <vce.ammoloader.uploadhint>Send this local preset to the preset list</vce.ammoloader.uploadhint>
+  <vce.ammoloader.localpreset>Local preset | not in the list yet</vce.ammoloader.localpreset>
 </infotexts>

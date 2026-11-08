@@ -13,6 +13,10 @@ namespace VCE_VirtualizedMagazine
         {
             return new MagazinePrefab(element, this);
         }
+        public static void Dispose()
+        {
+            MagazinePrefab.Prefabs = null;
+        }
     }
 
     public class MagazinePrefab : Prefab
