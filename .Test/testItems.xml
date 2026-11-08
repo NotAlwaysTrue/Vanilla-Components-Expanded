@@ -19,7 +19,7 @@
     <VirtualizedMagazineFactory>
       <magazinedata MagazineID="T_assaultriflemagazine" MagazinePrefabID="TEST" amount="2"/>
     </VirtualizedMagazineFactory>
-    <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
+    <Holdable slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
   </Item>
 
   <Item name="" identifier="T_assaultriflemagazineAmmoBox" maxstacksize="8" maxstacksizecharacterinventory="2" scale="0.5" category="Weapon" allowasextracargo="true" cargocontaineridentifier="metalcrate" linkable="true" tags="smallitem,assaultrifleammo,handheldammo,vceammopackage" impactsoundtag="impact_metal_light">
@@ -65,19 +65,21 @@
       <Containable items="vceammopackage" />
     </ItemContainer>
     <ItemContainer capacity="1" slotsperrow="1" maxstacksize="1" canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
-      <Containable items="vceammopackage" />
+      <Containable items="vceammopackage,vcevirtualmagazine" />
     </ItemContainer>
-    <ItemContainer capacity="4" slotsperrow="1" maxstacksize="1" canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
+    <ItemContainer capacity="4" slotsperrow="1" maxstacksize="64" canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
       <Containable items="vcevirtualmagazine" />
     </ItemContainer>
   </Item>
-  <Item identifier="vceammoloadertestmagazine" name="VCE Loader Test Magazine" category="Weapon" health="30" maxstacksize="1" tags="smallitem,vcevirtualmagazine,shotgunammo">
+
+  <Item identifier="vceammoloadertestmagazine" name="VCE Loader Test Magazine" category="Weapon" health="30" maxstacksize="32" maxstacksizecharacterinventory="8" tags="smallitem,vcevirtualmagazine,smgammo">
     <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="960,960,64,64" />
     <Sprite texture="Content/Items/Weapons/weapons_new.png" sourcerect="146,157,21,44" depth="0.54" />
     <Body width="28" height="40" density="25" />
     <VirtualizedMagazine AllowedAmmoTags="shotgunammo" />
     <Holdable slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect" />
   </Item>
+  
   <Item identifier="vceammoloadertestpack" name="VCE Shotgun Ammo Package" category="Weapon" tags="smallitem,vceammopackage" health="120" maxstacksize="1">
     <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="960,960,64,64" />
     <Sprite texture="Content/Items/Weapons/weapons_new.png" sourcerect="146,157,21,44" depth="0.54" />

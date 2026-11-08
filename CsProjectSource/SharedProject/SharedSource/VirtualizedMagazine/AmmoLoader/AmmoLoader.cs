@@ -14,6 +14,7 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
     private float scanTimer;
     private ushort observedTarget;
     private Identifier[] observedRounds = [];
+    private int targetSlot;
 
     [Serialize(0, IsPropertySaveable.No)]
     public int InputContainerIndex { get; set; }
@@ -30,7 +31,10 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
     [Serialize("", IsPropertySaveable.No)]
     public string TextPrefix { get; set; } = "";
 
-    public VirtualizedMagazine? Target => targetContainer?.Inventory?.GetItemAt(0)?.GetComponent<VirtualizedMagazine>();
+    public VirtualizedMagazine? Target => targetContainer?.Inventory?.GetItemAt(TargetSlot)?.GetComponent<VirtualizedMagazine>();
+    /// <summary>Rack slot the machine loads into, picked with the arrows in the I/O window.</summary>
+    public int TargetSlot => TargetSlotCount <= 0 ? 0 : Math.Clamp(targetSlot, 0, TargetSlotCount - 1);
+    public int TargetSlotCount => targetContainer?.Inventory?.Capacity ?? 0;
     public ItemContainer? InputContainer => inputContainer;
     public ItemContainer? TargetContainer => targetContainer;
     public ItemContainer? OutputContainer => outputContainer;
@@ -51,7 +55,7 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         targetContainer = containers.ElementAtOrDefault(TargetContainerIndex);
         outputContainer = containers.ElementAtOrDefault(OutputContainerIndex);
         if (outputContainer == inputContainer || outputContainer == targetContainer) { outputContainer = null; }
-        // The target container may be a small magazine rack; the first magazine in it is the active one.
+        // The target container may be a magazine rack: the player picks which slot feeds the machine.
         int targetCapacity = targetContainer?.Inventory?.Capacity ?? 0;
         if (inputContainer == targetContainer || outputContainer == targetContainer || targetCapacity < 1)
         {
@@ -188,6 +192,30 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         if (changed) { Changed(); }
     }
 
+    /// <summary>Selects the rack slot the machine loads into. Authority only; clients ask through the network.</summary>
+    private bool TrySetTargetSlot(int index)
+    {
+        if (!IsAuthority || TargetSlotCount <= 0) { return false; }
+        index = Math.Clamp(index, 0, TargetSlotCount - 1);
+        if (index == targetSlot) { return true; }
+        targetSlot = index;
+        Changed();
+        return true;
+    }
+
+    /// <summary>The freshly loaded magazine is moved to the output container so the player can take it out.</summary>
+    private void TryMoveLoadedMagazineToOutput(VirtualizedMagazine magazine)
+    {
+        var inventory = outputContainer?.Inventory;
+        var item = magazine.Item;
+        if (!IsAuthority || inventory == null || item.Removed || item.IsInRemoveQueue ||
+            item.ParentInventory != targetContainer?.Inventory || !inventory.CanBePut(item))
+        {
+            return;
+        }
+        inventory.TryPutItem(item, user: null, createNetworkEvent: true);
+    }
+
     private bool TryLoad(IReadOnlyList<AmmoRun> plan, ushort targetId)
     {
         var magazine = Target;
@@ -196,6 +224,9 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         {
             return false;
         }
+        // The plan is top-first: the sequence list reads top to bottom as the firing order, so `rounds` is also
+        // top-first. `LoadAmmoArray` pushes in list order (first entry becomes the stack bottom), which is why the
+        // list is reversed below. Existing rounds stay underneath, so the plan's top row ends up on the stack top.
         var rounds = AmmoPlan.Expand(plan).TakeLast(magazine.MaxSize - magazine.LoadedCount).ToArray();
         var demand = AmmoStock.Count(rounds);
         if (demand.Keys.Any(id => !IsCompatible(magazine, id))) { return false; }
@@ -203,7 +234,9 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         var quote = QuoteSupply(demand);
         if (!TryPrepareSupplyDebit(quote, out var debits)) { return false; }
         var original = magazine.LoadedAmmoIdentifiersArray;
-        // The plan's tail is inserted first; discard the head that no longer fits.
+        // Bottom-first for the push: `toLoad[0]` becomes the stack bottom, so the last entry pushed is `rounds[0]`,
+        // the plan's top row, which then fires first. Only the plan's tail fits when the magazine is partly full,
+        // so the head of the plan stays in stock (unchanged).
         var toLoad = rounds.Reverse().Select(id => id.ToIdentifier()).ToList();
         try { magazine.LoadAmmoArray(ref toLoad); }
         catch (Exception e)
@@ -223,6 +256,7 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
             return false;
         }
         RefreshSupplies();
+        TryMoveLoadedMagazineToOutput(magazine);
         Changed();
         return true;
     }
@@ -295,32 +329,38 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         }
     }
 
-    private enum Command : byte { Refresh, Load, Unload, Withdraw, SavePreset, DeletePreset, MovePreset }
-    private sealed record Request(Command Command, uint Revision, ushort Target, AmmoRun[] Plan, string Name = "", int Index = 0) : IEventData;
+    private enum Command : byte { Refresh, Load, Unload, Withdraw, SavePreset, DeletePreset, MovePreset, SelectSlot }
+    /// <summary>`Start`/`End` carry the MagazinePrefab sections of a preset save; other commands leave them empty.</summary>
+    private sealed record Request(Command Command, uint Revision, ushort Target, AmmoRun[] Plan, string Name = "",
+        int Index = 0, AmmoRun[]? Start = null, AmmoRun[]? End = null) : IEventData;
     private sealed record Snapshot(uint Revision, Dictionary<string, int> Stock, SupplyPool[]? Supplies = null,
-        bool SupplyError = false, PresetSnapshot[]? Presets = null);
-    private sealed record PresetSnapshot(string Name, AmmoRun[] Rounds);
+        bool SupplyError = false, int TargetSlot = 0);
+    private sealed record PresetSnapshot(string Name, AmmoRun[] Start, AmmoRun[] Main, AmmoRun[] End);
+    /// <summary>Presets travel on their own event so stock updates never re-sync the arrangement list.</summary>
+    private sealed record PresetListSnapshot(uint Revision, PresetSnapshot[] Presets) : IEventData;
     private sealed record SnapshotPage(uint Revision, int Index, int Count, string Data) : IEventData;
 
+    partial void PublishPresets();
+
     /// <summary>Applies one preset edit. The server owns the list; singleplayer applies it directly.</summary>
-    private bool ApplyPresetCommand(Command command, AmmoRun[] plan, string name, int index)
+    private bool ApplyPresetCommand(Command command, AmmoRun[] plan, string name, int index,
+        AmmoRun[]? start = null, AmmoRun[]? end = null)
     {
         if (!IsAuthority) { return false; }
         bool applied = command switch
         {
-            Command.SavePreset => MagazinePresetLibrary.Create(name, plan) != null,
+            Command.SavePreset => MagazinePresetLibrary.Create(name, start ?? [], plan, end ?? []) != null,
             Command.DeletePreset => MagazinePresetLibrary.Find(name) is { } removed && MagazinePresetLibrary.Remove(removed),
             Command.MovePreset => MagazinePresetLibrary.Find(name) is { } moved && MagazinePresetLibrary.Move(moved, index),
             _ => false
         };
-        if (applied) { Changed(); }
+        if (applied) { Changed(); PublishPresets(); }
         return applied;
     }
 
     private SnapshotPage[] CapturePages()
     {
-        var presets = MagazinePresetLibrary.Snapshot().Select(p => new PresetSnapshot(p.Name, p.Rounds)).ToArray();
-        var snapshot = new Snapshot(revision, new Dictionary<string, int>(Stock.Counts), supplies, supplyError, presets);
+        var snapshot = new Snapshot(revision, new Dictionary<string, int>(Stock.Counts), supplies, supplyError, TargetSlot);
         string json = JsonSerializer.Serialize(snapshot);
         const int charsPerPage = 128;
         int pages = (json.Length + charsPerPage - 1) / charsPerPage;

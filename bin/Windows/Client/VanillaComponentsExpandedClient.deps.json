@@ -8,6 +8,8 @@
     ".NETCoreApp,Version=v8.0": {
       "VanillaComponentsExpandedClient/1.0.0": {
         "dependencies": {
+          "Barotrauma.ReferenceAssemblies.Libraries": "1.15.24",
+          "Barotrauma.ReferenceAssemblies.Vanilla.Publicized": "1.15.24",
           "HarmonyX": "2.16.0",
           "System.Collections.Immutable": "9.0.0"
         },
@@ -15,9 +17,13 @@
           "VanillaComponentsExpandedClient.dll": {}
         }
       },
+      "Barotrauma.ReferenceAssemblies.Libraries/1.15.24": {},
+      "Barotrauma.ReferenceAssemblies.Vanilla.Publicized/1.15.24": {},
       "HarmonyX/2.16.0": {
         "dependencies": {
-          "MonoMod.RuntimeDetour": "25.3.3"
+          "MonoMod.RuntimeDetour": "25.3.3",
+          "System.Reflection.Emit": "4.7.0",
+          "System.Text.Json": "5.0.2"
         },
         "runtime": {
           "lib/netstandard2.0/0Harmony.dll": {
@@ -118,7 +124,9 @@
             "fileVersion": "9.0.24.52809"
           }
         }
-      }
+      },
+      "System.Reflection.Emit/4.7.0": {},
+      "System.Text.Json/5.0.2": {}
     }
   },
   "libraries": {
@@ -126,6 +134,20 @@
       "type": "project",
       "serviceable": false,
       "sha512": ""
+    },
+    "Barotrauma.ReferenceAssemblies.Libraries/1.15.24": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-DRyvOTwSmTmWMmWsgCKwNSMqpLQIbN4/ZnnkL/hEnOJ7phponQPD2QaEeNYwW2PiyJVJHlA8PDwfotHKK7sJHw==",
+      "path": "barotrauma.referenceassemblies.libraries/1.15.24",
+      "hashPath": "barotrauma.referenceassemblies.libraries.1.15.24.nupkg.sha512"
+    },
+    "Barotrauma.ReferenceAssemblies.Vanilla.Publicized/1.15.24": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-fk5E6pVxARg+/YBTYM4I3oHewGs/UmtmTmjdrYdsRxaJ0jyjJ7i5yYjYqB3vG4C3EuAZhSUvjbq0gLQDpFoVtw==",
+      "path": "barotrauma.referenceassemblies.vanilla.publicized/1.15.24",
+      "hashPath": "barotrauma.referenceassemblies.vanilla.publicized.1.15.24.nupkg.sha512"
     },
     "HarmonyX/2.16.0": {
       "type": "package",
@@ -182,6 +204,20 @@
       "sha512": "sha512-QhkXUl2gNrQtvPmtBTQHb0YsUrDiDQ2QS09YbtTTiSjGcf7NBqtYbrG/BE06zcBPCKEwQGzIv13IVdXNOSub2w==",
       "path": "system.collections.immutable/9.0.0",
       "hashPath": "system.collections.immutable.9.0.0.nupkg.sha512"
+    },
+    "System.Reflection.Emit/4.7.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-VR4kk8XLKebQ4MZuKuIni/7oh+QGFmZW3qORd1GvBq/8026OpW501SzT/oypwiQl4TvT8ErnReh/NzY9u+C6wQ==",
+      "path": "system.reflection.emit/4.7.0",
+      "hashPath": "system.reflection.emit.4.7.0.nupkg.sha512"
+    },
+    "System.Text.Json/5.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-I47dVIGiV6SfAyppphxqupertT/5oZkYLDCX6vC3HpOI4ZLjyoKAreUoem2ie6G0RbRuFrlqz/PcTQjfb2DOfQ==",
+      "path": "system.text.json/5.0.2",
+      "hashPath": "system.text.json.5.0.2.nupkg.sha512"
     }
   }
 }

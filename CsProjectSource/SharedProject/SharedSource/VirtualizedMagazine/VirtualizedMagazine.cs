@@ -337,10 +337,11 @@ namespace VCE_VirtualizedMagazine
 
         public override bool Combine(Item item, Character user)
         {
+            if (item.Condition == 0 || Item.Condition == Item.MaxCondition) { return base.Combine(item, user); ; }
             var target = item.GetComponent<VirtualizedMagazine>();
-            if (target == null) { return false; }
-            var t = new List<Identifier>();
-            target.UnLoadAmmoArray(out t);
+            if (target == null) { return base.Combine(item, user); ; }
+            if (AllowedAmmoTags != target.AllowedAmmoTags) { return base.Combine(item, user); ; }
+            target.UnLoadAmmoArray(out var t);
             PushAmmoArray(ref t);
             // Rejected rounds are top-first; restore them bottom-first to preserve feed order.
             t.Reverse();
@@ -348,7 +349,7 @@ namespace VCE_VirtualizedMagazine
             Item.Condition = LoadedAmmoIdentifiers.Count;
             target.Item.Condition = target.LoadedCount;
 
-            return true;
+            return base.Combine(item, user); ;
         }
     }
 }

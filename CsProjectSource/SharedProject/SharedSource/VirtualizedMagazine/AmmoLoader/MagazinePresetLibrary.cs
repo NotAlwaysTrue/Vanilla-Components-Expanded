@@ -38,6 +38,18 @@ public static class MagazinePresetLibrary
 
     public static AmmoRun[] GetRuns(MagazinePrefab prefab) => GetRuns(prefab, prefab.TotalCount);
 
+    /// <summary>Sections of a preset in firing order (start, main, end), for the editor.</summary>
+    public static (AmmoRun[] Start, AmmoRun[] Main, AmmoRun[] End) GetSections(MagazinePrefab prefab) =>
+        (Runs(prefab.StartSection), Runs(prefab.MainSection), Runs(prefab.EndSection));
+
+    /// <summary>Adds one round to the preset's main section, keeping its start/end sections intact.</summary>
+    public static MagazinePrefab? AppendToMain(MagazinePrefab prefab, string id) =>
+        Create(GetName(prefab), Runs(prefab.StartSection),
+            AmmoPlan.Compact([.. prefab.MainSection.Select(i => i.Value), id]), Runs(prefab.EndSection));
+
+    private static AmmoRun[] Runs(IEnumerable<Identifier> ids) =>
+        AmmoPlan.Compact(ids.Select(id => id.Value)).ToArray();
+
     /// <summary>Custom presets first, then the prefabs shipped with content. Rounds are in firing order.</summary>
     public static IEnumerable<MagazinePrefab> All(VirtualizedMagazine? target)
     {
@@ -57,12 +69,17 @@ public static class MagazinePresetLibrary
         custom.FirstOrDefault(p => string.Equals(GetName(p), (name ?? "").Trim(), StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Creates or replaces the preset with this name. No file is written here.</summary>
-    public static MagazinePrefab? Create(string name, IReadOnlyList<AmmoRun> runs)
+    public static MagazinePrefab? Create(string name, IReadOnlyList<AmmoRun> runs) => Create(name, [], runs, []);
+
+    /// <summary>Creates or replaces a preset with explicit start/main/end sections (MagazinePrefab order).</summary>
+    public static MagazinePrefab? Create(string name, IReadOnlyList<AmmoRun> start, IReadOnlyList<AmmoRun> main,
+        IReadOnlyList<AmmoRun> end)
     {
         name = (name ?? "").Trim();
-        if (name.Length is 0 or > MaxNameLength || !AmmoPlan.IsValid(runs, AmmoPlan.MaxRounds)) { return null; }
+        var all = AmmoPlan.Compact([.. AmmoPlan.Expand(start), .. AmmoPlan.Expand(main), .. AmmoPlan.Expand(end)]);
+        if (name.Length is 0 or > MaxNameLength || !AmmoPlan.IsValid(all, AmmoPlan.MaxRounds)) { return null; }
 
-        var prefab = Build(name, runs);
+        var prefab = Build(name, start, main, end);
         var existing = Find(name);
         if (existing == null) { custom.Add(prefab); }
         else { custom[custom.IndexOf(existing)] = prefab; }
@@ -84,26 +101,41 @@ public static class MagazinePresetLibrary
         return true;
     }
 
-    /// <summary>Rounds of every custom preset, for the authority to publish to clients.</summary>
-    public static IReadOnlyList<(string Name, AmmoRun[] Rounds)> Snapshot() =>
-        custom.Select(p => (GetName(p), GetRuns(p))).ToArray();
+    /// <summary>Sections of every custom preset, for the authority to publish to clients.</summary>
+    public static IReadOnlyList<(string Name, AmmoRun[] Start, AmmoRun[] Main, AmmoRun[] End)> Snapshot()
+    {
+        var result = new List<(string Name, AmmoRun[] Start, AmmoRun[] Main, AmmoRun[] End)>(custom.Count);
+        foreach (var prefab in custom)
+        {
+            var (start, main, end) = GetSections(prefab);
+            result.Add((GetName(prefab), start, main, end));
+        }
+        return result;
+    }
 
     /// <summary>Replaces the custom list with the server's presets. Clients never read the save folder.</summary>
-    public static void ApplyRemote(IEnumerable<(string Name, AmmoRun[] Rounds)> presets)
+    public static void ApplyRemote(IEnumerable<(string Name, AmmoRun[] Start, AmmoRun[] Main, AmmoRun[] End)> presets)
     {
         var incoming = presets.ToArray();
         // Snapshots arrive on every state change, so skip the rebuild when nothing moved.
         if (incoming.Length == custom.Count && incoming.Select((p, i) =>
                 string.Equals(GetName(custom[i]), p.Name, StringComparison.OrdinalIgnoreCase) &&
-                GetRuns(custom[i]).SequenceEqual(p.Rounds)).All(same => same)) { return; }
+                SameSections(custom[i], p)).All(same => same)) { return; }
 
         custom.Clear();
         known.Clear();
         loadError = null;
-        foreach (var (name, rounds) in incoming)
+        foreach (var (name, start, main, end) in incoming)
         {
-            if (Create(name, rounds) == null) { loadError = "The server sent an invalid preset."; }
+            if (Create(name, start, main, end) == null) { loadError = "The server sent an invalid preset."; }
         }
+    }
+
+    private static bool SameSections(MagazinePrefab prefab,
+        (string Name, AmmoRun[] Start, AmmoRun[] Main, AmmoRun[] End) other)
+    {
+        var (start, main, end) = GetSections(prefab);
+        return start.SequenceEqual(other.Start) && main.SequenceEqual(other.Main) && end.SequenceEqual(other.End);
     }
 
     /// <summary>Reads every preset file. Called when the game loads.</summary>
@@ -173,22 +205,30 @@ public static class MagazinePresetLibrary
         }
     }
 
-    private static MagazinePrefab Build(string name, IReadOnlyList<AmmoRun> runs)
+    /// <summary>Builds the preset element in the MagazinePrefab format: one group per section.</summary>
+    private static MagazinePrefab Build(string name, IReadOnlyList<AmmoRun> start, IReadOnlyList<AmmoRun> main,
+        IReadOnlyList<AmmoRun> end)
     {
         var root = new XElement("MagazinePrefab",
             new XAttribute("identifier", MakeIdentifier(name)),
             new XAttribute("name", name),
             new XAttribute("AutoRepeat", false));
-        var group = new XElement("AmmoGroup");
-        // MagazinePrefab parses rounds by inserting them at the front, so file order is firing order.
-        foreach (var run in runs)
+        void AddGroup(string element, IReadOnlyList<AmmoRun> runs)
         {
-            if (run.Count <= 0) { continue; }
-            group.Add(new XElement("Ammo",
-                new XAttribute("ProjectileIdentifier", run.Id),
-                new XAttribute("Amount", run.Count)));
+            var group = new XElement(element);
+            // MagazinePrefab parses rounds in file order, which is firing order.
+            foreach (var run in runs)
+            {
+                if (run.Count <= 0) { continue; }
+                group.Add(new XElement("Ammo",
+                    new XAttribute("ProjectileIdentifier", run.Id),
+                    new XAttribute("Amount", run.Count)));
+            }
+            if (group.HasElements) { root.Add(group); }
         }
-        if (group.HasElements) { root.Add(group); }
+        AddGroup("StartAmmoGroup", start);
+        AddGroup("AmmoGroup", main);
+        AddGroup("EndAmmoGroup", end);
         return new MagazinePrefab(new ContentXElement(null, root), null);
     }
 

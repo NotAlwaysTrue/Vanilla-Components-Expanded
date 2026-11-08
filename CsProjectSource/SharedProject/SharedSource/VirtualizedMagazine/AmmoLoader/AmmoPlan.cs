@@ -27,6 +27,22 @@ public static class AmmoPlan
         return result;
     }
 
+    /// <summary>Merges neighbouring groups that hold the same round, keeping every amount.</summary>
+    public static List<AmmoRun> Merge(IEnumerable<AmmoRun> plan)
+    {
+        var result = new List<AmmoRun>();
+        foreach (var run in plan)
+        {
+            if (run == null || run.Count <= 0) { continue; }
+            if (result.Count > 0 && string.Equals(result[^1].Id, run.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                result[^1] = result[^1] with { Count = result[^1].Count + run.Count };
+            }
+            else { result.Add(run); }
+        }
+        return result;
+    }
+
     public static IEnumerable<string> Expand(IEnumerable<AmmoRun> plan) =>
         plan.SelectMany(r => Enumerable.Repeat(r.Id, r.Count));
 }

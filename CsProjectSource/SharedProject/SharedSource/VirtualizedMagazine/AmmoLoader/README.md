@@ -29,7 +29,7 @@ UI 与后端属于同一个 `AmmoLoader` 实例，直接使用以下接口：
 模组预设统一通过 `MagazinePrefab.CreateAmmoArray(capacity)` 展开，工厂与 UI 共用；返回数组为栈底优先。
 玩家预设同样是 `MagazinePrefab`（`ContentFile == null` 者为自定义预设），并以 `<预设名>_Magazine.xml` 逐个保存在 `SettingsService.SaveFolder`。
 文件只在游戏保存/加载时读写：`SaveUtil.SaveGame` 后写入并删除已移除预设的文件，`SaveUtil.LoadGame` 后重新读取；UI 编辑只改内存。
-多人游戏中保存目录属于服务端，客户端通过 `AmmoLoader` 状态快照取得预设列表，增删与排序以命令提交给服务端执行。
+多人游戏中保存目录属于服务端。预设（编排）列表不随库存快照周期同步：只在预设变更（保存/删除/排序）时由服务端单独下发，客户端刷新时随 `Refresh` 一并获取；增删与排序以命令提交给服务端执行。
 
 ## 自定义供弹接口
 
@@ -56,12 +56,28 @@ VCE 每 0.25 秒重读供给，装填前也会立即重读；优先使用现存�
 
 `AmmoLoader` 同时配置容器索引和 GuiFrame。XML 容器按界面从左到右排列：投料 0、取货 1、弹匣 2。
 容器索引只由预制体 XML 决定，不写入潜艇存档；载入时忽略旧存档中的索引，避免旧值覆盖调整后的容器顺序。
-三个容器单独显示在第二个 UI 窗口 `Item I/O` 中：该窗口宽度约为主窗口 20%、高度 86%，自带上边框可拖动，初始停靠在主窗口右侧（右侧放不下时改停左侧），随主窗口一起隐藏和重建。
-窗口内每个区段自上而下为「文字在上、格子在下」：投料 1 格、Magazine（目标弹匣容器）4 格、Output（取货容器）1 格；三者格子尺寸统一，等于投料格。
-目标容器可以是多格弹匣架（`slotsperrow="1"` 垂直排列），其中第一本弹匣为当前生效的弹匣；投料与取货各需独立容器。
-预设列表同样独立成一个窗口（主窗口宽度 24%、高度 62%，可拖动，初始停在主窗口左侧），因此主窗口只剩编排栏、`Output` 栏和下方库存/校验区，尺寸可以缩小到示例中的 `0.6,0.62`。
-`Output` 栏上方列出弹匣已装弹序与装卸按钮；取货不再有勾选框，改为双击库存面板中的弹种图标。
-弹匣列表按槽位编号逐发显示，最多 4 项；超出部分以 `+N rounds` 汇总，完整数量仍显示在栏标题上。
+三个容器单独显示在第二个 UI 窗口 `Item I/O` 中（窗口中不再显示标题文字）：**窗口高度贴合内容**（= 内边距 + 三行标题 + 六个格子），尺寸全部为固定常量（`IOSlotSize` / `IOCaptionWidth` / `IOCaptionHeight` / `IOCaptionGap`），不做文字测量也不随剩余空间变化；宽度 = 槽位与标题宽度较大者 + 内边距。自带上边框可拖动，初始停靠在主窗口右侧（右侧放不下时改停左侧），随主窗口一起隐藏和重建。
+窗口内每个区段自上而下为「文字居中在槽位正上方（固定间距）、槽位列在其下」：投料 1 格、Magazine（目标弹匣容器）4 格、Output（取货容器）1 格；格子尺寸固定，三者统一。
+基准尺寸（均乘以 `GUI.Scale`）：槽位绘制边长 66（`IOSlotSize`）、标题行高 24、标题宽度 160、标题与槽位间距 2（`IOCaptionGap`）。
+标题使用常规字号（`GUIStyle.Font`，`TextScale` 1.15）而不是小字号，并留有足够宽度，避免 `AutoScaleHorizontal` 把较长标题（如 `Magazine`）进一步缩小。
+标题文案：`vce.ammoloader.intake` = `Input` / `输入`，`vce.ammoloader.targetslot` = `Magazine` / `目标弹匣`，`vce.ammoloader.output` = `Output` / `输出`。主面板那一栏的标题是 `vce.ammoloader.currentmagazine` = `Current Magazine` / `当前弹匣`（带 `| 已装/容量` 后缀，不再附带悬停提示）。
+窗口底部预留与框架内边距同宽的下内边距（`bottomPad = gap`），否则最后一个输出槽的下边会正好压在面板描边（Outline）上。
+槽位 holder 由 `SlotHolderWidth` / `SlotHolderHeight` 按原生公式反推：`Inventory.CreateSlots` 以 `60 * Inventory.UIScale` 为格子边长、左右各留 `5 * UIScale`、每行上方再留 `5 * UIScale + ContainedIndicatorHeight`（`15 * UIScale`），holder 小于该尺寸时槽位会被整体缩小。因此 holder 比看到的格子大一圈，这一圈透明边距不参与布局（`SlotRowsHeight` 只计可见行与行距），由 `BindInventory` 把第一个槽位对齐到标题下方 `IOCaptionGap` 处。
+`Inventory.DrawSlot` 把物品状态指示器画在槽位**下方**（`rect.Bottom + Padding/2`，高 `ContainedIndicatorHeight`），原生行距 `5*UIScale + ContainedIndicatorHeight` 正是为它预留的。因此 `SlotBoxHeight` = 槽位 + `SlotRowGap` + `IOCaptionGap`，每列最后一格下方也留出一整段行距，否则指示器会落到下一个标题下面并被文字遮住。
+holder 的上边距会伸到标题行之上，因此拖动条 `GUIDragHandle` **最后创建**（`GUI.UpdateMouseOn` 从列表尾部向前查找，最后创建的才拿得到 `MouseOn`），否则透明 holder 会抢走标题栏的拖动区域。
+列背景（`Column`）在 `Item I/O` 中按 `heightFactor = 1` 铺满面板，不再保留 5% 的内缩，因此内容上方没有多余的黑边。
+屏幕高度不足时 `SlotSize` 会逐步缩小槽位以保证六格与三个标题都放得下（默认分辨率不会触发）。
+目标容器可以是多格弹匣架（`slotsperrow="1"` 垂直排列）；**当前生效的弹匣由 `AmmoLoader.TargetSlot` 决定**（`Target` = 该槽位的弹匣），投料与取货各需独立容器。
+
+### 弹匣槽位选择器
+
+- IO 面板的弹匣列右侧、第 2 与第 3 格之间放置两个原版按钮 `PlusButton`（上）与 `MinusButton`（下），点击调用 `RequestSelectSlot(TargetSlot ± 1)`（自动夹在 `0 .. TargetSlotCount-1`）。
+- 选中槽位用 `GUIStyle.UIGlow` + `GUIStyle.Green` 描边：通过 `PluginData` 的 `PluginDrawSlotForegroundDelegate` 钩子（`Plugin.cs` 中 `#if CLIENT` 注册/注销，处理器为 `AmmoLoader.DrawSlotForeground`）在 `Inventory.DrawSlot` 内绘制，因此与槽位同一绘制批次、不会被遮挡。钩子是全局的，用静态 `shownLoader`（在 `UpdateHUDComponentSpecific` 中赋值）定位当前打开的窗口。
+- 选择是机器状态，不是客户端本地状态：客户端发 `Command.SelectSlot`（复用 `Request.Index` 字段，协议布局不变），服务端 `TrySetTargetSlot` 校验并 `Changed()`；`Snapshot.TargetSlot` 随快照下发。客户端会先本地应用（立即高亮），快照到达后再校正。
+- 装填成功后 `TryMoveLoadedMagazineToOutput` 把该弹匣移入 Output 容器（`Inventory.CanBePut` + `TryPutItem(createNetworkEvent: true)`）；Output 不接收该弹匣或已满时留在架上。因此 Output 容器需要同时允许弹匣与弹药包（测试机器已改为 `vceammopackage,vcevirtualmagazine`）。
+预设列表同样独立成一个窗口（与主窗口同高、宽度为主窗口 24%，可拖动，初始停在主窗口左侧），因此主窗口只需保留一个「编排 / 出膛顺序」列表、`Output` 栏和下方库存/校验区，尺寸可以缩小到示例中的 `0.6,0.62`。
+`Output` 栏上方列出弹匣已装弹序与装卸按钮；取货不再有勾选框，改为单击库存面板中的弹种图标。
+弹匣列表只做**汇总展示**（不再显示逐发/逐组的装填排列）：按弹种合并、按首次出现顺序列出，左侧弹种、右侧 `x数量`（`GroupBy(OrdinalIgnoreCase)`）；弹匣的发射顺序看序列面板。`AutoRepeat` 开关也放在这一栏（Output 标题下方的 `repeatRow`），因为它影响的是弹匣最终装多少发。完整数量仍显示在栏标题上。
 
 ```xml
 <AmmoLoader inputcontainerindex="0" outputcontainerindex="1" targetcontainerindex="2"
@@ -88,7 +104,7 @@ VCE 每 0.25 秒重读供给，装填前也会立即重读；优先使用现存�
 没有此组件、弹种无效或包含其他物品的来源不入库。编辑器非试航状态不消耗来源。
 投料口仅允许带 `vceammopackage` 标签的物品；后端仍检查储弹组件和弹药有效性，不符合条件的物品留在原位。
 
-双击库存面板中的弹种图标取出一包；不修改编排，不使用“每次添加”数量，也不受当前弹匣容量或弹种过滤限制。
+单击库存图标取出一包（不修改编排，也不受当前弹匣容量或弹种过滤限制）；按住拖动则把 1 发加入编排，或拖到预设行追加 1 发到该预设（内置预设只读）。
 取货包从同投射物 ID、带 `vceammopackage` 标签且具有 `VirtualizedAmmoStorage` 的无容器物品中选择 `health` 最大者；
 容量相同时按物品 ID 排序。`health` 必须为有限正数且至少 1 发。每次取 `min(库存, floor(health))` 发，普通品质，剩余不足一满包时设置对应 Condition。
 包只生成在独立取货槽；没有可用包、没有独立取货容器或槽位放不下时禁止取货。取货槽不会自动入库，可以手动拖回投料槽。
@@ -107,8 +123,27 @@ VCE 每 0.25 秒重读供给，装填前也会立即重读；优先使用现存�
 空弹匣和非空弹匣均可装填：从编排末尾开始压入，按剩余容量保留末尾、截掉开头，只检查并扣除实际装入部分的库存。
 新装弹药先出膛，原有弹药及顺序保留；超出容量的部分留在库存，编排不变。满匣拒绝继续装填，卸弹直接回库。
 实际装入部分的兼容性或库存不足时整次拒绝；装填失败时恢复原弹匣，库存不扣除。
-相邻同弹种合并，支持分组/逐发拖拽与删除、预设保存/排序、兼容项过滤和弹药图标。加载预设覆盖未保存编排时弹窗确认，取消保留当前编排。
-有目标弹匣时，新增弹药和增加分组数量不得超过其剩余容量；点击添加时自动取批量数量与编排剩余空间的较小值，不修改“每次添加”设置，空间用尽后禁用添加。空槽仍可编辑通用预设。
+序列列表按「一个同类组一行」显示（原 `Sequence` 分组列表与 `Firing order` 预览已合并为 `sequenceList`）：**相邻的同类弹药自动塌缩成一行**，行内的 `GUINumberInput` 就是该组的发数（`ChangeRunCount`，上限 = 当前发数 + 弹匣剩余空间），行首编号是该组第一发的出膛位置。从上到下即出膛顺序：列表内拖拽可重排各组（`ReorderRuns`，只作用于 Main 段，`AmmoPlan.Merge` 保留发数合并相邻同类组），行尾按钮删除整组（`RemoveRun`）；从库存拖入时按落点插入到鼠标所在行的**下方**（`DropTarget` / `InsertRound`，落点位置优先，仅当紧邻的同名组才合并进它的发数）。支持预设保存/排序、兼容项过滤和弹药图标。加载预设覆盖未保存编排时弹窗确认，取消保留当前编排。
+
+### 三段式序列（按 MagazinePrefab 格式）
+
+序列编辑区采用与 `MagazinePrefab` 完全一致的三段模型：`startSection`（栈顶，先出膛）、`draft`（Main 段，中间滚动区）、`endSection`（栈底，最后出膛）。两段**默认折叠**，展开且为空时只占 1 行（显示一行拖入提示），点击行首的 `[+]`/`[-]` 标题折叠/展开（`ToggleSection`）；行号跨段连续编号。
+
+Start/End 都不在滚动列表内：`LayoutSequenceArea()` 每帧把 `sequenceArea` 的高度切成「顶部 Start 块 + 中间 Main 列表 + 底部 End 块」。两个块结构相同（`GUIFrame` + 常驻 `GUIButton` 表头 + 自己的 `GUIListBox`），但方向互为镜像：
+
+```
+[Start 行 01..n]    ← 向上折叠：行在表头之上，块从框顶向下长
+[+] Start section | n
+──────── Main 滚动区 ────────
+[+] End section | n
+[End 行 01..n]      ← 向下折叠：行在表头之下，块从框底向上长
+```
+
+折叠时只剩表头贴住框边、始终可见。展开时块高 =「表头 + min(组数, 4) × 实测行距 + `ContentPadding` + 2px 余量」：行距取**已创建行的实测高度**（`RowPitch`），`ContentPadding` = `GUIListBox.Padding.Y + Padding.W`（`GUIListBox.UpdateDimensions` 会把自己的 Padding 从尺寸里扣掉再给 `Content`，而滑块判据比较的正是 `Content.Rect.Height`，少算这一点会让 4 行判定溢出）；行创建后**再跑一次** `LayoutSequenceArea()`，滑块保留引擎默认的 `AutoHideScrollBar`，因此 **4 组以内不出滑块**，超过 4 组才出。两块优先取空间，Main 列表拿剩余高度并靠自己的滑块处理溢出。拖放只在**已展开**块的列表行区域内生效：折叠状态下表头不接受拖入，不会往该段加入弹药（`DropTarget` / `DropStock` 均判定 `startSectionList`/`endSectionList` 的 `Visible` 与 `Rect`）。
+`AutoRepeat` 开关与 `MagazinePrefab` 的同名属性语义一致：勾选后 `AllRounds()` 用 Main 段循环填满 `DraftCapacity - 起始段 - 结束段` 的剩余空间（若手写的 Main 段已经比这段空间长，则原样保留，由服务端 `TakeLast` 裁掉头部）；无目标弹匣时不展开。开关位于 **Output 栏**（Output 标题下方），标题在这种情况下显示 `序列 | 12 -> 30 发`。
+
+发送给服务端的计划是 `FullPlan()` = Start + Main + End 展开后再压缩（射击顺序）。预设写入也分三段：`MagazinePresetLibrary.Create(name, start, main, end)` 生成 `<StartAmmoGroup>/<AmmoGroup>/<EndAmmoGroup>`，读取时 `GetSections(prefab)` 还原三段；加载预设会清空并重新填充三段。预设保存与同步全程携带三段：`Request` 增加 `Start`/`End`（`ClientEventWrite`/`ServerEventRead` 按「三段各一个计数字节 + 条目」读写），`PresetSnapshot(Name, Start, Main, End)` 与 `MagazinePresetLibrary.Snapshot()`/`ApplyRemote()` 同样三段，服务端用 `Create(name, start, main, end)` 落盘。联机客户端保存预设也保留分段（不再折叠进 Main）。
+有目标弹匣时，新增弹药和增加分组数量不得超过其剩余容量；拖入时固定增加 1 发，空间用尽后禁用添加。空槽仍可编辑通用预设。
 加载长预设或切换小弹匣不会自动删改编排；超量编排可以减少数量，实际装填按末尾截取。
 库存按具体弹种 ID 保存，未知弹种保留；无效库存数据保留原 XML 并禁用后端。
 请求最多 96 段、4096 发；服务端校验访问权限、目标实体、库存版本及数量。
