@@ -1,6 +1,0 @@
-<Project>
-  <PropertyGroup>
-    <!-- Client/server test builds must not reuse each other's apphost or compiler cache. -->
-    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
-  </PropertyGroup>
-</Project>
