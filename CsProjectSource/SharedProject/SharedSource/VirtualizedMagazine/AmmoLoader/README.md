@@ -28,7 +28,6 @@ UI 与后端属于同一个 `AmmoLoader` 实例，直接使用以下接口：
 `LoadedAmmoIdentifiersArray` 保持原有追加语义；完整网络快照和装卸回滚在各自调用处显式清空后恢复弹序。
 模组预设统一通过 `MagazinePrefab.CreateAmmoArray(capacity)` 展开，工厂与 UI 共用；返回数组为栈底优先。
 玩家预设同样是 `MagazinePrefab` 实例，并以 `<预设名>_Magazine.xml` 逐个保存在 `SettingsService.SaveFolder\CustomMagazinePrefab\`（`MagazinePresetLibrary.FolderName`，首次保存时自动创建该子文件夹）。
-主保存目录不随构建配置变化。`#if DEBUG` 构建会**额外读取** `SettingsService.SaveFolder\LocalTEST\`（`MagazinePresetLibrary.TestFolderName`）：其中的预设只作为「本地预设」参与灰色列表与上传测试，既不进入当前列表，也不会被 `Save()` 写入或删除。
 预设列表是 `MagazinePresetLibrary` 自己的列表：只包含本机读到/新建的预设，**不读取内容包注册到 `MagazinePrefab.Prefabs` 的预制预设**（`All` 不再遍历该集合）。
 本机文件夹里的预设在列表中以**灰色**列出（`MagazinePresetLibrary.LocalOnly`：本机有文件、但当前使用的列表里没有），每行右侧带「上传」按钮：客户端点击后走 `RequestSavePreset` 把该预设加入服务端列表，权威端则直接 `Create` + `PresetChanged()`。上传成功后该条目进入正常列表，灰色行消失（同名去重）。
 文件只在游戏保存/加载时读写：`SaveUtil.SaveGame` 后写入并删除已移除预设的文件，`SaveUtil.LoadGame` 后重新读取；UI 编辑只改内存。

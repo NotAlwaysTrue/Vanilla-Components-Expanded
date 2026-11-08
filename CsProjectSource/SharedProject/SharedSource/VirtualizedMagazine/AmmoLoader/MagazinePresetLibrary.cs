@@ -16,22 +16,11 @@ public static class MagazinePresetLibrary
     public const int MaxNameLength = 48;
     /// <summary>Custom presets live in their own folder, so they stay apart from the other VCE settings files.</summary>
     public const string FolderName = "CustomMagazinePrefab";
-#if DEBUG
-    /// <summary>
-    /// Debug-only drop folder. Its presets are listed as local (grey, uploadable) but never become the authority's list,
-    /// so the upload path can be tested without touching the real preset folder.
-    /// </summary>
-    public const string TestFolderName = "LocalTEST";
-#endif
 
     private static readonly List<MagazinePrefab> custom = [];
     // Presets found in this machine's folder. On the authority they are the same objects as `custom`; on a client they
     // are only candidates for upload, so they are kept apart and never replace the server's list.
     private static readonly List<MagazinePrefab> local = [];
-#if DEBUG
-    // Presets dropped into the debug test folder: always upload candidates, even on the authority.
-    private static readonly List<MagazinePrefab> test = [];
-#endif
     // Files this session read successfully; only these may be deleted when their preset is gone.
     private static readonly HashSet<string> known = new(StringComparer.OrdinalIgnoreCase);
     private static string? loadError;
@@ -41,23 +30,14 @@ public static class MagazinePresetLibrary
 
     public static bool IsAuthority => GameMain.NetworkMember is not { IsClient: true };
 
-    private static string? SaveRoot => VanillaComponentsExpanded.VCEPlugin.SettingsService?.SaveFolder is { Length: > 0 } root
-        ? root : null;
-
-    private static string? Folder => SaveRoot is { } root ? Path.Combine(root, FolderName) : null;
-#if DEBUG
-    /// <summary>Debug-only second source: presets dropped here are offered for upload, never written back.</summary>
-    private static string? TestFolder => SaveRoot is { } root ? Path.Combine(root, TestFolderName) : null;
-#endif
+    private static string? Folder => VanillaComponentsExpanded.VCEPlugin.SettingsService?.SaveFolder is { Length: > 0 } root
+        ? Path.Combine(root, FolderName) : null;
 
     /// <summary>Drops the in-memory lists when the plugin unloads or reloads; the files stay on disk.</summary>
     public static void Dispose()
     {
         custom.Clear();
         local.Clear();
-#if DEBUG
-        test.Clear();
-#endif
         known.Clear();
         loadError = null;
     }
@@ -110,18 +90,7 @@ public static class MagazinePresetLibrary
     /// </summary>
     public static IEnumerable<MagazinePrefab> LocalOnly(VirtualizedMagazine? target)
     {
-#if DEBUG
-        // The debug test folder is offered even on the authority: its presets are never part of the list there.
-        foreach (var prefab in test.ToArray())
-        {
-            if (Find(GetName(prefab)) != null) { continue; }
-            if (target != null && prefab.StartSection.Concat(prefab.MainSection).Concat(prefab.EndSection)
-                .Any(id => !AmmoLoader.IsCompatible(target, id.Value))) { continue; }
-
-            yield return prefab;
-        }
-#endif
-        // On the authority the main folder already is the list, so there is never anything left to upload from it.
+        // On the authority the local folder already is the list, so there is never anything left to upload.
         if (IsAuthority) { yield break; }
 
         foreach (var prefab in local.ToArray())
@@ -216,36 +185,23 @@ public static class MagazinePresetLibrary
         custom.Clear();
         known.Clear();
         local.Clear();
-#if DEBUG
-        test.Clear();
-#endif
         loadError = null;
+        if (Folder is not { } folder || !Directory.Exists(folder)) { return; }
         // Every file is remembered as a local preset. Only the authority also makes them the list it publishes, because
         // a client's list is replaced by the server's and its files are merely presets waiting to be uploaded.
         bool authority = IsAuthority;
-        ReadFolder(Folder, (prefab, fileName) =>
-        {
-            local.Add(prefab);
-            if (!authority) { return; }
-            custom.Add(prefab);
-            known.Add(fileName);
-        });
-#if DEBUG
-        // Test presets stay in `test` only: they are never published, never tracked as known files, so Save() neither
-        // writes nor deletes them.
-        ReadFolder(TestFolder, (prefab, _) => test.Add(prefab));
-#endif
-    }
-
-    /// <summary>Parses every preset file of one folder and hands it to <paramref name="accept" />.</summary>
-    private static void ReadFolder(string? folder, Action<MagazinePrefab, string> accept)
-    {
-        if (folder == null || !Directory.Exists(folder)) { return; }
         try
         {
             foreach (string path in Directory.GetFiles(folder, "*" + FileSuffix).OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
             {
-                try { accept(Parse(path), Path.GetFileName(path)); }
+                try
+                {
+                    var prefab = Parse(path);
+                    local.Add(prefab);
+                    if (!authority) { continue; }
+                    custom.Add(prefab);
+                    known.Add(Path.GetFileName(path));
+                }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException or XmlException or FormatException or ArgumentException)
                 {
                     // Unreadable files are never deleted, so a broken preset can still be fixed by hand.
