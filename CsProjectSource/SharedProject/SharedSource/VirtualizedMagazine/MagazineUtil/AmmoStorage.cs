@@ -22,6 +22,8 @@ namespace VCE_VirtualizedMagazine
             {
                 DebugConsole.AddWarning($"Warning: Invalid ProjectileIdentifier found for AmmoStorage: {Item.Prefab.Identifier}");
             }
+
+            item.tags.Add(new Identifier("VCE_VirtualizedAmmoStorage"));
         }
     }
 }

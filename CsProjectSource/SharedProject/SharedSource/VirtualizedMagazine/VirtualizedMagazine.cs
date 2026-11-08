@@ -138,6 +138,7 @@ namespace VCE_VirtualizedMagazine
             UpdateWhenBroken = true;
             PushAmmoArray(ref ammoarray);
             item.Condition = LoadedAmmoIdentifiers.Count;
+            item.tags.Add(new Identifier("VCE_VirtualizedMagazine"));
         }
 
         /// <summary>
