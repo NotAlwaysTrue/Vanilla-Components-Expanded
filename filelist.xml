@@ -10,7 +10,6 @@
   <FileGroup>
     <Conditional dependencies="VCELOCALTESTPKG" />
     <Item file="%ModDir%/.Test/testItems.xml" />
-    <Item file="%ModDir%/.Test/AmmoLoader/AmmoLoaderItems.xml" />
     <MagazinePrefab file="%ModDir%/.Test/MagazinePrefabs.xml" />
   </FileGroup>
 

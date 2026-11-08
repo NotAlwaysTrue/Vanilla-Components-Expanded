@@ -55,4 +55,41 @@
     </CustomInterface>
     <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
   </Item>
+
+  <Item identifier="vceammoloader" name="" category="Machine" tags="vceammoloader,donttakeitems,dontsellitems" scale="0.5">
+    <Sprite texture="Content/Items/Fabricators/FabricatorsAndDeconstructors.png" sourcerect="0,624,336,400" depth="0.8" />
+    <AmmoLoader inputcontainerindex="0" outputcontainerindex="1" targetcontainerindex="2" canbeselected="true" msg="ItemMsgInteractSelect">
+      <GuiFrame relativesize="0.6,0.62" minsize="700,470" anchor="Center" style="ItemUI" />
+    </AmmoLoader>
+    <ItemContainer capacity="1" slotsperrow="1" maxstacksize="1" canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
+      <Containable items="vceammopackage" />
+    </ItemContainer>
+    <ItemContainer capacity="1" slotsperrow="1" maxstacksize="1" canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
+      <Containable items="vceammopackage" />
+    </ItemContainer>
+    <ItemContainer capacity="4" slotsperrow="1" maxstacksize="1" canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
+      <Containable items="vcevirtualmagazine" />
+    </ItemContainer>
+  </Item>
+  <Item identifier="vceammoloadertestmagazine" name="VCE Loader Test Magazine" category="Weapon" health="30" maxstacksize="1" tags="smallitem,vcevirtualmagazine,shotgunammo">
+    <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="960,960,64,64" />
+    <Sprite texture="Content/Items/Weapons/weapons_new.png" sourcerect="146,157,21,44" depth="0.54" />
+    <Body width="28" height="40" density="25" />
+    <VirtualizedMagazine AllowedAmmoTags="shotgunammo" />
+    <Holdable slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect" />
+  </Item>
+  <Item identifier="vceammoloadertestpack" name="VCE Shotgun Ammo Package" category="Weapon" tags="smallitem,vceammopackage" health="120" maxstacksize="1">
+    <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="960,960,64,64" />
+    <Sprite texture="Content/Items/Weapons/weapons_new.png" sourcerect="146,157,21,44" depth="0.54" />
+    <Body width="28" height="40" density="25" />
+    <VirtualizedAmmoStorage projectileidentifier="shotgunshell" />
+    <Holdable slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect" />
+  </Item>
+  <Item identifier="vceammoloadertestpackblunt" name="VCE Blunt Ammo Package" category="Weapon" tags="smallitem,vceammopackage" health="24" maxstacksize="1">
+    <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="960,960,64,64" />
+    <Sprite texture="Content/Items/Weapons/weapons_new.png" sourcerect="146,157,21,44" depth="0.54" />
+    <Body width="28" height="40" density="25" />
+    <VirtualizedAmmoStorage projectileidentifier="shotgunshellblunt" />
+    <Holdable slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect" />
+  </Item>
 </Items>

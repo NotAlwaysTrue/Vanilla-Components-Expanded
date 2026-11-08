@@ -16,6 +16,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\AmmoLoader\AmmoLoader.Supply.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\AmmoLoader\AmmoPlan.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\AmmoLoader\AmmoStock.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\AmmoLoader\MagazinePresetLibrary.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\ActiveProtectionSystem\ActiveProtectionSystem.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\ActiveProtectionSystem\HarmonyPatch.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)sharedsource\armorsystem\ArmorPrefab.cs" />
@@ -26,6 +27,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\SwitchableRangedWeapon\SwitchableRangedWeapon.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\SwitchableRangedWeapon\TrajectoryCaculator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\Harmony\HarmonyPatch.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\Harmony\MagazinePresetPatch.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\Harmony\MethodScanner.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\MagazineUtil\AmmoStorage.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\MagazineUtil\MagazineFactory.cs" />

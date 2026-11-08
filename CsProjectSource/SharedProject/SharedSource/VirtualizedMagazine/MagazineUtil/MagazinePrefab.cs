@@ -26,7 +26,8 @@ namespace VCE_VirtualizedMagazine
         public string OriginalName { get; }
         public LocalizedString DisplayName { get; }
         public ContentXElement Element { get; }
-        public bool IsOverride => Prefabs.IsOverride(this);
+        // Runtime presets are created without a content file, so there is nothing to override.
+        public bool IsOverride => ContentFile != null && Prefabs.IsOverride(this);
 
         public bool Disposed;
 
@@ -57,8 +58,12 @@ namespace VCE_VirtualizedMagazine
         //     ammo 2        <-        2nd round
         //     ammo 3        <-        3rd round
         // example didnt consider have multiple rounds in a single data but should be the same
-        public MagazinePrefab(ContentXElement element, MagazinePrefabFile file) : base(file, element.GetAttributeIdentifier("identifier", "")) 
+        //
+        // file may be null: save-folder presets are built from an in-memory element and have no content file.
+        public MagazinePrefab(ContentXElement element, MagazinePrefabFile? file) : base(file!, element.GetAttributeIdentifier("identifier", "")) 
         {
+            Element = element;
+            DisplayName = element.GetAttributeString("name", Identifier.Value);
             AutoRepeat = element.GetAttributeBool("AutoRepeat", true);
 
             foreach (var subElement in element.Elements())
@@ -88,6 +93,9 @@ namespace VCE_VirtualizedMagazine
             }
 
         }
+
+        /// <summary>Rounds declared across all three sections.</summary>
+        public int TotalCount => StartSection.Count + MainSection.Count + EndSection.Count;
 
         public Identifier[] CreateAmmoArray(int capacity)
         {

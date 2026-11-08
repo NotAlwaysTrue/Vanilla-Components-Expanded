@@ -28,8 +28,11 @@
   <vce.ammoloader.stock>机器弹药库存</vce.ammoloader.stock>
   <vce.ammoloader.intake>弹药包投料</vce.ammoloader.intake>
   <vce.ammoloader.intakehint>放入弹药包即转为机器库存</vce.ammoloader.intakehint>
-  <vce.ammoloader.output>弹药包取货</vce.ammoloader.output>
+  <vce.ammoloader.output>输出</vce.ammoloader.output>
   <vce.ammoloader.outputhint>打包后的弹药包出现在这里，可拖走或放回投料口</vce.ammoloader.outputhint>
+  <vce.ammoloader.itemio>物品 IO</vce.ammoloader.itemio>
+  <vce.ammoloader.pickup>取货模式</vce.ammoloader.pickup>
+  <vce.ammoloader.doubleclickhint>双击取出一包弹药</vce.ammoloader.doubleclickhint>
   <vce.ammoloader.withdrawmodehint>勾选后点击库存弹种取出一包，按最大包装容量装满，库存不足时取剩余数量；取消勾选后点击库存添加至编排</vce.ammoloader.withdrawmodehint>
   <vce.ammoloader.withdraw>点击取出一包</vce.ammoloader.withdraw>
   <vce.ammoloader.nooutput>未配置独立取货槽</vce.ammoloader.nooutput>

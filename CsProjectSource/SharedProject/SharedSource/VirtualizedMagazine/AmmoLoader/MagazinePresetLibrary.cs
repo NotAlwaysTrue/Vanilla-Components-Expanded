@@ -1,0 +1,252 @@
+using System.Text;
+using System.Xml;
+using System.Xml.Linq;
+
+namespace VCE_VirtualizedMagazine;
+
+/// <summary>
+/// Player-made loadout presets. Every preset is a <see cref="MagazinePrefab"/> backed by one XML file named
+/// "[Name]_Magazine.xml" inside <c>SettingsService.SaveFolder</c>.
+/// Files are only touched by <see cref="Load"/> and <see cref="Save"/>, which the game save/load hooks call;
+/// editing a preset in the UI stays in memory. Multiplayer writes are performed by the server only.
+/// </summary>
+public static class MagazinePresetLibrary
+{
+    public const string FileSuffix = "_Magazine.xml";
+    public const int MaxNameLength = 48;
+
+    private static readonly List<MagazinePrefab> custom = [];
+    // Files this session read successfully; only these may be deleted when their preset is gone.
+    private static readonly HashSet<string> known = new(StringComparer.OrdinalIgnoreCase);
+    private static string? loadError;
+
+    public static IReadOnlyList<MagazinePrefab> Custom => custom;
+    public static string? LoadError => loadError;
+
+    public static bool IsAuthority => GameMain.NetworkMember is not { IsClient: true };
+
+    private static string? Folder => VanillaComponentsExpanded.VCEPlugin.SettingsService?.SaveFolder;
+
+    public static bool IsCustom(MagazinePrefab prefab) => custom.Contains(prefab);
+
+    public static string GetName(MagazinePrefab prefab) =>
+        prefab.DisplayName?.Value is { Length: > 0 } name ? name : prefab.Identifier.Value;
+
+    public static AmmoRun[] GetRuns(MagazinePrefab prefab, int capacity) =>
+        AmmoPlan.Compact(prefab.CreateAmmoArray(Math.Clamp(capacity, 0, AmmoPlan.MaxRounds))
+            .Reverse().Select(id => id.Value)).ToArray();
+
+    public static AmmoRun[] GetRuns(MagazinePrefab prefab) => GetRuns(prefab, prefab.TotalCount);
+
+    /// <summary>Custom presets first, then the prefabs shipped with content. Rounds are in firing order.</summary>
+    public static IEnumerable<MagazinePrefab> All(VirtualizedMagazine? target)
+    {
+        foreach (var prefab in custom.ToArray()) { yield return prefab; }
+
+        foreach (var prefab in MagazinePrefab.Prefabs)
+        {
+            if (prefab.TotalCount <= 0 || custom.Contains(prefab)) { continue; }
+            if (target != null && prefab.StartSection.Concat(prefab.MainSection).Concat(prefab.EndSection)
+                .Any(id => !AmmoLoader.IsCompatible(target, id.Value))) { continue; }
+
+            yield return prefab;
+        }
+    }
+
+    public static MagazinePrefab? Find(string name) =>
+        custom.FirstOrDefault(p => string.Equals(GetName(p), (name ?? "").Trim(), StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Creates or replaces the preset with this name. No file is written here.</summary>
+    public static MagazinePrefab? Create(string name, IReadOnlyList<AmmoRun> runs)
+    {
+        name = (name ?? "").Trim();
+        if (name.Length is 0 or > MaxNameLength || !AmmoPlan.IsValid(runs, AmmoPlan.MaxRounds)) { return null; }
+
+        var prefab = Build(name, runs);
+        var existing = Find(name);
+        if (existing == null) { custom.Add(prefab); }
+        else { custom[custom.IndexOf(existing)] = prefab; }
+        return prefab;
+    }
+
+    public static bool Remove(MagazinePrefab prefab) => custom.Remove(prefab);
+
+    /// <summary>Moves one preset to <paramref name="index" /> inside the custom list.</summary>
+    public static bool Move(MagazinePrefab prefab, int index)
+    {
+        int current = custom.IndexOf(prefab);
+        if (current < 0 || custom.Count == 0) { return false; }
+        index = Math.Clamp(index, 0, custom.Count - 1);
+        if (index == current) { return false; }
+
+        custom.RemoveAt(current);
+        custom.Insert(index, prefab);
+        return true;
+    }
+
+    /// <summary>Rounds of every custom preset, for the authority to publish to clients.</summary>
+    public static IReadOnlyList<(string Name, AmmoRun[] Rounds)> Snapshot() =>
+        custom.Select(p => (GetName(p), GetRuns(p))).ToArray();
+
+    /// <summary>Replaces the custom list with the server's presets. Clients never read the save folder.</summary>
+    public static void ApplyRemote(IEnumerable<(string Name, AmmoRun[] Rounds)> presets)
+    {
+        var incoming = presets.ToArray();
+        // Snapshots arrive on every state change, so skip the rebuild when nothing moved.
+        if (incoming.Length == custom.Count && incoming.Select((p, i) =>
+                string.Equals(GetName(custom[i]), p.Name, StringComparison.OrdinalIgnoreCase) &&
+                GetRuns(custom[i]).SequenceEqual(p.Rounds)).All(same => same)) { return; }
+
+        custom.Clear();
+        known.Clear();
+        loadError = null;
+        foreach (var (name, rounds) in incoming)
+        {
+            if (Create(name, rounds) == null) { loadError = "The server sent an invalid preset."; }
+        }
+    }
+
+    /// <summary>Reads every preset file. Called when the game loads.</summary>
+    public static void Load()
+    {
+        // Multiplayer clients receive the server's list; the folder belongs to the server.
+        if (!IsAuthority) { return; }
+        custom.Clear();
+        known.Clear();
+        loadError = null;
+        if (Folder is not { } folder || !Directory.Exists(folder)) { return; }
+        try
+        {
+            foreach (string path in Directory.GetFiles(folder, "*" + FileSuffix).OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    custom.Add(Parse(path));
+                    known.Add(Path.GetFileName(path));
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or XmlException or FormatException or ArgumentException)
+                {
+                    // Unreadable files are never deleted, so a broken preset can still be fixed by hand.
+                    loadError ??= e.Message;
+                    VanillaComponentsExpanded.VCEPlugin.DebugConsole.AddWarning(
+                        $"Magazine preset '{Path.GetFileName(path)}' skipped: {e.Message}");
+                }
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            loadError = e.Message;
+            VanillaComponentsExpanded.VCEPlugin.DebugConsole.AddWarning($"Magazine presets could not be read: {e.Message}");
+        }
+    }
+
+    /// <summary>Writes every preset file and deletes files of removed presets. Called when the game saves.</summary>
+    public static void Save()
+    {
+        // Multiplayer: the server owns the files. Singleplayer: the local player does.
+        if (!IsAuthority) { return; }
+        if (Folder is not { } folder)
+        {
+            VanillaComponentsExpanded.VCEPlugin.DebugConsole.AddWarning("Magazine presets could not be saved: no save folder.");
+            return;
+        }
+        try
+        {
+            Directory.CreateDirectory(folder);
+            var written = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var prefab in custom)
+            {
+                string path = Path.Combine(folder, FileName(GetName(prefab), written));
+                written.Add(Path.GetFileName(path));
+                Write(prefab, path);
+            }
+            foreach (string path in Directory.GetFiles(folder, "*" + FileSuffix))
+            {
+                string fileName = Path.GetFileName(path);
+                if (written.Contains(fileName) || !known.Contains(fileName)) { continue; }
+                try { File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            VanillaComponentsExpanded.VCEPlugin.DebugConsole.AddWarning($"Magazine presets could not be saved: {e.Message}");
+        }
+    }
+
+    private static MagazinePrefab Build(string name, IReadOnlyList<AmmoRun> runs)
+    {
+        var root = new XElement("MagazinePrefab",
+            new XAttribute("identifier", MakeIdentifier(name)),
+            new XAttribute("name", name),
+            new XAttribute("AutoRepeat", false));
+        var group = new XElement("AmmoGroup");
+        // MagazinePrefab parses rounds by inserting them at the front, so file order is firing order.
+        foreach (var run in runs)
+        {
+            if (run.Count <= 0) { continue; }
+            group.Add(new XElement("Ammo",
+                new XAttribute("ProjectileIdentifier", run.Id),
+                new XAttribute("Amount", run.Count)));
+        }
+        if (group.HasElements) { root.Add(group); }
+        return new MagazinePrefab(new ContentXElement(null, root), null);
+    }
+
+    private static MagazinePrefab Parse(string path)
+    {
+        var root = XDocument.Load(path).Root ?? throw new FormatException("The file is empty.");
+        if (string.Equals(root.Name.LocalName, "MagazinePrefabs", StringComparison.OrdinalIgnoreCase))
+        {
+            root = root.Elements().FirstOrDefault() ?? throw new FormatException("The file contains no preset.");
+        }
+        var prefab = new MagazinePrefab(new ContentXElement(null, root), null);
+        if (prefab.TotalCount <= 0) { throw new FormatException("The preset contains no rounds."); }
+        if (prefab.TotalCount > AmmoPlan.MaxRounds) { throw new FormatException("The preset is too large."); }
+        return prefab;
+    }
+
+    private static void Write(MagazinePrefab prefab, string path)
+    {
+        string text = ToXml(prefab).ToString();
+        if (File.Exists(path) && File.ReadAllText(path, Encoding.UTF8) == text) { return; }
+        string temporary = path + ".tmp";
+        File.WriteAllText(temporary, text, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        File.Move(temporary, path, overwrite: true);
+    }
+
+    private static XElement ToXml(MagazinePrefab prefab)
+    {
+        var root = prefab.Element == null
+            ? new XElement("MagazinePrefab", new XElement("AmmoGroup"))
+            : new XElement(prefab.Element);
+        root.SetAttributeValue("identifier", prefab.Identifier.Value);
+        root.SetAttributeValue("name", GetName(prefab));
+        root.SetAttributeValue("AutoRepeat", false);
+        return root;
+    }
+
+    private static string FileName(string name, HashSet<string> used)
+    {
+        string stem = Sanitize(name);
+        string candidate = stem + FileSuffix;
+        for (int i = 2; !used.Add(candidate); i++) { candidate = stem + "_" + i + FileSuffix; }
+        return candidate;
+    }
+
+    private static string MakeIdentifier(string name)
+    {
+        string sanitized = Sanitize(name).ToLowerInvariant();
+        return sanitized.Length == 0 ? "vcepreset" : "vcepreset_" + sanitized;
+    }
+
+    private static string Sanitize(string name)
+    {
+        var builder = new StringBuilder(name.Length);
+        foreach (char c in name.Trim())
+        {
+            builder.Append(char.IsLetterOrDigit(c) || c is '_' or '-' ? c : '_');
+        }
+        string result = builder.ToString().Trim('_', '.', ' ');
+        return result.Length == 0 ? "preset" : result;
+    }
+}

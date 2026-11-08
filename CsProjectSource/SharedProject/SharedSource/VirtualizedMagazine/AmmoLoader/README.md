@@ -4,7 +4,8 @@
 
 装弹机仅注册一个 `AmmoLoader` 组件，使用 partial 分文件维护 UI、库存、装卸、存档和网络。装弹机专用代码统一放在各工程的 `AmmoLoader` 目录；后端和网络仍交由 VirtualizedMagazine 维护者负责。
 
-- `ClientProject/ClientSource/VirtualizedMagazine/AmmoLoader/AmmoLoader.UI.cs` 与 `AmmoPresets.cs`：界面、编排编辑和玩家本地预设。
+- `ClientProject/ClientSource/VirtualizedMagazine/AmmoLoader/AmmoLoader.UI.cs`：界面、编排编辑与预设列表。
+- `SharedProject/SharedSource/VirtualizedMagazine/AmmoLoader/MagazinePresetLibrary.cs`：玩家预设，每个预设在内存中就是一个 `MagazinePrefab`。
 - `SharedProject/SharedSource/VirtualizedMagazine/AmmoLoader/AmmoLoader.cs`：容器绑定、入库、装卸事务、库存存档及权威端校验。
 - 同目录的 `AmmoStock`、`AmmoPlan` / `AmmoRun`：后端库存及装填计划数据。
 - 客户端 `AmmoLoader/AmmoLoader.Network.cs` 与服务端 `AmmoLoader/AmmoLoader.Server.cs`：库存快照、请求校验与传输。
@@ -20,12 +21,15 @@ UI 与后端属于同一个 `AmmoLoader` 实例，直接使用以下接口：
 - 读取 `Stock`、`Target`、`InputContainer`、`OutputContainer`、`TargetContainer`、`Ready`、`StateRevision`。
 - 客户端读取 `IsSynchronized`；界面更新时调用 `UpdateClientState(deltaTime)`，由后端处理初始同步及重试。
 - 调用 `RequestLoad(AmmoRun[])`、`RequestUnload()`、`RequestWithdraw(projectileId)`；单机与联网分支均在后端。
+- 预设调用 `RequestSavePreset(name, AmmoRun[])`、`RequestDeletePreset(name)`、`RequestMovePreset(name, index)`；权威端直接改内存。
 - `AmmoRun[]` 从上到下表示出膛顺序。后端转换为 VirtualizedMagazine 接口所需的栈底优先顺序。
 
 兼容性由 `VirtualizedMagazine.IsAmmoCompatible` 判断，投射物组件查询复用 `ElementHelper`。
 `LoadedAmmoIdentifiersArray` 保持原有追加语义；完整网络快照和装卸回滚在各自调用处显式清空后恢复弹序。
 模组预设统一通过 `MagazinePrefab.CreateAmmoArray(capacity)` 展开，工厂与 UI 共用；返回数组为栈底优先。
-玩家本地预设仍保存至单机存档目录下的 `VCE/AmmoLoaderPresets.json`。
+玩家预设同样是 `MagazinePrefab`（`ContentFile == null` 者为自定义预设），并以 `<预设名>_Magazine.xml` 逐个保存在 `SettingsService.SaveFolder`。
+文件只在游戏保存/加载时读写：`SaveUtil.SaveGame` 后写入并删除已移除预设的文件，`SaveUtil.LoadGame` 后重新读取；UI 编辑只改内存。
+多人游戏中保存目录属于服务端，客户端通过 `AmmoLoader` 状态快照取得预设列表，增删与排序以命令提交给服务端执行。
 
 ## 自定义供弹接口
 
@@ -52,22 +56,27 @@ VCE 每 0.25 秒重读供给，装填前也会立即重读；优先使用现存�
 
 `AmmoLoader` 同时配置容器索引和 GuiFrame。XML 容器按界面从左到右排列：投料 0、取货 1、弹匣 2。
 容器索引只由预制体 XML 决定，不写入潜艇存档；载入时忽略旧存档中的索引，避免旧值覆盖调整后的容器顺序。
-投料和取货各自使用 `capacity`、`slotsperrow` 定义槽数与行数；目标弹匣容器必须单格、不堆叠。
+三个容器单独显示在第二个 UI 窗口 `Item I/O` 中：该窗口宽度约为主窗口 20%、高度 86%，自带上边框可拖动，初始停靠在主窗口右侧（右侧放不下时改停左侧），随主窗口一起隐藏和重建。
+窗口内每个区段自上而下为「文字在上、格子在下」：投料 1 格、Magazine（目标弹匣容器）4 格、Output（取货容器）1 格；三者格子尺寸统一，等于投料格。
+目标容器可以是多格弹匣架（`slotsperrow="1"` 垂直排列），其中第一本弹匣为当前生效的弹匣；投料与取货各需独立容器。
+预设列表同样独立成一个窗口（主窗口宽度 24%、高度 62%，可拖动，初始停在主窗口左侧），因此主窗口只剩编排栏、`Output` 栏和下方库存/校验区，尺寸可以缩小到示例中的 `0.6,0.62`。
+`Output` 栏上方列出弹匣已装弹序与装卸按钮；取货不再有勾选框，改为双击库存面板中的弹种图标。
+弹匣列表按槽位编号逐发显示，最多 4 项；超出部分以 `+N rounds` 汇总，完整数量仍显示在栏标题上。
 
 ```xml
 <AmmoLoader inputcontainerindex="0" outputcontainerindex="1" targetcontainerindex="2"
             canbeselected="true" msg="ItemMsgInteractSelect">
-  <GuiFrame relativesize="0.75,0.78" minsize="900,600" anchor="Center" style="ItemUI" />
+  <GuiFrame relativesize="0.6,0.62" minsize="700,470" anchor="Center" style="ItemUI" />
 </AmmoLoader>
-<ItemContainer capacity="6" slotsperrow="6" maxstacksize="1"
+<ItemContainer capacity="1" slotsperrow="1" maxstacksize="1"
                canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
   <Containable items="vceammopackage" />
 </ItemContainer>
-<ItemContainer capacity="6" slotsperrow="6" maxstacksize="1"
+<ItemContainer capacity="1" slotsperrow="1" maxstacksize="1"
                canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
   <Containable items="vceammopackage" />
 </ItemContainer>
-<ItemContainer capacity="1" maxstacksize="1"
+<ItemContainer capacity="4" slotsperrow="1" maxstacksize="1"
                canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
   <Containable items="vcevirtualmagazine" />
 </ItemContainer>
@@ -79,7 +88,7 @@ VCE 每 0.25 秒重读供给，装填前也会立即重读；优先使用现存�
 没有此组件、弹种无效或包含其他物品的来源不入库。编辑器非试航状态不消耗来源。
 投料口仅允许带 `vceammopackage` 标签的物品；后端仍检查储弹组件和弹药有效性，不符合条件的物品留在原位。
 
-勾选底部“弹药包取货”文字后的方框，点击库存弹种取出一包；不修改编排，不使用“每次添加”数量，也不受当前弹匣容量或弹种过滤限制。
+双击库存面板中的弹种图标取出一包；不修改编排，不使用“每次添加”数量，也不受当前弹匣容量或弹种过滤限制。
 取货包从同投射物 ID、带 `vceammopackage` 标签且具有 `VirtualizedAmmoStorage` 的无容器物品中选择 `health` 最大者；
 容量相同时按物品 ID 排序。`health` 必须为有限正数且至少 1 发。每次取 `min(库存, floor(health))` 发，普通品质，剩余不足一满包时设置对应 Condition。
 包只生成在独立取货槽；没有可用包、没有独立取货容器或槽位放不下时禁止取货。取货槽不会自动入库，可以手动拖回投料槽。

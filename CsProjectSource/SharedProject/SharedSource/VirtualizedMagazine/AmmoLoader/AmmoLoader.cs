@@ -51,11 +51,13 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         targetContainer = containers.ElementAtOrDefault(TargetContainerIndex);
         outputContainer = containers.ElementAtOrDefault(OutputContainerIndex);
         if (outputContainer == inputContainer || outputContainer == targetContainer) { outputContainer = null; }
-        if (inputContainer == targetContainer || targetContainer?.Inventory?.Capacity != 1)
+        // The target container may be a small magazine rack; the first magazine in it is the active one.
+        int targetCapacity = targetContainer?.Inventory?.Capacity ?? 0;
+        if (inputContainer == targetContainer || outputContainer == targetContainer || targetCapacity < 1)
         {
             inputContainer = targetContainer = null;
             VanillaComponentsExpanded.VCEPlugin.DebugConsole.AddWarning(
-                $"AmmoLoader on {Item.Prefab.Identifier} needs separate input and one-slot target ItemContainers.");
+                $"AmmoLoader on {Item.Prefab.Identifier} needs separate input and non-empty target ItemContainers.");
         }
         InitClient();
     }
@@ -293,14 +295,32 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         }
     }
 
-    private enum Command : byte { Refresh, Load, Unload, Withdraw }
-    private sealed record Request(Command Command, uint Revision, ushort Target, AmmoRun[] Plan) : IEventData;
-    private sealed record Snapshot(uint Revision, Dictionary<string, int> Stock, SupplyPool[]? Supplies = null, bool SupplyError = false);
+    private enum Command : byte { Refresh, Load, Unload, Withdraw, SavePreset, DeletePreset, MovePreset }
+    private sealed record Request(Command Command, uint Revision, ushort Target, AmmoRun[] Plan, string Name = "", int Index = 0) : IEventData;
+    private sealed record Snapshot(uint Revision, Dictionary<string, int> Stock, SupplyPool[]? Supplies = null,
+        bool SupplyError = false, PresetSnapshot[]? Presets = null);
+    private sealed record PresetSnapshot(string Name, AmmoRun[] Rounds);
     private sealed record SnapshotPage(uint Revision, int Index, int Count, string Data) : IEventData;
+
+    /// <summary>Applies one preset edit. The server owns the list; singleplayer applies it directly.</summary>
+    private bool ApplyPresetCommand(Command command, AmmoRun[] plan, string name, int index)
+    {
+        if (!IsAuthority) { return false; }
+        bool applied = command switch
+        {
+            Command.SavePreset => MagazinePresetLibrary.Create(name, plan) != null,
+            Command.DeletePreset => MagazinePresetLibrary.Find(name) is { } removed && MagazinePresetLibrary.Remove(removed),
+            Command.MovePreset => MagazinePresetLibrary.Find(name) is { } moved && MagazinePresetLibrary.Move(moved, index),
+            _ => false
+        };
+        if (applied) { Changed(); }
+        return applied;
+    }
 
     private SnapshotPage[] CapturePages()
     {
-        var snapshot = new Snapshot(revision, new Dictionary<string, int>(Stock.Counts), supplies, supplyError);
+        var presets = MagazinePresetLibrary.Snapshot().Select(p => new PresetSnapshot(p.Name, p.Rounds)).ToArray();
+        var snapshot = new Snapshot(revision, new Dictionary<string, int>(Stock.Counts), supplies, supplyError, presets);
         string json = JsonSerializer.Serialize(snapshot);
         const int charsPerPage = 128;
         int pages = (json.Length + charsPerPage - 1) / charsPerPage;

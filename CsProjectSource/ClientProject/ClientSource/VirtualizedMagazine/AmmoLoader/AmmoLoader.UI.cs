@@ -10,15 +10,23 @@ public sealed partial class AmmoLoader
     private GUITextBlock? targetLabel, planLabel, draftLabel, stockSummary, presetScope, checkAmountHeader;
     private GUIButton? loadButton, unloadButton, presetLoadButton, saveButton, clearButton, presetDelete;
     private GUIFrame? inputHolder, targetHolder, outputHolder;
+    // Windows of their own, parented to the main one so they follow and hide with it.
+    private GUIFrame? ioFrame, presetFrame;
     private GUINumberInput? addQuantity;
-    private bool uiDirty = true, draftDirty, withdrawMode;
+    private bool uiDirty = true, draftDirty;
     private bool displayedSynchronized;
-    private AmmoPreset? selectedPreset;
+    // A stock icon stages a plan edit on click; a second click inside the window withdraws a package instead.
+    private const double DoubleClickSeconds = 0.3;
+    private string pendingStockKey = "";
+    private double pendingStockTime;
+    private MagazinePrefab? selectedPreset;
     private ushort displayedTarget;
     private uint displayedRevision = uint.MaxValue;
     private int displayedCount = -1;
     private string message = "";
     private int addCount = 5;
+    // The magazine panel lists numbered slots; anything past this is summarised.
+    private const int MagazineSlots = 4;
 
     private int DraftCapacity => Target is { } target
         ? Math.Clamp(target.MaxSize - target.LoadedCount, 0, AmmoPlan.MaxRounds) : AmmoPlan.MaxRounds;
@@ -41,6 +49,8 @@ public sealed partial class AmmoLoader
         if (GuiFrame == null) { return; }
         string name = presetName?.Text ?? "";
         GuiFrame.ClearChildren();
+        ioFrame = null;
+        presetFrame = null;
         TryCreateDragHandle();
         // Keep this integrated window at its centered or player-dragged position.
         AllowUIOverlap = true;
@@ -52,42 +62,15 @@ public sealed partial class AmmoLoader
         {
             AbsoluteSpacing = gap
         };
+        // Presets and item containers live in windows of their own; this one keeps the editor, Output and stock.
         GUILayoutGroup PanelRow(int height) => new(new RectTransform(new Point(root.Rect.Width, height), root.RectTransform),
             isHorizontal: true) { AbsoluteSpacing = gap };
-        int presetWidth = (int)(root.Rect.Width * 0.2f);
-        // Preserve the preset panel's original inset as the common list spacing.
-        int listInset = presetWidth / 2 - (int)(presetWidth * 0.96f) / 2;
-        int magazineWidth = (int)(root.Rect.Width * 0.22f);
+        int listInset = Math.Max(2, (int)(4 * GUI.Scale));
+        int magazineWidth = (int)(root.Rect.Width * 0.26f);
         int supplyWidth = root.Rect.Width - magazineWidth - gap;
-        int upperHeight = (int)(root.Rect.Height * 0.56f);
-        int dockHeight = (int)(98 * GUI.Scale);
+        int upperHeight = (int)(root.Rect.Height * 0.6f);
         var upper = PanelRow(upperHeight);
-        var presets = Column(upper, presetWidth, listInset);
-        presetScope = Label(presets, "", 0.055f);
-        presetList = new GUIListBox(new RectTransform(new Vector2(1, 0.83f), presets.RectTransform), useMouseDownToSelect: true)
-        {
-            CurrentDragMode = GUIListBox.DragMode.DragWithinBox,
-            OnSelected = (_, data) =>
-            {
-                if (data is not AmmoPreset preset) { return false; }
-                selectedPreset = preset;
-                presetList!.CurrentDragMode = preset.BuiltIn ? GUIListBox.DragMode.NoDragging : GUIListBox.DragMode.DragWithinBox;
-                presetLoadButton!.Enabled = true;
-                presetDelete!.Enabled = !preset.BuiltIn;
-                return true;
-            },
-            OnRearranged = (list, _) =>
-            {
-                var old = AmmoPresets.Saved.ToArray();
-                if (AmmoPresets.Reorder(list.Content.Children.Select(c => c.UserData).OfType<AmmoPreset>().ToArray())) { TrySavePresets(old); }
-                uiDirty = true;
-            }
-        };
-        var presetActions = Row(presets, 0.08f);
-        presetLoadButton = Button(presetActions, "loadpreset", 0.76f, 1, LoadSelectedPreset);
-        presetDelete = Button(presetActions, "delete", 0.22f, 1, DeletePreset);
-
-        var editor = Column(upper, supplyWidth - presetWidth - gap, listInset);
+        var editor = Column(upper, supplyWidth, listInset);
         var planColumns = Row(editor, 0.89f);
         planColumns.RelativeSpacing = 0;
         planColumns.AbsoluteSpacing = listInset;
@@ -140,9 +123,10 @@ public sealed partial class AmmoLoader
         saveButton.RectTransform.Resize(saveButtonSize);
         clearButton.RectTransform.Resize(saveButtonSize);
 
+        // Magazine contents and ammo pickup share one column, named Output.
         var magazine = Column(upper, magazineWidth, listInset);
-        targetLabel = Label(magazine, "", 0.055f);
-        actualList = List(magazine, 0.83f);
+        targetLabel = Label(magazine, L("output"), 0.055f);
+        actualList = List(magazine, 0.72f);
         actualList.ToolTip = L("topfirst");
         var magazineActions = Row(magazine, 0.08f);
         unloadButton = Button(magazineActions, "unload", 0.49f, 1,
@@ -150,13 +134,13 @@ public sealed partial class AmmoLoader
         loadButton = Button(magazineActions, "load", 0.49f, 1,
             () => { message = ""; RequestLoad(draft.ToArray()); uiDirty = true; });
 
-        var lower = PanelRow(root.Rect.Height - upperHeight - dockHeight - gap * 2);
+        var lower = PanelRow(root.Rect.Height - upperHeight - gap);
         var supply = Column(lower, supplyWidth, listInset);
         var supplyOptions = Row(supply, 0.14f);
         stockSummary = Label(supplyOptions, "", 1, 0.6f);
         Label(supplyOptions, L("addquantity"), 1, 0.18f).TextAlignment = Alignment.CenterRight;
         addQuantity = new GUINumberInput(new RectTransform(new Vector2(0.18f, 1), supplyOptions.RectTransform), NumberType.Int)
-            { MinValueInt = 1, MaxValueInt = AmmoPlan.MaxRounds, IntValue = addCount, Enabled = !withdrawMode };
+            { MinValueInt = 1, MaxValueInt = AmmoPlan.MaxRounds, IntValue = addCount };
         addQuantity.OnValueChanged += _ => { if (addQuantity.IntValue > 0) { addCount = addQuantity.IntValue; uiDirty = true; } };
         stockList = List(supply, 0.84f);
         stockList.ToolTip = L("addhint");
@@ -173,62 +157,93 @@ public sealed partial class AmmoLoader
         Label(checkHeader, L("check"), 1, 0.55f);
         checkAmountHeader = CheckAmountLabel(checkHeader, L("needstock"));
 
-        var dock = PanelRow(dockHeight);
-        int intakeWidth = (supplyWidth - gap) / 2;
-        var intake = Row(Column(dock, intakeWidth, listInset), 1);
-        var intakeLabel = Label(intake, L("intake"), 1);
-        intakeLabel.Padding = Vector4.Zero;
-        intakeLabel.RectTransform.Resize(new Point((int)Math.Ceiling(intakeLabel.TextSize.X), intake.Rect.Height));
-        inputHolder = new GUIFrame(new RectTransform(new Point(intake.Rect.Width - intakeLabel.Rect.Width - gap,
-            (int)(intake.Rect.Height * 0.84f)), intake.RectTransform, Anchor.CenterRight), style: null)
-            { IgnoreLayoutGroups = true };
-        inputHolder.ToolTip = L("intakehint");
-        var output = Row(Column(dock, supplyWidth - intakeWidth - gap, listInset), 1);
-        output.RelativeSpacing = 0;
-        output.AbsoluteSpacing = gap;
-        var outputLabel = Label(output, L("output"), 1);
-        outputLabel.Padding = Vector4.Zero;
-        outputLabel.RectTransform.Resize(new Point((int)Math.Ceiling(outputLabel.TextSize.X), output.Rect.Height));
-        var withdrawToggle = new GUITickBox(new RectTransform(new Point((int)(20 * GUI.Scale)), output.RectTransform),
-            "", font: GUIStyle.SmallFont) { Selected = withdrawMode, ToolTip = L("withdrawmodehint") };
-        withdrawToggle.OnSelected = tickBox =>
-        {
-            withdrawMode = tickBox.Selected;
-            addQuantity!.Enabled = !withdrawMode;
-            message = "";
-            uiDirty = true;
-            return true;
-        };
-        outputHolder = new GUIFrame(new RectTransform(new Point(output.Rect.Width - outputLabel.Rect.Width - withdrawToggle.Rect.Width - gap * 2,
-            (int)(output.Rect.Height * 0.84f)), output.RectTransform, Anchor.CenterRight), style: null)
-            { IgnoreLayoutGroups = true, ToolTip = L("outputhint") };
-        intakeLabel.RectTransform.Resize(new Point(intake.Rect.Width - outputHolder.Rect.Width - gap, intake.Rect.Height));
-        inputHolder.RectTransform.Resize(new Point(outputHolder.Rect.Width, inputHolder.Rect.Height));
-        var target = Row(Column(dock, magazineWidth, listInset), 1);
-        Label(target, L("targetslot"), 1, 0.27f);
-        targetHolder = new GUIFrame(new RectTransform(new Vector2(0.43f, 0.84f), target.RectTransform, Anchor.Center), style: null)
-            { IgnoreLayoutGroups = true };
-        targetHolder.ToolTip = L("targetslot");
-
-        root.ForceLayoutRecalculation();
-        int listBottom = presetList.Rect.Bottom;
-        foreach (var list in new[] { planList, previewList, actualList })
-        {
-            list.RectTransform.Resize(new Point(list.Rect.Width, listBottom - list.Rect.Top));
-        }
-        int actionCenter = (listBottom + lower.Rect.Top) / 2;
-        foreach (var actions in new[] { presetActions, editorActions, magazineActions })
-        {
-            actions.IgnoreLayoutGroups = true;
-            actions.RectTransform.RelativeOffset = Vector2.Zero;
-            actions.RectTransform.AbsoluteOffset = new Point(0,
-                actionCenter - actions.RectTransform.Parent.Rect.Top - actions.Rect.Height / 2);
-        }
-        root.ForceLayoutRecalculation();
+        // Item I/O and the preset library each get a window of their own.
+        CreateItemIOFrame(gap, sideInset, topInset);
+        CreatePresetFrame(gap, sideInset, topInset);
         BindInventory(InputContainer, inputHolder);
         BindInventory(OutputContainer, outputHolder);
         BindInventory(TargetContainer, targetHolder);
         uiDirty = true;
+    }
+
+    /// <summary>Second window holding the machine's item containers, parked beside the main window.</summary>
+    private void CreateItemIOFrame(int gap, int sideInset, int topInset)
+    {
+        int width = (int)(GuiFrame!.Rect.Width * 0.2f);
+        int height = (int)(GuiFrame.Rect.Height * 0.86f);
+        bool fitsRight = GuiFrame.Rect.Right + gap + width <= GameMain.GraphicsWidth;
+        ioFrame = new GUIFrame(new RectTransform(new Point(width, height), GuiFrame.RectTransform, Anchor.TopLeft)
+            { AbsoluteOffset = new Point(fitsRight ? GuiFrame.Rect.Width + gap : -width - gap, 0) }, style: "ItemUI");
+        // Its own title bar, so the container window can be parked anywhere.
+        new GUIDragHandle(new RectTransform(new Point(width, (int)GUIStyle.ItemFrameTopBarHeight), ioFrame.RectTransform, Anchor.TopLeft),
+            ioFrame.RectTransform, null)
+            { DragArea = new Rectangle(0, 0, GameMain.GraphicsWidth, GameMain.GraphicsHeight) };
+        var panel = new GUILayoutGroup(new RectTransform(new Point(width - sideInset * 2, height - topInset - sideInset),
+            ioFrame.RectTransform) { AbsoluteOffset = new Point(sideInset, topInset) }) { AbsoluteSpacing = gap };
+        var ioPanel = Column(panel, panel.Rect.Width, 0);
+        // One slot size shared by every container: 1 + 4 + 1 slots plus three captions have to fit.
+        int slot = Math.Min(panel.Rect.Width,
+            (int)((panel.Rect.Height * 0.79f - gap * 6) / 6f));
+        slot = Math.Max((int)(14 * GUI.Scale), slot);
+        Label(ioPanel, L("itemio"), 0.06f);
+        // Captions above, slots below; the intake and output containers hold one slot, the magazine rack four.
+        Label(ioPanel, L("intake"), 0.05f).ToolTip = L("intakehint");
+        inputHolder = SlotHolder(ioPanel, slot, 1);
+        inputHolder.ToolTip = L("intakehint");
+        Label(ioPanel, L("targetslot"), 0.05f);
+        targetHolder = SlotHolder(ioPanel, slot, 4);
+        targetHolder.ToolTip = L("targetslot");
+        Label(ioPanel, L("output"), 0.05f);
+        outputHolder = SlotHolder(ioPanel, slot, 1);
+        outputHolder.ToolTip = L("outputhint");
+    }
+
+    /// <summary>Rows of <paramref name="slots" /> equal slots, stacked below their caption.</summary>
+    private GUIFrame SlotHolder(GUILayoutGroup parent, int slot, int slots)
+    {
+        var row = Row(parent, Math.Min(1f, (float)(slot * slots) / Math.Max(1, parent.Rect.Height)));
+        return new GUIFrame(new RectTransform(new Point(slot, slot * slots), row.RectTransform, Anchor.Center), style: null)
+            { IgnoreLayoutGroups = true };
+    }
+
+    /// <summary>Preset library in a window of its own, parked on the left of the main window.</summary>
+    private void CreatePresetFrame(int gap, int sideInset, int topInset)
+    {
+        int width = (int)(GuiFrame!.Rect.Width * 0.24f);
+        int height = (int)(GuiFrame.Rect.Height * 0.62f);
+        bool fitsLeft = GuiFrame.Rect.Left - gap - width >= 0;
+        presetFrame = new GUIFrame(new RectTransform(new Point(width, height), GuiFrame.RectTransform, Anchor.TopLeft)
+            { AbsoluteOffset = new Point(fitsLeft ? -width - gap : GuiFrame.Rect.Width + gap, 0) }, style: "ItemUI");
+        // Its own title bar, so the preset window can be parked anywhere.
+        new GUIDragHandle(new RectTransform(new Point(width, (int)GUIStyle.ItemFrameTopBarHeight), presetFrame.RectTransform, Anchor.TopLeft),
+            presetFrame.RectTransform, null)
+            { DragArea = new Rectangle(0, 0, GameMain.GraphicsWidth, GameMain.GraphicsHeight) };
+        var panel = new GUILayoutGroup(new RectTransform(new Point(width - sideInset * 2, height - topInset - sideInset),
+            presetFrame.RectTransform) { AbsoluteOffset = new Point(sideInset, topInset) }) { AbsoluteSpacing = gap };
+        var presets = Column(panel, panel.Rect.Width, 0);
+        presetScope = Label(presets, "", 0.06f);
+        presetList = new GUIListBox(new RectTransform(new Vector2(1, 0.86f), presets.RectTransform), useMouseDownToSelect: true)
+        {
+            CurrentDragMode = GUIListBox.DragMode.DragWithinBox,
+            OnSelected = (_, data) =>
+            {
+                if (data is not MagazinePrefab preset) { return false; }
+                selectedPreset = preset;
+                presetList!.CurrentDragMode = MagazinePresetLibrary.IsCustom(preset)
+                    ? GUIListBox.DragMode.DragWithinBox : GUIListBox.DragMode.NoDragging;
+                presetLoadButton!.Enabled = true;
+                presetDelete!.Enabled = MagazinePresetLibrary.IsCustom(preset);
+                return true;
+            },
+            OnRearranged = (list, _) =>
+            {
+                ReorderPresets(list.Content.Children.Select(c => c.UserData).OfType<MagazinePrefab>().ToArray());
+                uiDirty = true;
+            }
+        };
+        var presetActions = Row(presets, 0.08f);
+        presetLoadButton = Button(presetActions, "loadpreset", 0.76f, 1, LoadSelectedPreset);
+        presetDelete = Button(presetActions, "delete", 0.22f, 1, DeletePreset);
     }
 
     private static void BindInventory(ItemContainer? container, GUIFrame holder)
@@ -334,18 +349,6 @@ public sealed partial class AmmoLoader
         if (color.HasValue) { row.TextColor = color.Value; }
     }
 
-    private static void SequenceRows(GUIListBox list, IReadOnlyList<AmmoRun> sequence)
-    {
-        int first = 1;
-        foreach (var run in sequence)
-        {
-            int last = first + run.Count - 1;
-            string range = first == last ? $"{first:D2}" : $"{first:D2}-{last:D2}";
-            AmmoLabel(ListRow(list, 26), run.Id, $"{range} | {AmmoName(run.Id)} x {run.Count}");
-            first = last + 1;
-        }
-    }
-
     private void DraftChanged()
     {
         if (draft.Count > 0) { var merged = AmmoPlan.Compact(AmmoPlan.Expand(draft)); draft.Clear(); draft.AddRange(merged); }
@@ -379,6 +382,7 @@ public sealed partial class AmmoLoader
         }
         UpdateClientState(deltaTime);
         UpdateWithdrawalButtons();
+        FlushPendingStockClick();
         var target = Target;
         bool synchronized = IsSynchronized;
         if (displayedTarget != (target?.Item.ID ?? 0) || displayedCount != (target?.LoadedCount ?? 0) ||
@@ -394,16 +398,41 @@ public sealed partial class AmmoLoader
 
     private void UpdateWithdrawalButtons()
     {
-        if (!withdrawMode || stockList == null) { return; }
+        if (stockList == null) { return; }
         foreach (var tile in stockList.Content.Children.OfType<GUIButton>())
         {
-            if (tile.UserData is ValueTuple<string, ItemPrefab?> package)
-            {
-                tile.Enabled = IsSynchronized && WithdrawalProblem(package.Item1, package.Item2) == "withdraw";
-                foreach (var image in tile.Children.OfType<GUIImage>())
-                { if (image.UserData is Color tint) { image.Color = tint * (tile.Enabled ? 1f : 0.4f); } }
-            }
+            if (tile.UserData is not ValueTuple<string, ItemPrefab?> package) { continue; }
+            bool canWithdraw = IsSynchronized && WithdrawalProblem(package.Item1, package.Item2) == "withdraw";
+            tile.Enabled = canWithdraw || CanAddToPlan(package.Item1);
+            foreach (var image in tile.Children.OfType<GUIImage>())
+            { if (image.UserData is Color tint) { image.Color = tint * (tile.Enabled ? 1f : 0.4f); } }
         }
+    }
+
+    private bool CanAddToPlan(string id) => IsCompatible(Target, id) && draft.Sum(r => r.Count) < DraftCapacity &&
+        (draft.Count < AmmoPlan.MaxGroups || string.Equals(draft.FirstOrDefault()?.Id, id, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>One click stages a plan edit; a second click inside the window withdraws a package instead.</summary>
+    private void StockClicked(string id)
+    {
+        double now = Timing.TotalTime;
+        if (pendingStockKey == id && now - pendingStockTime <= DoubleClickSeconds)
+        {
+            pendingStockKey = "";
+            if (IsSynchronized) { RequestWithdraw(id); uiDirty = true; }
+            return;
+        }
+        pendingStockKey = id;
+        pendingStockTime = now;
+    }
+
+    /// <summary>Applies the staged single-click once the double-click window has passed.</summary>
+    private void FlushPendingStockClick()
+    {
+        if (pendingStockKey.Length == 0 || Timing.TotalTime - pendingStockTime <= DoubleClickSeconds) { return; }
+        string id = pendingStockKey;
+        pendingStockKey = "";
+        AddRun(id, addCount);
     }
 
     private void RefreshUI()
@@ -412,29 +441,34 @@ public sealed partial class AmmoLoader
         var stock = Stock;
         int capacity = DraftCapacity;
         int planned = draft.Sum(r => r.Count);
-        var visiblePresets = AmmoPresets.All(target)
-            .Where(p => target == null || p.Rounds.All(r => IsCompatible(target, r.Id))).ToList();
+        var visiblePresets = MagazinePresetLibrary.All(target)
+            .Where(p => target == null || MagazinePresetLibrary.GetRuns(p).All(r => IsCompatible(target, r.Id)))
+            .ToList();
         if (selectedPreset != null)
         {
-            selectedPreset = visiblePresets.FirstOrDefault(p => p.Name == selectedPreset.Name && p.BuiltIn == selectedPreset.BuiltIn);
+            string selectedName = MagazinePresetLibrary.GetName(selectedPreset);
+            bool selectedBuiltIn = !MagazinePresetLibrary.IsCustom(selectedPreset);
+            selectedPreset = visiblePresets.FirstOrDefault(p => MagazinePresetLibrary.GetName(p) == selectedName &&
+                !MagazinePresetLibrary.IsCustom(p) == selectedBuiltIn);
         }
         presetList!.Content.ClearChildren();
         presetList.Deselect();
         presetLoadButton!.Enabled = selectedPreset != null;
         presetScope!.Text = L(target == null ? "allpresets" : "compatiblepresets");
-        presetDelete!.Enabled = selectedPreset is { BuiltIn: false };
+        presetDelete!.Enabled = selectedPreset != null && MagazinePresetLibrary.IsCustom(selectedPreset);
         if (visiblePresets.Count == 0) { TextRow(presetList, L("nopresets").Value); }
         foreach (var preset in visiblePresets)
         {
+            var runs = MagazinePresetLibrary.GetRuns(preset);
             var row = new GUIFrame(new RectTransform(new Vector2(1, 0), presetList.Content.RectTransform,
                 minSize: new Point(0, (int)(32 * GUI.Scale))), style: "ListBoxElement")
             {
                 UserData = preset,
-                ToolTip = $"{preset.Name}\n{string.Join("\n", preset.Rounds.Select(r => $"{AmmoName(r.Id)} x {r.Count}"))}\n{L(preset.BuiltIn ? "builtin" : "dragorder")}",
+                ToolTip = $"{MagazinePresetLibrary.GetName(preset)}\n{string.Join("\n", runs.Select(r => $"{AmmoName(r.Id)} x {r.Count}"))}\n{L(MagazinePresetLibrary.IsCustom(preset) ? "dragorder" : "builtin")}",
                 CanBeFocused = true
             };
             new GUITextBlock(new RectTransform(new Vector2(0.96f, 1), row.RectTransform, Anchor.Center),
-                $"{preset.Name} | {preset.Rounds.Sum(r => r.Count)} {L("rounds")}", font: GUIStyle.SmallFont)
+                $"{MagazinePresetLibrary.GetName(preset)} | {runs.Sum(r => r.Count)} {L("rounds")}", font: GUIStyle.SmallFont)
                 { AutoScaleHorizontal = true, CanBeFocused = false };
         }
         if (selectedPreset != null) { presetList.Select(selectedPreset, autoScroll: GUIListBox.AutoScroll.Disabled); }
@@ -484,16 +518,15 @@ public sealed partial class AmmoLoader
         stockList!.Content.ClearChildren();
         var demand = AmmoStock.Count(rounds.TakeLast(capacity));
         var quote = QuoteSupply(demand);
-        var supplied = withdrawMode && !UseSupplyStorage ? new Dictionary<string, int>() :
-            SuppliedAmmo(withdrawMode ? QuoteSupply(new Dictionary<string, int>()) : quote);
+        var supplied = SuppliedAmmo(quote);
         var visibleStock = stock.Counts.Keys.Concat(supplied.Keys).Distinct(StringComparer.OrdinalIgnoreCase)
-            .Where(id => withdrawMode || target == null || IsCompatible(target, id)).OrderBy(AmmoName)
+            .Where(id => target == null || IsCompatible(target, id)).OrderBy(AmmoName)
             .Select(id => new KeyValuePair<string, int>(id, stock[id])).ToArray();
         stockList.UseGridLayout = visibleStock.Length > 0;
-        stockList.ToolTip = L(withdrawMode ? "withdrawmodehint" : "addhint");
-        bool hasSupply = (!withdrawMode || UseSupplyStorage) && supplies.Length > 0;
-        stockSummary!.Text = message.Length > 0 ? message : $"{L(hasSupply ? "availableammo" : withdrawMode || target == null ? "allstock" : "compatiblestock")} | {visibleStock.Length} {L("types")} | {(hasSupply ? L("stored") + " " : "")}{visibleStock.Sum(p => (long)p.Value):N0} {L("rounds")}";
-        stockSummary.ToolTip = stockSummary.Text + (hasSupply ? "\n" + L(withdrawMode ? "withdrawmodehint" : "supplyhint") + "\n" +
+        stockList.ToolTip = L("addhint");
+        bool hasSupply = supplies.Length > 0;
+        stockSummary!.Text = message.Length > 0 ? message : $"{L(hasSupply ? "availableammo" : target == null ? "allstock" : "compatiblestock")} | {visibleStock.Length} {L("types")} | {(hasSupply ? L("stored") + " " : "")}{visibleStock.Sum(p => (long)p.Value):N0} {L("rounds")}";
+        stockSummary.ToolTip = stockSummary.Text + (hasSupply ? "\n" + L("supplyhint") + "\n" +
             string.Join("\n", supplies.Select(p => $"{AmmoName(p.Prefab)} | {p.Amount:N2}/{p.Capacity:N2}")) : "");
         if (visibleStock.Length == 0) { TextRow(stockList, L("emptystock").Value); }
         int stockCellSize = (int)(72 * GUI.Scale);
@@ -506,25 +539,18 @@ public sealed partial class AmmoLoader
             int stockCaptionHeight = (int)((stockCaption.Contains('\n') ? 30 : 16) * GUI.Scale);
             int stockImageHeight = stockCellSize - stockCaptionHeight;
             var prefab = ItemPrefab.FindByIdentifier(p.Key.ToIdentifier()) as ItemPrefab;
-            var package = withdrawMode ? FindWithdrawalPackage(p.Key) : null;
+            var package = FindWithdrawalPackage(p.Key);
+            bool canWithdraw = IsSynchronized && WithdrawalProblem(p.Key, package) == "withdraw";
             var tile = new GUIButton(new RectTransform(new Point(stockCellSize), stockList.Content.RectTransform, isFixedSize: true),
                 style: "GUIButtonSmallFreeScale")
             {
                 UserData = (p.Key, package),
-                OnClicked = (_, _) =>
-                {
-                    if (withdrawMode) { RequestWithdraw(p.Key); uiDirty = true; }
-                    else { AddRun(p.Key, addCount); }
-                    return true;
-                },
-                Enabled = withdrawMode ? IsSynchronized && WithdrawalProblem(p.Key, package) == "withdraw" : IsCompatible(target, p.Key) &&
-                    (draft.Count < AmmoPlan.MaxGroups || string.Equals(draft.FirstOrDefault()?.Id, p.Key, StringComparison.OrdinalIgnoreCase)) &&
-                    planned < capacity
+                OnClicked = (_, _) => { StockClicked(p.Key); return true; },
+                Enabled = canWithdraw || CanAddToPlan(p.Key)
             };
-            BindStockTooltip(tile, prefab, AmmoName(p.Key), withdrawMode
-                ? () => L(!IsSynchronized ? "syncing" : WithdrawalProblem(p.Key, package)) +
-                    (package == null ? "" : $"\n{package.Name} | {Math.Min(WithdrawalAmount(p.Key), (int)package.Health)} {L("rounds")}")
-                : fromSupply ? () => $"{L("stored")}: {p.Value:N0}\n{L("supplied")}: {available:N0}\n{L("supplyhint")}" : null);
+            BindStockTooltip(tile, prefab, AmmoName(p.Key), () =>
+                (fromSupply ? $"{L("stored").Value}: {p.Value:N0}\n{L("supplied").Value}: {available:N0}\n" : "") +
+                L(canWithdraw ? "doubleclickhint" : "addhint").Value);
             if (prefab != null && (prefab.InventoryIcon ?? prefab.Sprite) is { } icon)
             {
                 new GUIImage(new RectTransform(new Point((int)(stockCellSize * 0.8f), stockImageHeight),
@@ -590,10 +616,18 @@ public sealed partial class AmmoLoader
             label.TextScale = 1f;
         }
         actualList!.Content.ClearChildren();
-        var actual = AmmoPlan.Compact(target?.LoadedAmmoIdentifiers.Select(id => id.Value) ?? []);
-        if (actual.Count == 0) { TextRow(actualList, L(target == null ? "nomagazine" : "empty").Value); }
-        SequenceRows(actualList, actual);
-        targetLabel!.Text = target == null ? L("actual") : $"{L("actual")} | {target.LoadedCount}/{target.MaxSize}";
+        var loaded = target?.LoadedAmmoIdentifiers.ToArray() ?? [];
+        if (loaded.Length == 0) { TextRow(actualList, L(target == null ? "nomagazine" : "empty").Value); }
+        // Numbered slots, at most four of them; the header already shows the full count.
+        for (int i = 0; i < Math.Min(loaded.Length, MagazineSlots); i++)
+        {
+            AmmoLabel(ListRow(actualList, 26), loaded[i].Value, $"{i + 1} | {AmmoName(loaded[i].Value)}");
+        }
+        if (loaded.Length > MagazineSlots)
+        {
+            TextRow(actualList, $"+{loaded.Length - MagazineSlots} {L("rounds").Value}");
+        }
+        targetLabel!.Text = target == null ? L("output") : $"{L("output")} | {target.LoadedCount}/{target.MaxSize}";
         targetLabel.ToolTip = target == null ? L("nomagazine") : target.Item.Name;
         planLabel!.Text = $"{L("preview")} | {planned} {L("rounds")}";
         planLabel.ToolTip = L("topfirst");
@@ -679,7 +713,8 @@ public sealed partial class AmmoLoader
     {
         var preset = selectedPreset;
         if (preset == null) { return; }
-        if (!AmmoPlan.IsValid(preset.Rounds, AmmoPlan.MaxRounds))
+        var runs = MagazinePresetLibrary.GetRuns(preset);
+        if (!AmmoPlan.IsValid(runs, AmmoPlan.MaxRounds))
         {
             message = L("invalidplan").Value;
             uiDirty = true;
@@ -688,9 +723,9 @@ public sealed partial class AmmoLoader
         void Apply()
         {
             draft.Clear();
-            draft.AddRange(preset.Rounds);
+            draft.AddRange(runs);
             selectedPreset = preset;
-            presetName!.Text = preset.Name;
+            presetName!.Text = MagazinePresetLibrary.GetName(preset);
             draftDirty = false;
             message = "";
             uiDirty = true;
@@ -702,33 +737,59 @@ public sealed partial class AmmoLoader
     private void SavePreset()
     {
         string name = presetName!.Text.Trim();
-        if (name.Length == 0 || !AmmoPlan.IsValid(draft, AmmoPlan.MaxRounds)) { message = L("invalidpreset").Value; uiDirty = true; return; }
-        var saved = AmmoPresets.Saved;
-        var old = saved.ToArray();
-        int index = saved.FindIndex(p => p.Name == name);
-        var preset = new AmmoPreset(name, draft.ToArray());
-        if (index < 0) { saved.Add(preset); } else { saved[index] = preset; }
-        if (TrySavePresets(old)) { selectedPreset = preset; draftDirty = false; message = L("saved").Value; }
+        if (name.Length is 0 or > MagazinePresetLibrary.MaxNameLength || !AmmoPlan.IsValid(draft, AmmoPlan.MaxRounds))
+        {
+            message = L("invalidpreset").Value;
+            uiDirty = true;
+            return;
+        }
+        // The authority edits the in-memory library directly; clients ask the server, which owns the files.
+        if (MagazinePresetLibrary.IsAuthority)
+        {
+            selectedPreset = MagazinePresetLibrary.Create(name, draft.ToArray());
+            Changed();
+        }
+        else { RequestSavePreset(name, draft.ToArray()); }
+
+        draftDirty = false;
+        message = L("saved").Value;
+        uiDirty = true;
     }
 
     private void DeletePreset()
     {
-        if (selectedPreset == null || selectedPreset.BuiltIn) { return; }
-        var old = AmmoPresets.Saved.ToArray();
-        AmmoPresets.Saved.Remove(selectedPreset);
-        if (TrySavePresets(old)) { selectedPreset = null; }
+        if (selectedPreset == null || !MagazinePresetLibrary.IsCustom(selectedPreset)) { return; }
+        if (MagazinePresetLibrary.IsAuthority) { MagazinePresetLibrary.Remove(selectedPreset); Changed(); }
+        else { RequestDeletePreset(MagazinePresetLibrary.GetName(selectedPreset)); }
+
+        selectedPreset = null;
+        uiDirty = true;
     }
 
-    private bool TrySavePresets(AmmoPreset[] previous)
+    /// <summary>Persists the order the player dragged the presets into. Presets hidden by the filter keep their slots.</summary>
+    private void ReorderPresets(IReadOnlyList<MagazinePrefab> visible)
     {
-        uiDirty = true;
-        try { AmmoPresets.Save(); return true; }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        var target = visible.Where(MagazinePresetLibrary.IsCustom).ToArray();
+        var current = MagazinePresetLibrary.Custom;
+        var slots = Enumerable.Range(0, current.Count).Where(i => target.Contains(current[i])).ToArray();
+        if (slots.Length != target.Length || target.Length == 0) { return; }
+        var before = slots.Select(i => current[i]).ToArray();
+        int first = 0;
+        while (first < target.Length && before[first] == target[first]) { first++; }
+        int last = target.Length - 1;
+        while (last >= 0 && before[last] == target[last]) { last--; }
+        if (first > last) { return; }
+        // One drag moves one preset: it is the entry that left its slot.
+        MagazinePrefab moved;
+        int index;
+        if (target[last] == before[first]) { moved = target[last]; index = last; }
+        else if (target[first] == before[last]) { moved = target[first]; index = first; }
+        else { return; }
+
+        if (MagazinePresetLibrary.IsAuthority)
         {
-            AmmoPresets.Saved.Clear();
-            AmmoPresets.Saved.AddRange(previous);
-            message = L("savefailed").Value + ": " + e.Message;
-            return false;
+            if (MagazinePresetLibrary.Move(moved, slots[index])) { Changed(); }
         }
+        else { RequestMovePreset(MagazinePresetLibrary.GetName(moved), slots[index]); }
     }
 }

@@ -39,7 +39,15 @@ public sealed partial class AmmoLoader
             if (ItemPrefab.Prefabs.Find(p => p.UintIdentifier == prefabId) is { } prefab) { plan.Add(new(prefab.Identifier.Value, amount)); }
             else { valid = false; }
         }
+        string name = msg.ReadString();
+        int index = msg.ReadInt32();
         if (!Item.CanClientAccess(client)) { return; }
+        if (command is Command.SavePreset or Command.DeletePreset or Command.MovePreset)
+        {
+            // Preset edits do not consume stock, but they still need resolvable projectile ids.
+            if (!valid || !ApplyPresetCommand(command, plan.ToArray(), name, index)) { PublishState(); }
+            return;
+        }
         if (command == Command.Refresh)
         {
             if (Timing.TotalTime >= nextRefresh)

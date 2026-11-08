@@ -49,6 +49,8 @@ public partial class VCEPlugin : IBarotraumaPlugin
 
     public void OnContentLoaded()
     {
+        // Presets live in the save folder; read them once here, never from the UI.
+        MagazinePresetLibrary.Load();
         InitPatchHooks();
         ProjectileShootDispatcher.Init();
     }

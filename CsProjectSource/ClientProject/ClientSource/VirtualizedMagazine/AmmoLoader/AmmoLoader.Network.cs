@@ -33,17 +33,25 @@ public sealed partial class AmmoLoader
         if (IsSynchronized && IsProjectile(id)) { Send(Command.Withdraw, [new(id, 1)]); }
     }
 
+    public void RequestSavePreset(string name, AmmoRun[] plan)
+    {
+        if (IsSynchronized && AmmoPlan.IsValid(plan, AmmoPlan.MaxRounds)) { Send(Command.SavePreset, plan, name); }
+    }
+    public void RequestDeletePreset(string name) => Send(Command.DeletePreset, null, name);
+    public void RequestMovePreset(string name, int index) => Send(Command.MovePreset, null, name, index);
+
     public override bool ValidateEventData(NetEntityEvent.IData data) => TryExtractEventData<Request>(data, out _);
 
-    private void Send(Command command, AmmoRun[]? plan = null)
+    private void Send(Command command, AmmoRun[]? plan = null, string name = "", int index = 0)
     {
         if (GameMain.Client != null)
         {
-            Item.CreateClientEvent(this, new Request(command, revision, Target?.Item.ID ?? 0, plan ?? []));
+            Item.CreateClientEvent(this, new Request(command, revision, Target?.Item.ID ?? 0, plan ?? [], name ?? "", index));
         }
         else if (command == Command.Load) { TryLoad(plan ?? [], Target?.Item.ID ?? 0); }
         else if (command == Command.Unload) { TryUnload(Target?.Item.ID ?? 0); }
         else if (command == Command.Withdraw && plan is { Length: 1 }) { TryWithdraw(plan[0].Id); }
+        else { ApplyPresetCommand(command, plan ?? [], name, index); }
     }
 
     public void ClientEventWrite(IWriteMessage msg, NetEntityEvent.IData extraData = null!)
@@ -58,6 +66,8 @@ public sealed partial class AmmoLoader
             msg.WriteUInt32(ItemPrefab.FindByIdentifier(run.Id.ToIdentifier())?.UintIdentifier ?? 0);
             msg.WriteUInt16((ushort)run.Count);
         }
+        msg.WriteString(request.Name ?? "");
+        msg.WriteInt32(request.Index);
     }
 
     public void ClientEventRead(IReadMessage msg, float sendingTime)
@@ -85,6 +95,9 @@ public sealed partial class AmmoLoader
         if (snapshot.Stock.Count != 0 && !restored.TryAdd(snapshot.Stock)) { return; }
         var receivedSupplies = snapshot.Supplies ?? [];
         if (!ValidSupplies(receivedSupplies) || (snapshot.SupplyError && receivedSupplies.Length != 0)) { return; }
+        var receivedPresets = snapshot.Presets ?? [];
+        if (!receivedPresets.All(p => p != null && !string.IsNullOrWhiteSpace(p.Name) &&
+            p.Name.Length <= MagazinePresetLibrary.MaxNameLength && AmmoPlan.IsValid(p.Rounds, AmmoPlan.MaxRounds))) { return; }
         supplies = receivedSupplies.Select(p => p with
         {
             Costs = new Dictionary<string, double>(p.Costs, StringComparer.OrdinalIgnoreCase)
@@ -93,5 +106,7 @@ public sealed partial class AmmoLoader
         Stock = restored;
         revision = snapshot.Revision;
         hasSnapshot = true;
+        // The server owns the preset files, so its list replaces whatever this client had cached.
+        MagazinePresetLibrary.ApplyRemote(receivedPresets.Select(p => (p.Name, p.Rounds)));
     }
 }
