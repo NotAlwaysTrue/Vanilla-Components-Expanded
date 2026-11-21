@@ -73,6 +73,68 @@ namespace VCE_VirtualizedMagazine
             return GetComponentElementByID<T>(id, 0);
         }
     }
+    /// <summary>
+    /// Tags added automatically to every item that carries the component (instance tag) and to every prefab
+    /// that declares it (prefab tag).
+    /// Runtime container filtering (ItemContainer.CanBeContained -> RelatedItem.MatchesItem(Item) -> Item.HasTag)
+    /// reads the instance tag set, while the prefab-based pre-checks (sub-editor drag pre-check,
+    /// Inventory.CanBePutInSlot(ItemPrefab), RelatedItem.MatchesItem(ItemPrefab)) only read Prefab.Tags - both
+    /// sides are needed.
+    /// Item.Tags (the string property) rebuilds the instance set from scratch, so it is re-applied in OnItemLoaded.
+    /// </summary>
+    public static class VirtualizedTags
+    {
+        public static readonly Identifier Magazine = new Identifier("VCE_VirtualizedMagazine");
+        public static readonly Identifier AmmoStorage = new Identifier("VCE_VirtualizedAmmoStorage");
+
+        public static void Add(Item item, Identifier tag)
+        {
+            if (item == null) { return; }
+            if (item.tags == null) { item.tags = new HashSet<Identifier>(); }
+            item.tags.Add(tag);
+        }
+
+        public static void AddToPrefab(ItemPrefab prefab, Identifier tag)
+        {
+            if (prefab == null || prefab.tags == null || prefab.tags.Contains(tag)) { return; }
+            prefab.tags = prefab.tags.Add(tag);
+        }
+
+        /// <summary>
+        /// Tags every item prefab whose XML declares a VirtualizedMagazine / VirtualizedAmmoStorage component,
+        /// so prefab-based checks accept the items before any instance exists. Idempotent; call once after content load.
+        /// </summary>
+        public static void ApplyPrefabTags()
+        {
+            foreach (ItemPrefab prefab in ItemPrefab.Prefabs)
+            {
+                if (prefab == null || prefab.ConfigElement == null) { continue; }
+
+                foreach (var element in prefab.ConfigElement.Elements())
+                {
+                    string name = element.Name.ToString();
+                    if (name.Equals(nameof(VirtualizedMagazine), StringComparison.OrdinalIgnoreCase))
+                    {
+                        AddToPrefab(prefab, Magazine);
+                    }
+                    else if (name.Equals(nameof(VirtualizedAmmoStorage), StringComparison.OrdinalIgnoreCase))
+                    {
+                        AddToPrefab(prefab, AmmoStorage);
+                    }
+                }
+            }
+
+            // Variants inherit the components of their base prefab without repeating the elements in their own XML.
+            foreach (ItemPrefab prefab in ItemPrefab.Prefabs)
+            {
+                if (prefab == null || prefab.VariantOf.IsEmpty) { continue; }
+                if (!ItemPrefab.Prefabs.TryGet(prefab.VariantOf, out ItemPrefab basePrefab) || basePrefab?.tags == null) { continue; }
+                if (basePrefab.tags.Contains(Magazine)) { AddToPrefab(prefab, Magazine); }
+                if (basePrefab.tags.Contains(AmmoStorage)) { AddToPrefab(prefab, AmmoStorage); }
+            }
+        }
+    }
+
     public partial class VirtualizedMagazine : ItemContainer, Barotrauma.Networking.IServerSerializable, Barotrauma.Networking.IClientSerializable
     {
         private const string containerXML =
@@ -138,7 +200,7 @@ namespace VCE_VirtualizedMagazine
             UpdateWhenBroken = true;
             PushAmmoArray(ref ammoarray);
             item.Condition = LoadedAmmoIdentifiers.Count;
-            item.tags.Add(new Identifier("VCE_VirtualizedMagazine"));
+            VirtualizedTags.Add(item, VirtualizedTags.Magazine);
         }
 
         /// <summary>
@@ -255,6 +317,7 @@ namespace VCE_VirtualizedMagazine
 
         public override void OnItemLoaded()
         {
+            VirtualizedTags.Add(item, VirtualizedTags.Magazine);
             Inventory.AllowSwappingContainedItems = AllowSwappingContainedItems;
             containableItemIdentifiers = slotRestrictions.SelectMany(s => s.ContainableItems?.SelectMany(ri => ri.Identifiers) ?? Enumerable.Empty<Identifier>()).ToImmutableHashSet();
             hasSignalConnections = false;
