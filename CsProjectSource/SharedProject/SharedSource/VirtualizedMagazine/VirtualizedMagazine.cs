@@ -253,6 +253,9 @@ namespace VCE_VirtualizedMagazine
 
         public override void Update(float deltaTime, Camera cam)
         {
+#if SERVER
+            FlushPendingAmmoState();
+#endif
             if (!string.IsNullOrEmpty(SpawnWithId) && !AlwaysContainedItemsSpawned)
             {
                 SpawnAlwaysContainedItems();

@@ -6,6 +6,7 @@ public partial class VirtualizedMagazine
 {
     private const int RoundsPerPage = 128;
     private uint ammoRevision;
+    private bool ammoSyncPending;
     private Identifier[] syncedAmmo = [];
     private double nextStateRequest;
     private sealed record AmmoEvent(uint Revision, int Offset, Identifier[] Rounds) : IEventData;
@@ -16,6 +17,15 @@ public partial class VirtualizedMagazine
     partial void SyncAmmoState()
     {
         if (GameMain.Server == null || !Item.Components.Contains(this)) { return; }
+        // Restored inventories enqueue the item spawn after loading its components.
+        ammoSyncPending = true;
+        IsActive = true;
+    }
+
+    private void FlushPendingAmmoState()
+    {
+        if (!ammoSyncPending) { return; }
+        ammoSyncPending = false;
         var rounds = LoadedAmmoIdentifiersArray;
         if (syncedAmmo.SequenceEqual(rounds)) { return; }
         syncedAmmo = rounds;
