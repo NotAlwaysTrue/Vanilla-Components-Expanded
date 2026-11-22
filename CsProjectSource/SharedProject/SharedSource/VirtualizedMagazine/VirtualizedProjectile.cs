@@ -66,7 +66,7 @@ namespace VCE_VirtualizedMagazine
         }
 
 
-        private readonly List<Body> hits = new List<Body>();
+        private readonly HashSet<Limb> hitLimbs = new();
         private readonly List<ISerializableEntity> targets = new List<ISerializableEntity>();
         private Submarine launchSubmarine;
 
@@ -102,6 +102,7 @@ namespace VCE_VirtualizedMagazine
 
             launchSubmarine = Launcher?.Submarine ?? item.Submarine;
             Vector2 rayStartWorld = ConvertUnits.ToDisplayUnits(rayStart) + (launchSubmarine?.Position ?? Vector2.Zero);
+            float? rewindTime = PrepareLagCompensation(user);
 
             int hitscanCount = Math.Max(HitScanCount, 1);
             for (int i = 0; i < hitscanCount; i++)
@@ -112,15 +113,29 @@ namespace VCE_VirtualizedMagazine
                 spreadIndex++;
 
                 Vector2 launchDir = new Vector2((float)Math.Cos(launchAngle), (float)Math.Sin(launchAngle));
-                DoHitscan(rayStart, rayStartWorld, launchDir);
+                DoHitscan(rayStart, rayStartWorld, launchDir, rewindTime);
             }
 
             ApplyStatusEffects(ActionType.OnUse, 1.0f, user: User);
         }
 
-        private void DoHitscan(Vector2 rayStart, Vector2 rayStartWorld, Vector2 dir)
+        private static float? PrepareLagCompensation(Character? shooter)
         {
-            hits.Clear();
+#if SERVER
+            if (shooter != null && GameMain.Server is { } server &&
+                server.ServerSettings.MaxLagCompensationSeconds > 0 &&
+                server.ConnectedClients.FirstOrDefault(client => client.Character == shooter) is { } owner)
+            {
+                Limb.SetLagCompensatedBodyPositions(owner);
+                return (float)Timing.TotalTime - Math.Min(owner.Ping / 2000f, server.ServerSettings.MaxLagCompensationSeconds);
+            }
+#endif
+            return null;
+        }
+
+        private void DoHitscan(Vector2 rayStart, Vector2 rayStartWorld, Vector2 dir, float? rewindTime)
+        {
+            hitLimbs.Clear();
 
             Vector2 rayEnd = rayStart + dir * 500.0f;
             float worldDist = 1000.0f;
@@ -130,16 +145,16 @@ namespace VCE_VirtualizedMagazine
             Vector2 rayEndWorld = rayStartWorld + dir * worldDist;
 
             List<HitscanResult> results = new List<HitscanResult>();
-            results.AddRange(DoRayCast(rayStart, rayEnd, submarine: launchSubmarine));
+            results.AddRange(DoRayCast(rayStart, rayEnd, launchSubmarine, rewindTime));
 
             if (launchSubmarine != null)
             {
-                results.AddRange(DoRayCast(rayStart + launchSubmarine.SimPosition, rayEnd + launchSubmarine.SimPosition, submarine: null));
-                RayCastInOtherSubs(rayStart + launchSubmarine.SimPosition, rayEnd + launchSubmarine.SimPosition, results);
+                results.AddRange(DoRayCast(rayStart + launchSubmarine.SimPosition, rayEnd + launchSubmarine.SimPosition, null, rewindTime));
+                RayCastInOtherSubs(rayStart + launchSubmarine.SimPosition, rayEnd + launchSubmarine.SimPosition, results, rewindTime);
             }
             else
             {
-                RayCastInOtherSubs(rayStart, rayEnd, results);
+                RayCastInOtherSubs(rayStart, rayEnd, results, rewindTime);
             }
 
             results = results.OrderBy(h => h.Fraction).ToList();
@@ -161,13 +176,13 @@ namespace VCE_VirtualizedMagazine
             LaunchProjSpecificClient(rayStartWorld, endWorldPos);
         }
 
-        private void RayCastInOtherSubs(Vector2 rayStart, Vector2 rayEnd, List<HitscanResult> results)
+        private void RayCastInOtherSubs(Vector2 rayStart, Vector2 rayEnd, List<HitscanResult> results, float? rewindTime)
         {
             foreach (Submarine submarine in Submarine.Loaded)
             {
                 if (submarine == launchSubmarine) { continue; }
 
-                var inSubHits = DoRayCast(rayStart - submarine.SimPosition, rayEnd - submarine.SimPosition, submarine);
+                var inSubHits = DoRayCast(rayStart - submarine.SimPosition, rayEnd - submarine.SimPosition, submarine, rewindTime);
                 for (int i = 0; i < inSubHits.Count; i++)
                 {
                     inSubHits[i] = new HitscanResult(inSubHits[i].Fixture, inSubHits[i].Point + submarine.SimPosition,
@@ -177,9 +192,24 @@ namespace VCE_VirtualizedMagazine
             }
         }
 
-        private List<HitscanResult> DoRayCast(Vector2 rayStart, Vector2 rayEnd, Submarine submarine)
+        private List<HitscanResult> DoRayCast(Vector2 rayStart, Vector2 rayEnd, Submarine? submarine, float? rewindTime)
         {
             List<HitscanResult> rayHits = new List<HitscanResult>();
+
+            bool CanHitLimb(Fixture fixture)
+            {
+                if (fixture.Body.UserData is not Limb limb) { return true; }
+                if (limb.character?.Submarine != submarine) { return false; }
+#if SERVER
+                if (fixture.CollisionCategories == Physics.CollisionLagCompensationBody)
+                {
+                    // Vanilla leaves the previous ghost transform in place when it skips a limb.
+                    return rewindTime is float time && limb.body.Enabled && !limb.IgnoreCollisions &&
+                        limb.MemState.TryPeek(out var oldest) && oldest.Timestamp <= time;
+                }
+#endif
+                return true;
+            }
 
             Vector2 dir = rayEnd - rayStart;
             dir = dir.LengthSquared() < 0.00001f ? Vector2.UnitY : Vector2.Normalize(dir);
@@ -197,6 +227,7 @@ namespace VCE_VirtualizedMagazine
                 }
                 if (fixture.Body.UserData is VineTile) { return true; }
                 if (fixture.CollidesWith == Category.None) { return true; }
+                if (!CanHitLimb(fixture)) { return true; }
                 if (fixture.Body.UserData as string == "ruinroom" || fixture.Body.UserData is Hull || fixture.UserData is Hull) { return true; }
 
                 if (submarine != null)
@@ -248,6 +279,7 @@ namespace VCE_VirtualizedMagazine
 
                 if (fixture.Body.UserData is VineTile) { return -1; }
                 if (fixture.CollidesWith == Category.None && fixture.CollisionCategories != Physics.CollisionLagCompensationBody) { return -1; }
+                if (!CanHitLimb(fixture)) { return -1; }
                 if (fixture.Body.UserData is Item hitItem)
                 {
                     if (hitItem.Condition <= 0) { return -1; }
@@ -263,7 +295,6 @@ namespace VCE_VirtualizedMagazine
                 {
                     if (fixture.Body.UserData is VoronoiCell) { return -1; }
                     if (fixture.Body.UserData is Entity entity && entity.Submarine != submarine) { return -1; }
-                    if (fixture.Body.UserData is Limb limb && limb.character?.Submarine != submarine) { return -1; }
                     if (fixture.Body == Level.Loaded?.TopBarrier || fixture.Body == Level.Loaded?.BottomBarrier) { return -1; }
                 }
 
@@ -317,6 +348,7 @@ namespace VCE_VirtualizedMagazine
             {
                 if (limb.IsSevered || limb.character == null || limb.character.Removed) { return false; }
                 if (ShouldIgnoreCharacterCollision(limb.character)) { return false; }
+                if (!hitLimbs.Add(limb)) { return false; }
 
                 limb.character.LastDamageSource = Item;
                 if (Attack != null) { Attack.DoDamageToLimb(User ?? Attacker, limb, worldPosition, 1.0f); }
@@ -415,7 +447,6 @@ namespace VCE_VirtualizedMagazine
                 }
             }
 
-            hits.Add(target.Body);
             return true;
         }
 
@@ -452,6 +483,7 @@ namespace VCE_VirtualizedMagazine
             launchSubmarine = Launcher?.Submarine ?? item.Submarine ?? item.body.Submarine;
             Vector2 rayStart = item.SimPosition;
             Vector2 rayStartWorld = ConvertUnits.ToDisplayUnits(rayStart) + (launchSubmarine?.Position ?? Vector2.Zero);
+            float? rewindTime = PrepareLagCompensation(character);
 
             int hitscanCount = Math.Max(HitScanCount, 1);
             for (int i = 0; i < hitscanCount; i++)
@@ -461,7 +493,7 @@ namespace VCE_VirtualizedMagazine
                     : initialRotation + MathHelper.ToRadians(Spread * GetSpreadFromPool());
 
                 Vector2 launchDir = new Vector2((float)Math.Cos(launchAngle), (float)Math.Sin(launchAngle));
-                DoHitscan(rayStart, rayStartWorld, launchDir);
+                DoHitscan(rayStart, rayStartWorld, launchDir, rewindTime);
             }
 
             User = character;
