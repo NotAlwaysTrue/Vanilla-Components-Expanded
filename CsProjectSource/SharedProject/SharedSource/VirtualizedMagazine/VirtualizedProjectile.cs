@@ -132,6 +132,26 @@ namespace VCE_VirtualizedMagazine
             return null;
         }
 
+        private TracePrediction lastPrediction;
+        private double lastPredictionTime = double.NegativeInfinity;
+
+        private TracePrediction NextPrediction(Character shooter)
+        {
+#if SERVER
+            ushort input = shooter.LastProcessedID;
+#else
+            // UpdateNetInput already sent the previous controls. ControlLocalPlayer's current
+            // trigger is sampled into the next input, which the server consumes as LastProcessedID.
+            ushort input = unchecked((ushort)(shooter.LastNetworkUpdateID + 1));
+#endif
+            // The 16-bit input ID can wrap back to the same value after a long idle period.
+            bool sameInput = lastPrediction.ShooterId == shooter.ID && lastPrediction.InputId == input &&
+                Timing.TotalTime - lastPredictionTime < TracePrediction.RetentionSeconds;
+            lastPrediction = new TracePrediction { ShooterId = shooter.ID, InputId = input, Volley = sameInput ? lastPrediction.Volley + 1 : 0 };
+            lastPredictionTime = Timing.TotalTime;
+            return lastPrediction;
+        }
+
         private void FireRays(Vector2 rayStart, Vector2 rayStartWorld, float rotation, float? rewindTime,
             bool advanceSpread, Character? predictedBy)
         {
@@ -139,13 +159,16 @@ namespace VCE_VirtualizedMagazine
 #if SERVER
             // The reusable projectile may already describe the next round when this shot is received.
             var round = new FiredRound { Ammo = ammoIdentifier, ProjectileId = item.ID, Sequence = ++shotSequence };
+            TracePrediction? prediction = predictedBy == null ? null : NextPrediction(predictedBy);
             Vector2[]? ends = !round.Ammo.IsEmpty && GameMain.Server is { ConnectedClients.Count: > 0 }
                 ? new Vector2[Math.Min(count, VirtualShotTrace.MaxRays)] : null;
 #else
             FiredRound round = default;
             var emitters = particleEmitters;
-            bool draw = GameMain.Client == null || ammoIdentifier.IsEmpty ||
-                (predictedBy != null && predictedBy == Character.Controlled);
+            bool isOwner = predictedBy != null && predictedBy == Character.Controlled;
+            TracePrediction? prediction = GameMain.Client != null && isOwner ? NextPrediction(predictedBy!) : null;
+            bool draw = emitters.Length > 0 && (GameMain.Client == null || ammoIdentifier.IsEmpty || isOwner);
+            int nextRayToDraw = 0;
 #endif
             for (int i = 0; i < count; i++)
             {
@@ -161,12 +184,18 @@ namespace VCE_VirtualizedMagazine
                 ends[index] = end;
                 if (index + 1 == ends.Length)
                 {
-                    VirtualShotNetwork.SendTrace(round, rayStartWorld, ends, predictedBy);
+                    VirtualShotNetwork.SendTrace(round, rayStartWorld, ends, i - index, prediction);
                     int remaining = count - i - 1;
                     if (remaining > 0 && remaining < ends.Length) { ends = new Vector2[remaining]; }
                 }
 #else
-                if (draw) { DrawTrace(emitters, rayStartWorld, end); }
+                if (!draw) { continue; }
+                if (prediction is { } key && i % VirtualShotTrace.MaxRays == 0)
+                {
+                    int pageSize = Math.Min(count - i, VirtualShotTrace.MaxRays);
+                    nextRayToDraw = i + OwnerTraceHistory.Claim(item.ID, key, i, pageSize);
+                }
+                if (i >= nextRayToDraw) { DrawTrace(emitters, rayStartWorld, end); }
 #endif
             }
         }

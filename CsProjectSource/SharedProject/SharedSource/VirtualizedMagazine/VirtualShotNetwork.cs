@@ -9,11 +9,23 @@ internal record struct FiredRound : INetSerializableStruct
     [NetworkSerialize] public Identifier Ammo { get; set; }
 }
 
+internal record struct TracePrediction : INetSerializableStruct
+{
+    // Longer than the network timeout, shorter than a 16-bit input cycle at 60 Hz.
+    internal const int RetentionSeconds = 120;
+
+    [NetworkSerialize] public ushort ShooterId { get; set; }
+    [NetworkSerialize] public ushort InputId { get; set; }
+    [NetworkSerialize] public int Volley { get; set; }
+}
+
 internal struct VirtualShotTrace : INetSerializableStruct
 {
     internal const int MaxRays = 64;
 
     [NetworkSerialize] public FiredRound Round { get; set; }
+    [NetworkSerialize] public TracePrediction? Prediction { get; set; }
+    [NetworkSerialize] public int FirstRay { get; set; }
     [NetworkSerialize] public Vector2 Start { get; set; }
     [NetworkSerialize(ArrayMaxSize = MaxRays)] public Vector2[] Ends { get; set; }
 }
@@ -42,8 +54,11 @@ internal static class VirtualShotNetwork
     }
 
 #if SERVER
-    internal static void SendTrace(FiredRound round, Vector2 start, Vector2[] ends, Character? predictedBy) =>
-        Send(Header.Trace, new VirtualShotTrace { Round = round, Start = start, Ends = ends }, predictedBy);
+    internal static void SendTrace(FiredRound round, Vector2 start, Vector2[] ends, int firstRay, TracePrediction? prediction)
+    {
+        var trace = new VirtualShotTrace { Round = round, Start = start, Ends = ends, FirstRay = firstRay };
+        Send(Header.Trace, trace, prediction?.ShooterId, trace with { Prediction = prediction });
+    }
 
     internal static void SendImpact(FiredRound round, ActionType result, Limb? limb, Entity? target, Vector2 position) =>
         Send(Header.Impact, new VirtualShotImpact
@@ -53,13 +68,14 @@ internal static class VirtualShotNetwork
             Success = result == ActionType.OnSuccess
         });
 
-    private static void Send<T>(Header header, T message, Character? predictedBy = null) where T : INetSerializableStruct
+    private static void Send<T>(Header header, T message, ushort? shooterId = null, T ownerMessage = default)
+        where T : struct, INetSerializableStruct
     {
         foreach (var client in GameMain.Server.ConnectedClients)
         {
             if (!client.InGame || client.NeedsMidRoundSync) { continue; }
-            if (predictedBy != null && client.Character == predictedBy) { continue; }
-            network.SendToClient(client, header, message);
+            bool isShooter = shooterId.HasValue && client.Character?.ID == shooterId.Value;
+            network.SendToClient(client, header, isShooter ? ownerMessage : message);
         }
     }
 #endif

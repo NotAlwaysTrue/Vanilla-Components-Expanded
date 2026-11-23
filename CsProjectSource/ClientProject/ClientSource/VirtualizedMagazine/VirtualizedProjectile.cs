@@ -33,7 +33,11 @@ namespace VCE_VirtualizedMagazine
             if (element == null) { return; }
 
             var emitters = CreateEmitters(element);
-            foreach (var end in shot.Ends) { DrawTrace(emitters, shot.Start, end); }
+            if (emitters.Length == 0) { return; }
+            int skip = shot.Prediction is { } key
+                ? OwnerTraceHistory.Claim(shot.Round.ProjectileId, key, shot.FirstRay, shot.Ends.Length)
+                : 0;
+            for (int i = skip; i < shot.Ends.Length; i++) { DrawTrace(emitters, shot.Start, shot.Ends[i]); }
         }
 
         private FiredRound lastImpactRound;

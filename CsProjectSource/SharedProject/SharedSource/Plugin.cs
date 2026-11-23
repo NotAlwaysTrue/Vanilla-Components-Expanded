@@ -65,11 +65,17 @@ public partial class VCEPlugin : IBarotraumaPlugin
     {
         harmony.PatchAll();
         HookService.RegisterHook<PluginRoundEndedDelegate>(APSHooks.OnRoundEnded);
+#if CLIENT
+        HookService.RegisterHook<PluginRoundEndedDelegate>(OwnerTraceHistory.Clear);
+#endif
     }
 
     private void DisposePatchHooks()
     {
         harmony.UnpatchSelf();
         HookService.DeregisterHook<PluginRoundEndedDelegate>(APSHooks.OnRoundEnded);
+#if CLIENT
+        HookService.DeregisterHook<PluginRoundEndedDelegate>(OwnerTraceHistory.Clear);
+#endif
     }
 }
