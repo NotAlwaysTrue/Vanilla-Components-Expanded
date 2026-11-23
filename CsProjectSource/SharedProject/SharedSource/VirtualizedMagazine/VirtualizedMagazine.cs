@@ -310,8 +310,9 @@ namespace VCE_VirtualizedMagazine
             if (item != null && VPItem == null && VPItem != item) { VPItem = item; }
             if (VPItem == null && item == null) { return false; }
             item = item ?? VPItem;
-            item.GetComponent<VirtualizedProjectile>().ParseProjectileData(ElementHelper.GetFirstComponentElementByID<Projectile>(TopIdentifier));
-            item.tags = ItemPrefab.FindByIdentifier(TopIdentifier)?.Tags?.ToHashSet() ?? [];
+            var ammo = TopIdentifier;
+            item.GetComponent<VirtualizedProjectile>().ParseProjectileData(ElementHelper.GetFirstComponentElementByID<Projectile>(ammo), ammo);
+            item.tags = ItemPrefab.FindByIdentifier(ammo)?.Tags?.ToHashSet() ?? [];
             return true;
         }
 

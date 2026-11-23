@@ -35,6 +35,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\MagazineUtil\MagazinePrefab.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\VirtualizedMagazine.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\VirtualizedProjectile.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\VirtualShotNetwork.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VoidShield\HarmonyPatch.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VoidShield\VoidShield.cs" />
   </ItemGroup>

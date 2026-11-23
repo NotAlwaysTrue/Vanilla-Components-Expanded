@@ -37,6 +37,7 @@ public partial class VCEPlugin : IBarotraumaPlugin
         harmony = new("VCEPlugin");
         ContentFileRegistrar.RegisterContentFile<MagazinePrefabFile>();
         ItemComponentRegistrar.RegisterItemComponents(ictypes);
+        VirtualShotNetwork.Register();
         InitProjectSpecific();
     }
 

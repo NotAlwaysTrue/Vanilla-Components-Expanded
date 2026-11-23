@@ -16,8 +16,17 @@ namespace VCE_VirtualizedMagazine
         private static readonly ContentXElement projectileContentXElement = new(null, XElement.Parse(projectileXML));
         public VirtualizedProjectile(Item item, ContentXElement element) : base(item, element) { }
 
-        public void ParseProjectileData(ContentXElement element)
+        private Identifier ammoIdentifier;
+#if SERVER
+        private uint shotSequence;
+#endif
+
+        public void ParseProjectileData(ContentXElement element) =>
+            ParseProjectileData(element, element?.Parent?.GetAttributeIdentifier("identifier", Identifier.Empty) ?? Identifier.Empty);
+
+        internal void ParseProjectileData(ContentXElement element, Identifier ammo)
         {
+            ammoIdentifier = ammo;
             if (element == null) { element = projectileContentXElement; }
 
             Attack = null;
@@ -70,7 +79,6 @@ namespace VCE_VirtualizedMagazine
         private readonly List<ISerializableEntity> targets = new List<ISerializableEntity>();
         private Submarine launchSubmarine;
 
-        partial void LaunchProjSpecificClient(Vector2 startLocation, Vector2 endLocation);
         partial void PlayHitSoundClient(ActionType conditionalActionType);
         partial void ParseProjectileDataClient(ContentXElement element);
 
@@ -104,17 +112,8 @@ namespace VCE_VirtualizedMagazine
             Vector2 rayStartWorld = ConvertUnits.ToDisplayUnits(rayStart) + (launchSubmarine?.Position ?? Vector2.Zero);
             float? rewindTime = PrepareLagCompensation(user);
 
-            int hitscanCount = Math.Max(HitScanCount, 1);
-            for (int i = 0; i < hitscanCount; i++)
-            {
-                float launchAngle = StaticSpread
-                    ? rotation + MathHelper.ToRadians(i - ((float)(hitscanCount - 1) / 2)) * Spread
-                    : rotation + MathHelper.ToRadians(Spread * GetSpreadFromPool());
-                spreadIndex++;
-
-                Vector2 launchDir = new Vector2((float)Math.Cos(launchAngle), (float)Math.Sin(launchAngle));
-                DoHitscan(rayStart, rayStartWorld, launchDir, rewindTime);
-            }
+            // RangedWeapon predicts its own shots; explicit network launches play back on every client.
+            FireRays(rayStart, rayStartWorld, rotation, rewindTime, advanceSpread: true, predictedBy: createNetworkEvent ? null : user);
 
             ApplyStatusEffects(ActionType.OnUse, 1.0f, user: User);
         }
@@ -133,7 +132,46 @@ namespace VCE_VirtualizedMagazine
             return null;
         }
 
-        private void DoHitscan(Vector2 rayStart, Vector2 rayStartWorld, Vector2 dir, float? rewindTime)
+        private void FireRays(Vector2 rayStart, Vector2 rayStartWorld, float rotation, float? rewindTime,
+            bool advanceSpread, Character? predictedBy)
+        {
+            int count = Math.Max(HitScanCount, 1);
+#if SERVER
+            // The reusable projectile may already describe the next round when this shot is received.
+            var round = new FiredRound { Ammo = ammoIdentifier, ProjectileId = item.ID, Sequence = ++shotSequence };
+            Vector2[]? ends = !round.Ammo.IsEmpty && GameMain.Server is { ConnectedClients.Count: > 0 }
+                ? new Vector2[Math.Min(count, VirtualShotTrace.MaxRays)] : null;
+#else
+            FiredRound round = default;
+            var emitters = particleEmitters;
+            bool draw = GameMain.Client == null || ammoIdentifier.IsEmpty ||
+                (predictedBy != null && predictedBy == Character.Controlled);
+#endif
+            for (int i = 0; i < count; i++)
+            {
+                float angle = StaticSpread
+                    ? rotation + MathHelper.ToRadians(i - (count - 1) / 2f) * Spread
+                    : rotation + MathHelper.ToRadians(Spread * GetSpreadFromPool());
+                if (advanceSpread) { spreadIndex++; }
+                var dir = new Vector2((float)Math.Cos(angle), (float)Math.Sin(angle));
+                Vector2 end = DoHitscan(rayStart, rayStartWorld, dir, rewindTime, round);
+#if SERVER
+                if (ends == null) { continue; }
+                int index = i % VirtualShotTrace.MaxRays;
+                ends[index] = end;
+                if (index + 1 == ends.Length)
+                {
+                    VirtualShotNetwork.SendTrace(round, rayStartWorld, ends, predictedBy);
+                    int remaining = count - i - 1;
+                    if (remaining > 0 && remaining < ends.Length) { ends = new Vector2[remaining]; }
+                }
+#else
+                if (draw) { DrawTrace(emitters, rayStartWorld, end); }
+#endif
+            }
+        }
+
+        private Vector2 DoHitscan(Vector2 rayStart, Vector2 rayStartWorld, Vector2 dir, float? rewindTime, FiredRound round)
         {
             hitLimbs.Clear();
 
@@ -165,7 +203,7 @@ namespace VCE_VirtualizedMagazine
             {
                 var h = results[i];
                 Vector2 hitWorldPos = ConvertUnits.ToDisplayUnits(h.Point) + (h.Submarine?.Position ?? Vector2.Zero);
-                if (HandleProjectileCollision(h.Fixture, hitWorldPos))
+                if (HandleProjectileCollision(h.Fixture, hitWorldPos, round))
                 {
                     hitCount++;
                     endWorldPos = hitWorldPos;
@@ -173,7 +211,7 @@ namespace VCE_VirtualizedMagazine
                 }
             }
 
-            LaunchProjSpecificClient(rayStartWorld, endWorldPos);
+            return endWorldPos;
         }
 
         private void RayCastInOtherSubs(Vector2 rayStart, Vector2 rayEnd, List<HitscanResult> results, float? rewindTime)
@@ -332,7 +370,7 @@ namespace VCE_VirtualizedMagazine
             return rayHits;
         }
 
-        private bool HandleProjectileCollision(Fixture target, Vector2 worldPosition)
+        private bool HandleProjectileCollision(Fixture target, Vector2 worldPosition, FiredRound round)
         {
             if (User != null && User.Removed) { User = null; }
             if (IgnoredBodies != null && IgnoredBodies.Contains(target.Body)) { return false; }
@@ -431,24 +469,29 @@ namespace VCE_VirtualizedMagazine
                             }
                         }
                     }
-
-                    if (GameMain.NetworkMember is { IsServer: true } server)
-                    {
-                        server.CreateEntityEvent(Item, new Item.ApplyStatusEffectEventData(conditionalActionType, this, targetLimb.character, targetLimb, useTarget: targetLimb.character, worldPosition));
-                        server.CreateEntityEvent(Item, new Item.ApplyStatusEffectEventData(ActionType.OnImpact, this, targetLimb.character, targetLimb, useTarget: targetLimb.character, worldPosition));
-                    }
                 }
                 else
                 {
                     ApplyStatusEffects(conditionalActionType, 1.0f, useTarget: target.Body.UserData as Entity, user: User, worldPosition: worldPosition);
                     ApplyStatusEffects(ActionType.OnImpact, 1.0f, useTarget: target.Body.UserData as Entity, user: User, worldPosition: worldPosition);
-
-                    if (GameMain.NetworkMember is { IsServer: true } server)
+                }
+#if SERVER
+                if (GameMain.Server is { } server)
+                {
+                    var limb = target.Body.UserData as Limb;
+                    var useTarget = limb?.character ?? target.Body.UserData as Entity;
+                    if (!round.Ammo.IsEmpty)
                     {
-                        server.CreateEntityEvent(Item, new Item.ApplyStatusEffectEventData(conditionalActionType, this, useTarget: target.Body.UserData as Entity, worldPosition: worldPosition));
-                        server.CreateEntityEvent(Item, new Item.ApplyStatusEffectEventData(ActionType.OnImpact, this, useTarget: target.Body.UserData as Entity, worldPosition: worldPosition));
+                        VirtualShotNetwork.SendImpact(round, conditionalActionType, limb, useTarget, worldPosition);
+                    }
+                    else
+                    {
+                        // Anonymous projectile XML supplied by other mods has no prefab to resolve on clients.
+                        server.CreateEntityEvent(Item, new Item.ApplyStatusEffectEventData(conditionalActionType, this, limb?.character, limb, useTarget, worldPosition));
+                        server.CreateEntityEvent(Item, new Item.ApplyStatusEffectEventData(ActionType.OnImpact, this, limb?.character, limb, useTarget, worldPosition));
                     }
                 }
+#endif
             }
 
             return true;
@@ -489,16 +532,7 @@ namespace VCE_VirtualizedMagazine
             Vector2 rayStartWorld = ConvertUnits.ToDisplayUnits(rayStart) + (launchSubmarine?.Position ?? Vector2.Zero);
             float? rewindTime = PrepareLagCompensation(character);
 
-            int hitscanCount = Math.Max(HitScanCount, 1);
-            for (int i = 0; i < hitscanCount; i++)
-            {
-                float launchAngle = StaticSpread
-                    ? initialRotation + MathHelper.ToRadians(i - ((float)(hitscanCount - 1) / 2)) * Spread
-                    : initialRotation + MathHelper.ToRadians(Spread * GetSpreadFromPool());
-
-                Vector2 launchDir = new Vector2((float)Math.Cos(launchAngle), (float)Math.Sin(launchAngle));
-                DoHitscan(rayStart, rayStartWorld, launchDir, rewindTime);
-            }
+            FireRays(rayStart, rayStartWorld, initialRotation, rewindTime, advanceSpread: false, predictedBy: null);
 
             User = character;
             ApplyStatusEffects(ActionType.OnUse, 1.0f, User, user: User);
