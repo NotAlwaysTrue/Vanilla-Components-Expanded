@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Barotrauma.Items.Components;
 
 namespace VCE_VirtualizedMagazine;
@@ -18,9 +17,12 @@ public sealed partial class AmmoLoader
     private sealed record SupplySource(Item Item, string PoolId);
     private sealed record SupplyQuote(Dictionary<string, int> Stock, Dictionary<string, double> Pools, bool CanLoad);
     private SupplyPool[] supplies = [];
+    // Ammo id -> its pool, so quoting/withdrawing never has to scan every pool per round type.
+    private Dictionary<string, SupplyPool> supplyByAmmo = new(StringComparer.OrdinalIgnoreCase);
     private SupplySource[] supplySources = [];
+    // Intake item -> its source, so the intake scan does not compare the item against every known source.
+    private Dictionary<Item, SupplySource> supplyByItem = [];
     private bool supplyError;
-    private string observedSupply = "[]";
 
     private bool RefreshSupplies()
     {
@@ -72,13 +74,32 @@ public sealed partial class AmmoLoader
             pools.Clear();
         }
         var next = pools.Values.OrderBy(p => p.Id, StringComparer.Ordinal).ToArray();
-        string state = JsonSerializer.Serialize(next);
-        bool changed = state != observedSupply || failed != supplyError;
-        supplies = next;
+        // Compare field by field instead of serialising both states to JSON; this runs 4 times per second per machine.
+        bool changed = failed != supplyError || next.Length != supplies.Length;
+        for (int i = 0; !changed && i < next.Length; i++)
+        {
+            var before = supplies[i];
+            var after = next[i];
+            changed = before.Id != after.Id || before.Prefab != after.Prefab || before.Amount != after.Amount ||
+                before.Capacity != after.Capacity || before.Costs.Count != after.Costs.Count ||
+                before.Costs.Any(p => !after.Costs.TryGetValue(p.Key, out double cost) || p.Value != cost);
+        }
+        if (changed) { SetSupplies(next); }
         supplySources = sources.ToArray();
-        observedSupply = state;
+        supplyByItem = [];
+        foreach (var source in sources) { supplyByItem[source.Item] = source; }
         supplyError = failed;
         return changed;
+    }
+
+    private void SetSupplies(SupplyPool[] pools)
+    {
+        supplies = pools;
+        supplyByAmmo = new(StringComparer.OrdinalIgnoreCase);
+        foreach (var pool in pools)
+        {
+            foreach (var cost in pool.Costs) { supplyByAmmo[cost.Key] = pool; }
+        }
     }
 
     private SupplyQuote QuoteSupply(IReadOnlyDictionary<string, int> demand)
@@ -92,7 +113,7 @@ public sealed partial class AmmoLoader
             if (stored > 0) { stock.Add(p.Key, stored); }
             int missing = p.Value - stored;
             if (missing <= 0) { continue; }
-            var pool = supplies.FirstOrDefault(s => s.Costs.ContainsKey(p.Key));
+            var pool = supplyByAmmo.GetValueOrDefault(p.Key);
             if (pool == null) { available = false; continue; }
             costs[pool.Id] = costs.GetValueOrDefault(pool.Id) + pool.Costs[p.Key] * missing;
         }
@@ -123,7 +144,7 @@ public sealed partial class AmmoLoader
 
     private int AvailableAmount(string id)
     {
-        var pool = supplies.FirstOrDefault(p => p.Costs.ContainsKey(id));
+        var pool = supplyByAmmo.GetValueOrDefault(id);
         return (int)Math.Min(int.MaxValue, (double)Stock[id] + (pool == null ? 0 : Math.Floor(pool.Amount / pool.Costs[id])));
     }
 
@@ -137,7 +158,7 @@ public sealed partial class AmmoLoader
             var amounts = new Dictionary<string, double>();
             foreach (var p in rounds.OrderBy(p => p.Key, StringComparer.Ordinal))
             {
-                var pool = supplies.FirstOrDefault(s => s.Costs.ContainsKey(p.Key));
+                var pool = supplyByAmmo.GetValueOrDefault(p.Key);
                 if (pool == null) { continue; }
                 double free = Math.Max(0, pool.Capacity - pool.Amount - amounts.GetValueOrDefault(pool.Id));
                 int count = (int)Math.Min(p.Value, Math.Floor(free / pool.Costs[p.Key]));
@@ -166,7 +187,7 @@ public sealed partial class AmmoLoader
             foreach (var source in supplySources.Where(s => s.PoolId == p.Key))
             {
                 var item = source.Item;
-                if (item.Removed || item.IsInRemoveQueue || inputContainer?.Inventory.AllItems.Contains(item) != true) { return false; }
+                if (item.Removed || item.IsInRemoveQueue || item.ParentInventory != inputContainer?.Inventory) { return false; }
                 double amount = Math.Min(remaining, credit ? item.MaxCondition - item.Condition : item.Condition);
                 if (amount <= 0) { continue; }
                 float after = (float)(item.Condition + (credit ? amount : -amount));
@@ -183,7 +204,7 @@ public sealed partial class AmmoLoader
     private bool TryApplySupplyChanges(List<(Item Item, float Before, float After)> changes)
     {
         if (changes.Any(c => c.Item.Removed || c.Item.IsInRemoveQueue || c.Item.Condition != c.Before ||
-            inputContainer?.Inventory.AllItems.Contains(c.Item) != true)) { return false; }
+            c.Item.ParentInventory != inputContainer?.Inventory)) { return false; }
         int applied = 0;
         try
         {

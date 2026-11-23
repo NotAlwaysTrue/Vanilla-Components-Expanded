@@ -37,6 +37,9 @@ public sealed partial class AmmoLoader
     private GUIFrame? ioFrame, presetFrame;
     private bool uiDirty = true, draftDirty;
     private bool displayedSynchronized;
+    // Plan validity is recomputed by RefreshUI; the per-frame HUD update must not expand the whole plan again.
+    private bool savePlanValid;
+    private float withdrawRefreshTimer;
     // Stock icons use a press/hold/release gesture: a click withdraws a package, a drag feeds the sequence or a preset.
     private enum StockGesture { None, Pending, Dragging }
     private StockGesture gesture;
@@ -634,10 +637,14 @@ public sealed partial class AmmoLoader
         if (presetList == null) { CreateGUI(); }
         if (saveButton != null)
         {
-            saveButton.Enabled = !string.IsNullOrWhiteSpace(presetName?.Text) && AmmoPlan.IsValid(FullPlan(), AmmoPlan.MaxRounds);
+            // Only the name check is cheap enough for every frame; plan validity comes from the last RefreshUI.
+            saveButton.Enabled = !string.IsNullOrWhiteSpace(presetName?.Text) && savePlanValid;
         }
         UpdateClientState(deltaTime);
-        UpdateWithdrawalButtons();
+        // Tile state depends on stock and output space, which change slowly. Re-checking every tile every frame ran one
+        // inventory query per stock type; a quarter second is faster than the player can notice.
+        withdrawRefreshTimer -= deltaTime;
+        if (withdrawRefreshTimer <= 0) { withdrawRefreshTimer = 0.25f; UpdateWithdrawalButtons(); }
         UpdateStockGesture();
         var target = Target;
         bool synchronized = IsSynchronized;
@@ -655,13 +662,16 @@ public sealed partial class AmmoLoader
     private void UpdateWithdrawalButtons()
     {
         if (stockList == null) { return; }
+        bool synchronized = IsSynchronized;
         foreach (var tile in stockList.Content.Children.OfType<GUIButton>())
         {
             if (tile.UserData is not ValueTuple<string, ItemPrefab?> package) { continue; }
-            bool canWithdraw = IsSynchronized && WithdrawalProblem(package.Item1, package.Item2) == "withdraw";
-            tile.Enabled = canWithdraw || CanAddToPlan(package.Item1);
+            bool enabled = (synchronized && WithdrawalProblem(package.Item1, package.Item2) == "withdraw") ||
+                CanAddToPlan(package.Item1);
+            if (tile.Enabled == enabled) { continue; }
+            tile.Enabled = enabled;
             foreach (var image in tile.Children.OfType<GUIImage>())
-            { if (image.UserData is Color tint) { image.Color = tint * (tile.Enabled ? 1f : 0.4f); } }
+            { if (image.UserData is Color tint) { image.Color = tint * (enabled ? 1f : 0.4f); } }
         }
     }
 
@@ -874,7 +884,8 @@ public sealed partial class AmmoLoader
         // Re-derive the block heights from the rows that now exist, so a block always fits what it holds.
         LayoutSequenceArea();
         stockList!.Content.ClearChildren();
-        var demand = AmmoStock.Count(rounds.TakeLast(capacity));
+        // A magazine of 4096 rounds expands to 4096 strings; only the part that can still fit matters here.
+        var demand = AmmoStock.Count(rounds.Length <= capacity ? rounds : rounds[^capacity..]);
         var quote = QuoteSupply(demand);
         var supplied = SuppliedAmmo(quote);
         var visibleStock = stock.Counts.Keys.Concat(supplied.Keys).Distinct(StringComparer.OrdinalIgnoreCase)
@@ -888,6 +899,8 @@ public sealed partial class AmmoLoader
             string.Join("\n", supplies.Select(p => $"{AmmoName(p.Prefab)} | {p.Amount:N2}/{p.Capacity:N2}")) : "");
         if (visibleStock.Length == 0) { TextRow(stockList, L("emptystock").Value); }
         int stockCellSize = (int)(72 * GUI.Scale);
+        // One pass over the prefab list for every visible stock type instead of one scan per tile.
+        var packages = FindWithdrawalPackages(visibleStock.Select(p => p.Key.ToIdentifier()).ToHashSet());
         foreach (var p in visibleStock)
         {
             bool fromSupply = supplied.TryGetValue(p.Key, out int available);
@@ -897,7 +910,7 @@ public sealed partial class AmmoLoader
             int stockCaptionHeight = (int)((stockCaption.Contains('\n') ? 30 : 16) * GUI.Scale);
             int stockImageHeight = stockCellSize - stockCaptionHeight;
             var prefab = ItemPrefab.FindByIdentifier(p.Key.ToIdentifier()) as ItemPrefab;
-            var package = FindWithdrawalPackage(p.Key);
+            var package = packages.GetValueOrDefault(p.Key.ToIdentifier());
             bool canWithdraw = IsSynchronized && WithdrawalProblem(p.Key, package) == "withdraw";
             var tile = new GUIButton(new RectTransform(new Point(stockCellSize), stockList.Content.RectTransform, isFixedSize: true),
                 style: "GUIButtonSmallFreeScale")
@@ -1000,9 +1013,11 @@ public sealed partial class AmmoLoader
             : $"{L("plan")} | {planned} {L("rounds")}{(draftDirty ? " *" : "")}";
         draftLabel.ToolTip = $"{L("topfirst")}\n{L("dragorder")}\n{L(draftDirty ? "unsaved" : "savedstate")}";
         clearButton!.Enabled = PlannedRounds > 0;
+        // Validate once per rebuild: FullPlan() expands every round into a string list.
+        savePlanValid = AmmoPlan.IsValid(FullPlan(), AmmoPlan.MaxRounds);
         string problem = !Ready ? "unavailable" : !IsSynchronized ? "syncing" : target == null ? "nomagazine" :
             target.LoadedCount >= target.MaxSize ? "full" : PlannedRounds == 0 ? "emptyplan" :
-            !AmmoPlan.IsValid(FullPlan(), AmmoPlan.MaxRounds) ? "invalidplan" :
+            !savePlanValid ? "invalidplan" :
             demand.Keys.Any(id => !IsCompatible(target, id)) ? "incompatible" : !quote.CanLoad ? "notenough" : "ready";
         loadButton!.Enabled = problem == "ready";
         loadButton.ToolTip = L(problem);

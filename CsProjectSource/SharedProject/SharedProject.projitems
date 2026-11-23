@@ -13,6 +13,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\AmmoLoader\AmmoLoader.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\AmmoLoader\AmmoLoader.Snapshot.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\AmmoLoader\AmmoLoader.Supply.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\AmmoLoader\AmmoPlan.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\AmmoLoader\AmmoStock.cs" />

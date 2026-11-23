@@ -171,6 +171,15 @@ namespace VCE_VirtualizedMagazine
             get => LoadedAmmoIdentifiers.Count;
         }
 
+        /// <summary>
+        /// Bumped whenever the loaded round list may have changed. Consumers that only need "did it change" compare
+        /// this counter instead of copying and comparing the whole stack (up to <see cref="MaxSize" /> rounds).
+        /// </summary>
+        public uint RoundsVersion
+        {
+            get; private set;
+        }
+
         public Identifier TopIdentifier
         {
             get
@@ -305,6 +314,7 @@ namespace VCE_VirtualizedMagazine
 
         public bool UpdateAmmoData(Item item = null)
         {
+            RoundsVersion++;
             Item.Condition = LoadedAmmoIdentifiers.Count;
             SyncAmmoState();
             if (item != null && VPItem == null && VPItem != item) { VPItem = item; }

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Xml.Linq;
 using Barotrauma.Items.Components;
 using Barotrauma.Networking;
@@ -13,7 +12,7 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
     private uint revision;
     private float scanTimer;
     private ushort observedTarget;
-    private Identifier[] observedRounds = [];
+    private uint observedRoundsVersion;
     private int targetSlot;
 
     [Serialize(0, IsPropertySaveable.No)]
@@ -77,12 +76,42 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
     public static ItemPrefab? FindWithdrawalPackage(string id)
     {
         if (!IsProjectile(id)) { return null; }
-        return ItemPrefab.Prefabs.Where(p => p.Tags.Contains("vceammopackage".ToIdentifier()) &&
-                float.IsFinite(p.Health) && p.Health >= 1 && p.Health < int.MaxValue &&
-                ElementHelper.GetFirstComponentElementByID<VirtualizedAmmoStorage>(p.Identifier)?
-                    .GetAttributeIdentifier("ProjectileIdentifier", Identifier.Empty) == id.ToIdentifier() &&
-                ElementHelper.GetFirstComponentElementByID<ItemContainer>(p.Identifier) == null)
-            .OrderByDescending(p => p.Health).ThenBy(p => p.Identifier.Value, StringComparer.Ordinal).FirstOrDefault();
+        var identifier = id.ToIdentifier();
+        return FindWithdrawalPackages([identifier]).GetValueOrDefault(identifier);
+    }
+
+    /// <summary>
+    /// Resolves the withdrawal package prefab for every given ammo type in a single pass over the prefab list. The UI
+    /// asks for one package per stock tile, so calling the single-id overload per tile scanned every prefab once per
+    /// tile - with a large stock that is the same work as the whole prefab list times the number of ammo types.
+    /// </summary>
+    private static Dictionary<Identifier, ItemPrefab> FindWithdrawalPackages(HashSet<Identifier> ammo)
+    {
+        var packages = new Dictionary<Identifier, ItemPrefab>();
+        if (ammo.Count == 0) { return packages; }
+        var packageTag = "vceammopackage".ToIdentifier();
+        foreach (var prefab in ItemPrefab.Prefabs)
+        {
+            if (!float.IsFinite(prefab.Health) || prefab.Health < 1 || prefab.Health >= int.MaxValue) { continue; }
+            if (!prefab.Tags.Contains(packageTag) || prefab.ConfigElement == null) { continue; }
+            Identifier id = Identifier.Empty;
+            bool foundStorage = false, hasContainer = false;
+            foreach (var element in prefab.ConfigElement.Elements())
+            {
+                string name = element.Name.ToString();
+                if (name.Equals(nameof(ItemContainer), StringComparison.OrdinalIgnoreCase)) { hasContainer = true; break; }
+                if (!foundStorage && name.Equals(nameof(VirtualizedAmmoStorage), StringComparison.OrdinalIgnoreCase))
+                {
+                    id = element.GetAttributeIdentifier("ProjectileIdentifier", Identifier.Empty);
+                    foundStorage = true;
+                }
+            }
+            if (!foundStorage || hasContainer || !ammo.Contains(id) || !IsProjectile(id.Value)) { continue; }
+            if (!packages.TryGetValue(id, out var best) || prefab.Health > best.Health ||
+                (prefab.Health == best.Health && string.CompareOrdinal(prefab.Identifier.Value, best.Identifier.Value) < 0))
+            { packages[id] = prefab; }
+        }
+        return packages;
     }
 
     private string WithdrawalProblem(string id, ItemPrefab? package)
@@ -156,7 +185,7 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         {
             foreach (var source in inputContainer!.Inventory.AllItems.ToArray())
             {
-                if (supplySources.Any(s => s.Item == source)) { continue; }
+                if (supplyByItem.ContainsKey(source)) { continue; }
                 var package = source.GetComponent<VirtualizedAmmoStorage>();
                 if (package == null || source.Removed || source.IsInRemoveQueue) { continue; }
                 string id = package.AmmoIdentifier.Value;
@@ -182,11 +211,12 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
             }
         }
         var target = Target;
-        var rounds = target?.LoadedAmmoIdentifiers.ToArray() ?? [];
-        if (observedTarget != (target?.Item.ID ?? 0) || !observedRounds.SequenceEqual(rounds))
+        ushort targetId = target?.Item.ID ?? 0;
+        uint roundsVersion = target?.RoundsVersion ?? 0;
+        if (observedTarget != targetId || observedRoundsVersion != roundsVersion)
         {
-            observedTarget = target?.Item.ID ?? 0;
-            observedRounds = rounds;
+            observedTarget = targetId;
+            observedRoundsVersion = roundsVersion;
             changed = true;
         }
         if (changed) { Changed(); }
@@ -224,20 +254,34 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         {
             return false;
         }
-        // The plan is top-first: the sequence list reads top to bottom as the firing order, so `rounds` is also
-        // top-first. `LoadAmmoArray` pushes in list order (first entry becomes the stack bottom), which is why the
-        // list is reversed below. Existing rounds stay underneath, so the plan's top row ends up on the stack top.
-        var rounds = AmmoPlan.Expand(plan).TakeLast(magazine.MaxSize - magazine.LoadedCount).ToArray();
-        var demand = AmmoStock.Count(rounds);
-        if (demand.Keys.Any(id => !IsCompatible(magazine, id))) { return false; }
+        // The plan is top-first: the sequence list reads top to bottom as the firing order. `LoadAmmoArray` pushes in
+        // list order (first entry becomes the stack bottom), so `toLoad` is reversed below. Existing rounds stay
+        // underneath, so the plan's top row ends up on the stack top. Only the plan's tail fits when the magazine is
+        // partly full, so the head of the plan stays in stock (unchanged).
+        int planned = plan.Sum(r => r.Count);
+        int countToLoad = Math.Min(planned, magazine.MaxSize - magazine.LoadedCount);
+        int skip = planned - countToLoad;
+        // Single pass over the groups: expanding the whole plan first allocated a 4096-entry array plus a TakeLast
+        // buffer on every load, which is what made loading a fully stocked machine stutter.
+        var demand = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var toLoad = new List<Identifier>(countToLoad);
+        foreach (var run in plan)
+        {
+            int skipped = Math.Min(skip, run.Count);
+            skip -= skipped;
+            int count = run.Count - skipped;
+            if (count == 0) { continue; }
+            if (!IsCompatible(magazine, run.Id)) { return false; }
+            demand[run.Id] = demand.GetValueOrDefault(run.Id) + count;
+            var id = run.Id.ToIdentifier();
+            for (int i = 0; i < count; i++) { toLoad.Add(id); }
+        }
         if (RefreshSupplies()) { Changed(); }
         var quote = QuoteSupply(demand);
         if (!TryPrepareSupplyDebit(quote, out var debits)) { return false; }
         var original = magazine.LoadedAmmoIdentifiersArray;
-        // Bottom-first for the push: `toLoad[0]` becomes the stack bottom, so the last entry pushed is `rounds[0]`,
-        // the plan's top row, which then fires first. Only the plan's tail fits when the magazine is partly full,
-        // so the head of the plan stays in stock (unchanged).
-        var toLoad = rounds.Reverse().Select(id => id.ToIdentifier()).ToList();
+        // Bottom-first for the push: the last entry pushed is `toLoad[0]`, the plan's top row, which then fires first.
+        toLoad.Reverse();
         try { magazine.LoadAmmoArray(ref toLoad); }
         catch (Exception e)
         {
@@ -300,8 +344,11 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
     private void Changed()
     {
         revision++;
-        observedTarget = Target?.Item.ID ?? 0;
-        observedRounds = Target?.LoadedAmmoIdentifiers.ToArray() ?? [];
+        var target = Target;
+        observedTarget = target?.Item.ID ?? 0;
+        // A version counter, not a copy of the round list: the old code allocated and compared the whole 4096-round
+        // stack on every change.
+        observedRoundsVersion = target?.RoundsVersion ?? 0;
         PublishState();
     }
 
@@ -344,12 +391,9 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
     /// <summary>`Start`/`End` carry the MagazinePrefab sections of a preset save; other commands leave them empty.</summary>
     private sealed record Request(Command Command, uint Revision, ushort Target, AmmoRun[] Plan, string Name = "",
         int Index = 0, AmmoRun[]? Start = null, AmmoRun[]? End = null) : IEventData;
-    private sealed record Snapshot(uint Revision, Dictionary<string, int> Stock, SupplyPool[]? Supplies = null,
-        bool SupplyError = false, int TargetSlot = 0);
     private sealed record PresetSnapshot(string Name, AmmoRun[] Start, AmmoRun[] Main, AmmoRun[] End);
     /// <summary>Presets travel on their own event so stock updates never re-sync the arrangement list.</summary>
     private sealed record PresetListSnapshot(uint Revision, PresetSnapshot[] Presets) : IEventData;
-    private sealed record SnapshotPage(uint Revision, int Index, int Count, string Data) : IEventData;
 
     partial void PublishPresets();
 
@@ -368,15 +412,5 @@ public sealed partial class AmmoLoader : ItemComponent, IServerSerializable, ICl
         // The list goes out immediately; the preset files stay untouched until the game itself saves.
         if (applied) { PresetChanged(); }
         return applied;
-    }
-
-    private SnapshotPage[] CapturePages()
-    {
-        var snapshot = new Snapshot(revision, new Dictionary<string, int>(Stock.Counts), supplies, supplyError, TargetSlot);
-        string json = JsonSerializer.Serialize(snapshot);
-        const int charsPerPage = 128;
-        int pages = (json.Length + charsPerPage - 1) / charsPerPage;
-        return Enumerable.Range(0, pages).Select(i => new SnapshotPage(revision, i, pages,
-            json.Substring(i * charsPerPage, Math.Min(charsPerPage, json.Length - i * charsPerPage)))).ToArray();
     }
 }
