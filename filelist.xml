@@ -11,6 +11,7 @@
     <Conditional dependencies="VCELOCALTESTPKG" />
     <Item file="%ModDir%/.Test/testItems.xml" />
     <MagazinePrefab file="%ModDir%/.Test/MagazinePrefabs.xml" />
+    <ArmorPrefab file="%ModDir%/.Test/ArmorPrefabs.xml" />
   </FileGroup>
 
 </contentpackage>

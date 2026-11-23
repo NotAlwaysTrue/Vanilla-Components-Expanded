@@ -4,6 +4,7 @@ global using Microsoft.Xna.Framework;
 using Barotrauma.Plugins;
 using System.Runtime.CompilerServices;
 using VCE_APS;
+using VCE_ArmorSystem;
 using VCE_SRW;
 using VCE_VirtualizedMagazine;
 
@@ -36,6 +37,7 @@ public partial class VCEPlugin : IBarotraumaPlugin
     {
         harmony = new("VCEPlugin");
         ContentFileRegistrar.RegisterContentFile<MagazinePrefabFile>();
+        ContentFileRegistrar.RegisterContentFile<ArmorPrefabFile>();
         ItemComponentRegistrar.RegisterItemComponents(ictypes);
         VirtualShotNetwork.Register();
         InitProjectSpecific();

@@ -1,68 +1,185 @@
 using Barotrauma.Items.Components;
 
-namespace VCE_ArmorSystem
+namespace VCE_ArmorSystem;
+
+[HarmonyPatch(typeof(Character), nameof(Character.DamageLimb))]
+internal static class ArmorDamagePatch
 {
-  //  [HarmonyPatch(typeof(Character), nameof(Character.DamageLimb))]
-    public static class Projectile_DoHitscan_Patch
+    private const float PenetrationEpsilon = 0.00001f;
+    private static readonly InvSlotType[] ArmorSlots =
+        [InvSlotType.Head, InvSlotType.OuterClothes, InvSlotType.InnerClothes];
+
+    private static int? GetDefaultPlatePosition(LimbType limb) => limb switch
     {
-        static readonly Dictionary<LimbType, InvSlotType[]> LimbMap = new()
+        LimbType.Head or LimbType.Torso or LimbType.Waist => 0,
+        LimbType.LeftArm or LimbType.LeftForearm or LimbType.LeftHand
+            or LimbType.RightArm or LimbType.RightForearm or LimbType.RightHand => 1,
+        LimbType.LeftThigh or LimbType.RightThigh => 2,
+        LimbType.LeftLeg or LimbType.LeftFoot
+            or LimbType.RightLeg or LimbType.RightFoot => -1,
+        _ => null
+    };
+
+    private static bool Prefix(Character __instance, Limb? hitLimb, ref IEnumerable<Affliction> afflictions,
+        Character? attacker, ref float damageMultiplier, ref float penetration, ref AttackResult __result)
+    {
+#if CLIENT
+        if (GameMain.NetworkMember != null) { return true; }
+#endif
+        if (__instance.Removed || __instance.Inventory is not { } inventory || hitLimb == null
+            || afflictions == null || !float.IsFinite(penetration))
         {
-            { LimbType.None, [InvSlotType.None] },
+            return true;
+        }
 
-            { LimbType.Head, [InvSlotType.Head, InvSlotType.OuterClothes, InvSlotType.InnerClothes] },
-            { LimbType.Jaw, [InvSlotType.Head, InvSlotType.OuterClothes, InvSlotType.InnerClothes] },
+        var limb = hitLimb.type;
+        if (GetDefaultPlatePosition(limb) is not { } platePosition) { return true; }
 
-            { LimbType.LeftArm, [InvSlotType.OuterClothes, InvSlotType.InnerClothes] },
-            { LimbType.LeftForearm, [InvSlotType.OuterClothes, InvSlotType.InnerClothes] },
-            { LimbType.LeftHand, [InvSlotType.LeftHandProsthetic] },
-            { LimbType.LeftThigh, [InvSlotType.OuterClothes, InvSlotType.InnerClothes] },
-            { LimbType.LeftLeg, [InvSlotType.InnerClothes] },
-            { LimbType.LeftFoot, [InvSlotType.InnerClothes] },
-
-            { LimbType.RightArm, [InvSlotType.OuterClothes, InvSlotType.InnerClothes] },
-            { LimbType.RightForearm, [InvSlotType.OuterClothes, InvSlotType.InnerClothes] },
-            { LimbType.RightHand, [InvSlotType.RightHandProsthetic] },
-            { LimbType.RightThigh, [InvSlotType.OuterClothes, InvSlotType.InnerClothes] },
-            { LimbType.RightLeg, [InvSlotType.InnerClothes] },
-            { LimbType.RightFoot, [InvSlotType.InnerClothes] },
-
-            { LimbType.Torso, [InvSlotType.OuterClothes, InvSlotType.InnerClothes] },
-            { LimbType.Waist, [InvSlotType.OuterClothes, InvSlotType.InnerClothes] },
-
-            { LimbType.Tail, [InvSlotType.InnerClothes] },
-            { LimbType.Legs, [InvSlotType.InnerClothes] }
-        };
-
-        static void Prefix(Character __instance, Limb hitLimb, IEnumerable<Affliction> afflictions, ref float damageMultiplier, ref float penetration)
+        HashSet<Item>? processedArmor = null;
+        float? remainingPen = null;
+        float remainingDamage = 1f;
+        bool checkedFriendlyFire = false;
+        foreach (var slot in ArmorSlots)
         {
-            var Character = __instance;
-            // incase that happened again...
-            // int penlevel = (int)(penetration + 0.00001) * 10;
-            int penlevel = (int)penetration * 10;
-
-            if (!LimbMap.TryGetValue(hitLimb.type, out var invslots)) { return; }
-            foreach (var slots in invslots)
+            var armor = inventory.GetItemInLimbSlot(slot);
+            if (armor == null || processedArmor?.Contains(armor) == true
+                || !ArmorPrefab.Prefabs.TryGet(armor.Prefab.Identifier, out var armorPrefab))
             {
-                Item plateitem = null;
-                Item armoritem = Character.Inventory.GetItemInLimbSlot(slots);
-                if (armoritem == null) { continue; }
-                if (!ArmorPrefab.Prefabs.TryGet(armoritem.Prefab.Identifier, out var armorprefab)) { continue; }
-                if (!armorprefab.ProtectionAreas.TryGetValue(hitLimb.type, out _)) { continue; }
-                bool notfound = true;
-                foreach(var aff in afflictions)
+                continue;
+            }
+
+            bool coversLimb = armorPrefab.ProtectionAreas.Contains(limb);
+            bool slotMatchesLimb = (slot == InvSlotType.Head) == (limb == LimbType.Head);
+            if (!coversLimb && !slotMatchesLimb) { continue; }
+
+            Item? plate = armorPrefab.PlateCarrier
+                ? armor.OwnInventory?.GetItemAt(armorPrefab.PlatePosition >= 0 ? armorPrefab.PlatePosition : platePosition)
+                : null;
+            ArmorPrefab? platePrefab = null;
+            if (plate != null && ArmorPrefab.Prefabs.TryGet(plate.Prefab.Identifier, out var configuredPlate))
+            {
+                platePrefab = configuredPlate;
+            }
+
+            bool checkArmor = coversLimb && CanProtect(armor, armorPrefab);
+            bool checkPlate = platePrefab != null && CanProtect(plate!, platePrefab);
+            if (!checkArmor && !checkPlate) { continue; }
+
+            if (!checkedFriendlyFire)
+            {
+                checkedFriendlyFire = true;
+                // Vanilla also enumerates afflictions. Keep iterator-based attacks stable across layers.
+                if (afflictions is not IReadOnlyCollection<Affliction>)
                 {
-                    if (armorprefab.TargetAfflictionIdentifiers.TryGetValue(aff.Prefab.Identifier, out _))
-                    {
-                        notfound = false;
-                        break;
-                    }
+                    afflictions = afflictions.ToArray();
                 }
-                if (notfound) { continue; }
-                if (armorprefab.PlateCarrier)
+
+                if (attacker != null && attacker != __instance && attacker.IsOnPlayerTeam
+                    && GameMain.NetworkMember is { ServerSettings.AllowFriendlyFire: false }
+                    && attacker.TeamID == __instance.TeamID && !afflictions.Any(a => a.Prefab.IsBuff))
                 {
-                    plateitem = armoritem.ownInventory.GetItemAt(armorprefab.PlatePosition);
+                    return true;
                 }
             }
+
+            float? armorStrength = checkArmor ? GetTargetStrength(armorPrefab, afflictions) : null;
+            float? plateStrength = checkPlate ? GetTargetStrength(platePrefab!, afflictions) : null;
+            if (!armorStrength.HasValue && !plateStrength.HasValue) { continue; }
+
+            float penLevel = remainingPen ?? (float)Math.Floor((penetration + (double)PenetrationEpsilon) * 10);
+            if (armorPrefab.ClampPen || platePrefab?.ClampPen == true)
+            {
+                penLevel = Math.Clamp(penLevel, 0f, 10f);
+            }
+
+            if ((plateStrength is { } plateHit
+                && ApplyLayer(plate!, platePrefab!, __instance, hitLimb, plateHit, ref penLevel, ref remainingDamage))
+                || (armorStrength is { } armorHit
+                && ApplyLayer(armor, armorPrefab, __instance, hitLimb, armorHit, ref penLevel, ref remainingDamage)))
+            {
+                __result = new AttackResult();
+                return false;
+            }
+
+            (processedArmor ??= new(ReferenceEqualityComparer.Instance)).Add(armor);
+            remainingPen = penLevel;
         }
+
+        if (remainingPen is { } finalPen)
+        {
+            penetration = finalPen / 10f + PenetrationEpsilon;
+            damageMultiplier *= remainingDamage;
+        }
+        return true;
+    }
+
+    private static bool CanProtect(Item item, ArmorPrefab prefab) =>
+        item.Condition > 0f && (!prefab.MaskHelmet || item.GetComponent<LightComponent>()?.IsOn != true);
+
+    private static float? GetTargetStrength(ArmorPrefab prefab, IEnumerable<Affliction> afflictions)
+    {
+        if (prefab.Targets.Contains("any".ToIdentifier()))
+        {
+            return afflictions.Sum(a => a.Strength);
+        }
+
+        foreach (var affliction in afflictions)
+        {
+            if (prefab.Targets.Contains(affliction.Prefab.Identifier)
+                || prefab.Targets.Contains(affliction.Prefab.AfflictionType))
+            {
+                return Math.Max(0f, affliction.Strength);
+            }
+        }
+        return null;
+    }
+
+    private static bool ApplyLayer(Item item, ArmorPrefab prefab, Character character, Limb limb, float strength,
+        ref float penLevel, ref float damageMultiplier)
+    {
+        foreach (var correction in prefab.Corrections)
+        {
+            float amount = strength * damageMultiplier * prefab.CorrectionMultiplier * correction.Amount;
+            if (correction.MultiplyByMaxVitality) { amount *= character.MaxVitality / 100f; }
+            if (amount > 0f && AfflictionPrefab.Prefabs.TryGet(correction.Affliction, out var correctionPrefab))
+            {
+                character.CharacterHealth.ApplyAffliction(limb, correctionPrefab.Instantiate(amount));
+            }
+        }
+
+        if (penLevel - prefab.Level < prefab.RicochetLevelOverride
+            && prefab.RicochetChance > 0f
+            && (prefab.RicochetChance >= 1f
+                || Rand.Int(100, Rand.RandSync.ServerAndClient) + 1 <= prefab.RicochetChance * 100f))
+        {
+#if CLIENT
+            prefab.PlayRicochet(item.WorldPosition);
+#endif
+            return true;
+        }
+
+        if (!prefab.IgnoreDamage && penLevel != 0 && prefab.MaxHits > 0)
+        {
+            float maxCondition = prefab.MaxCondition > 0 ? prefab.MaxCondition : item.MaxCondition;
+            float damageFactor = prefab.ArmorType switch
+            {
+                ArmorType.Metal => 1f,
+                ArmorType.Composite => Math.Max(strength / 20f, 1f),
+                ArmorType.Ceramic => Math.Max(strength / 20f, 1f) * (maxCondition / item.Condition),
+                ArmorType.Custom when prefab.CustomDamageDivisor > 0f => strength / prefab.CustomDamageDivisor,
+                _ => 0f
+            };
+            if (damageFactor > 0f)
+            {
+                item.Condition -= damageFactor * (maxCondition / prefab.MaxHits);
+            }
+        }
+
+        if (item.Condition <= 0f) { return false; }
+        if (penLevel < prefab.Level) { return true; }
+
+        penLevel -= MathF.Floor(prefab.Level * prefab.Resistance);
+        damageMultiplier *= prefab.AfterEffectMultiplier;
+        return false;
     }
 }
