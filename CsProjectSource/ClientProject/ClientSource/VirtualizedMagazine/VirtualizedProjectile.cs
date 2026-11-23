@@ -9,7 +9,7 @@ namespace VCE_VirtualizedMagazine
         private static readonly ConditionalWeakTable<ContentXElement, ParticleEmitterPrefab[]> tracerPrefabs = new();
         private ParticleEmitter[] particleEmitters = [];
 
-        partial void ParseProjectileDataClient(ContentXElement element) => particleEmitters = CreateEmitters(element);
+        partial void ParseProjectileDataClient(ProjectilePrefab prefab) => particleEmitters = CreateEmitters(prefab.Element);
 
         private static ParticleEmitter[] CreateEmitters(ContentXElement element)
         {
@@ -29,10 +29,7 @@ namespace VCE_VirtualizedMagazine
         internal static void PlayTrace(VirtualShotTrace shot)
         {
             if (GameMain.Client is not { MidRoundSyncing: false } || GameMain.GameSession == null) { return; }
-            var element = ElementHelper.GetFirstComponentElementByID<Projectile>(shot.Round.Ammo);
-            if (element == null) { return; }
-
-            var emitters = CreateEmitters(element);
+            var emitters = CreateEmitters(ProjectilePrefab.Find(shot.Round.Ammo).Element);
             if (emitters.Length == 0) { return; }
             int skip = shot.Prediction is { } key
                 ? OwnerTraceHistory.Claim(shot.Round.ProjectileId, key, shot.FirstRay, shot.Ends.Length)
@@ -54,13 +51,10 @@ namespace VCE_VirtualizedMagazine
         {
             if (lastImpactRound != impact.Round)
             {
-                var element = ElementHelper.GetFirstComponentElementByID<Projectile>(impact.Round.Ammo);
-                if (element == null) { return; }
                 // Keep the live magazine's effects intact, including when it has already emptied.
                 impactEffects = ammoIdentifier == impact.Round.Ammo
                     ? statusEffectLists.Values.SelectMany(list => list).ToArray()
-                    : element.Elements().Where(e => e.Name.LocalName.Equals("statuseffect", StringComparison.OrdinalIgnoreCase))
-                        .Select(e => StatusEffect.Load(e, item.Name + ", " + GetType().Name)).ToArray();
+                    : ProjectilePrefab.Find(impact.Round.Ammo).For(item).StatusEffects.Values.SelectMany(list => list).ToArray();
                 lastImpactRound = impact.Round;
             }
 

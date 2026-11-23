@@ -34,6 +34,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\MagazineUtil\MagazineFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\MagazineUtil\MagazineLoader.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\MagazineUtil\MagazinePrefab.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\ProjectilePrefab.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\VirtualizedMagazine.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\VirtualizedProjectile.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SharedSource\VirtualizedMagazine\VirtualShotNetwork.cs" />

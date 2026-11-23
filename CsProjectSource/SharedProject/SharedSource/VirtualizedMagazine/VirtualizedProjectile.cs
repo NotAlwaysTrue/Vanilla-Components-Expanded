@@ -1,19 +1,12 @@
 using Barotrauma.Items.Components;
 using FarseerPhysics;
 using FarseerPhysics.Dynamics;
-using System.Reflection.Metadata.Ecma335;
-using System.Xml.Linq;
 using Voronoi2;
 
 namespace VCE_VirtualizedMagazine
 {
     public partial class VirtualizedProjectile : Projectile
     {
-        private const string projectileXML = 
-            "<Projectile>"+
-                "<Attack />"+
-            "</Projectile>";
-        private static readonly ContentXElement projectileContentXElement = new(null, XElement.Parse(projectileXML));
         public VirtualizedProjectile(Item item, ContentXElement element) : base(item, element) { }
 
         private Identifier ammoIdentifier;
@@ -21,57 +14,51 @@ namespace VCE_VirtualizedMagazine
         private uint shotSequence;
 #endif
 
-        public void ParseProjectileData(ContentXElement element) =>
-            ParseProjectileData(element, element?.Parent?.GetAttributeIdentifier("identifier", Identifier.Empty) ?? Identifier.Empty);
+        public void ParseProjectileData(ContentXElement? element) =>
+            ParseProjectileData(ProjectilePrefab.Get(element), element?.Parent?.GetAttributeIdentifier("identifier", Identifier.Empty) ?? Identifier.Empty);
 
-        internal void ParseProjectileData(ContentXElement element, Identifier ammo)
+        internal void ParseProjectileData(ContentXElement? element, Identifier ammo) =>
+            ParseProjectileData(ProjectilePrefab.Get(element), ammo);
+
+        /// <summary>Parses/loads the data of an ammo item identifier (resolved through <see cref="ProjectilePrefab.Find"/>).</summary>
+        internal void ParseProjectileData(Identifier ammo) =>
+            ParseProjectileData(ProjectilePrefab.Find(ammo), ammo);
+
+        /// <summary>
+        /// Applies the parsed prefab to this component. Only values are copied here: the XML is parsed once per ammo
+        /// type by <see cref="ProjectilePrefab"/>, and the stateful parts (attack, status effects) once per item.
+        /// </summary>
+        private void ParseProjectileData(ProjectilePrefab prefab, Identifier ammo)
         {
             ammoIdentifier = ammo;
-            if (element == null) { element = projectileContentXElement; }
 
-            Attack = null;
+            var data = prefab.For(item);
+
+            // Parsing used to build a fresh Attack, so the XML's own multiplier was in effect until the next shot.
+            if (data.Attack != null) { data.Attack.DamageMultiplier = data.BaseDamageMultiplier; }
+            Attack = data.Attack;
             statusEffectLists.Clear();
-
-            foreach (var subElement in element.Elements())
+            foreach (var (type, effects) in data.StatusEffects)
             {
-                switch (subElement.Name.ToString().ToLowerInvariant())
-                {
-                    case "attack":
-                        Attack = new Attack(subElement, item.Name + ", Projectile", item);
-                        continue;
-                    case "statuseffect":
-                        LoadStatusEffect(subElement);
-                        continue;
-                }
+                statusEffectLists[type] = effects;
             }
 
             Hitscan = true;
             RemoveOnHit = false;
-            HitScanCount = element.GetAttributeInt("hitscancount", 1);
-            MaxTargetsToHit = element.GetAttributeInt("maxtargetstohit", 1);
+            HitScanCount = prefab.HitScanCount;
+            MaxTargetsToHit = prefab.MaxTargetsToHit;
 
-            Spread = element.GetAttributeFloat("spread", 0f);
-            StaticSpread = element.GetAttributeBool("staticspread", false);
+            Spread = prefab.Spread;
+            StaticSpread = prefab.StaticSpread;
 
-            FriendlyFire = element.GetAttributeBool("friendlyfire", true);
-            DamageDoors = element.GetAttributeBool("damagedoors", false);
-            DamageUser = element.GetAttributeBool("damageuser", false);
+            FriendlyFire = prefab.FriendlyFire;
+            DamageDoors = prefab.DamageDoors;
+            DamageUser = prefab.DamageUser;
 
-            GoThroughLightTargets = element.GetAttributeBool("gothroughlighttargets", false);
-            LightTargetMassThreshold = element.GetAttributeFloat("lighttargetmassthreshold", -1f);
+            GoThroughLightTargets = prefab.GoThroughLightTargets;
+            LightTargetMassThreshold = prefab.LightTargetMassThreshold;
 
-            ParseProjectileDataClient(element);
-
-            void LoadStatusEffect(ContentXElement subElement)
-            {
-                var statusEffect = StatusEffect.Load(subElement, item.Name + ", " + GetType().Name);
-                if (!statusEffectLists.TryGetValue(statusEffect.Type, out List<StatusEffect> effectList))
-                {
-                    effectList = new List<StatusEffect>();
-                    statusEffectLists.Add(statusEffect.Type, effectList);
-                }
-                effectList.Add(statusEffect);
-            }
+            ParseProjectileDataClient(prefab);
         }
 
 
@@ -80,7 +67,7 @@ namespace VCE_VirtualizedMagazine
         private Submarine launchSubmarine;
 
         partial void PlayHitSoundClient(ActionType conditionalActionType);
-        partial void ParseProjectileDataClient(ContentXElement element);
+        partial void ParseProjectileDataClient(ProjectilePrefab prefab);
 
         public new void Shoot(Character user, Vector2 weaponPos, Vector2 spawnPos, float rotation, List<Body> ignoredBodies,
             bool createNetworkEvent, float damageMultiplier = 1f, float launchImpulseModifier = 0f)
