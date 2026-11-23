@@ -2,7 +2,8 @@ using Barotrauma.Plugins;
 
 namespace VCE_VirtualizedMagazine;
 
-internal record struct FiredRound : INetSerializableStruct
+// LuaCs collision patches must be able to box this method argument.
+public record struct FiredRound : INetSerializableStruct
 {
     [NetworkSerialize] public ushort ProjectileId { get; set; }
     [NetworkSerialize] public uint Sequence { get; set; }
