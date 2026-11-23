@@ -338,6 +338,7 @@ namespace VCE_VirtualizedMagazine
             if (IgnoredBodies != null && IgnoredBodies.Contains(target.Body)) { return false; }
             if (target.CollisionCategories == Physics.CollisionCharacter && target.Body.UserData is Character) { return false; }
 
+            bool isAuthoritative = GameMain.NetworkMember == null || GameMain.NetworkMember.IsServer;
             Character character = null;
 
             if (target.Body.UserData is Submarine && target.UserData is not Barotrauma.Item)
@@ -350,8 +351,11 @@ namespace VCE_VirtualizedMagazine
                 if (ShouldIgnoreCharacterCollision(limb.character)) { return false; }
                 if (!hitLimbs.Add(limb)) { return false; }
 
-                limb.character.LastDamageSource = Item;
-                if (Attack != null) { Attack.DoDamageToLimb(User ?? Attacker, limb, worldPosition, 1.0f); }
+                if (isAuthoritative)
+                {
+                    limb.character.LastDamageSource = Item;
+                    Attack?.DoDamageToLimb(User ?? Attacker, limb, worldPosition, 1.0f);
+                }
                 character = limb.character;
             }
             else if ((target.Body.UserData as Item ?? (target.Body.UserData as ItemComponent)?.Item ?? target.UserData as Item) is Item targetItem)
@@ -359,7 +363,7 @@ namespace VCE_VirtualizedMagazine
                 if (targetItem.Removed) { return false; }
                 if (target.UserData is Barotrauma.Item && targetItem.Submarine != null && targetItem.Submarine == Launcher?.Submarine) { return false; }
 
-                if (Attack != null &&
+                if (isAuthoritative && Attack != null &&
                     (targetItem.Prefab.DamagedByProjectiles || (DamageDoors && targetItem.GetComponent<Door>() != null)) &&
                     targetItem.Condition > 0)
                 {
@@ -368,12 +372,12 @@ namespace VCE_VirtualizedMagazine
             }
             else if (target.Body.UserData is IDamageable damageable)
             {
-                if (Attack != null)
+                if (isAuthoritative && Attack != null)
                 {
                     Attack.DoDamage(User ?? Attacker, damageable, worldPosition, 1.0f);
                 }
             }
-            else if (target.Body.UserData is VoronoiCell voronoiCell && voronoiCell.IsDestructible &&
+            else if (isAuthoritative && target.Body.UserData is VoronoiCell voronoiCell && voronoiCell.IsDestructible &&
                      Attack != null && Math.Abs(Attack.LevelWallDamage) > 0.0f)
             {
                 if (Level.Loaded?.ExtraWalls.Find(w => w.Body == target.Body) is DestructibleLevelWall destructibleWall)
@@ -382,7 +386,7 @@ namespace VCE_VirtualizedMagazine
                 }
             }
 
-            if (character != null) { character.LastDamageSource = Item; }
+            if (isAuthoritative && character != null) { character.LastDamageSource = Item; }
 
             ActionType conditionalActionType = ActionType.OnSuccess;
             if (User != null && Rand.Range(0.0f, 0.5f) > DegreeOfSuccess(User))
@@ -392,7 +396,7 @@ namespace VCE_VirtualizedMagazine
 
             PlayHitSoundClient(conditionalActionType);
 
-            if (GameMain.NetworkMember == null || GameMain.NetworkMember.IsServer)
+            if (isAuthoritative)
             {
                 if (target.Body.UserData is Limb targetLimb)
                 {
