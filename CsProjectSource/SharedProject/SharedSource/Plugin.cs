@@ -24,13 +24,14 @@ public partial class VCEPlugin : IBarotraumaPlugin
     public static readonly IContentFileRegistrar ContentFileRegistrar = PluginServiceProvider.GetService<IContentFileRegistrar>();
     public static readonly IItemComponentRegistrar ItemComponentRegistrar = PluginServiceProvider.GetService<IItemComponentRegistrar>();
 
+    internal static BooleanSetting NightVisionAmbient { get; private set; } = null!;
     private static Harmony harmony;
 
     private static readonly Type[] ictypes =
     {
         typeof(SwitchableRangedWeapon), typeof(BackpackFedWeapon), typeof(TrajectoryCalculator),
         typeof(VirtualizedMagazine), typeof(VirtualizedMagazineFactory), typeof(VirtualizedMagazineLoader), typeof(VirtualizedProjectile), typeof(VirtualizedAmmoStorage),
-        typeof(VCE_Airburst.AirburstProjectile),
+        typeof(VCE_Airburst.AirburstProjectile), typeof(VCE_NightVision.NightVision),
         typeof(VCE_Guidance.GuidedProjectile), typeof(VCE_Guidance.GuidanceDataLink),
         typeof(VCE_Guidance.GuidanceThruster), typeof(VCE_Guidance.CentralFireControl),
         typeof(ActiveProtectionSystem), typeof(AmmoLoader)
@@ -45,6 +46,13 @@ public partial class VCEPlugin : IBarotraumaPlugin
         VirtualShotNetwork.Register();
         VCE_Airburst.AirburstNetwork.Register();
         VCE_Guidance.GuidanceDataLink.Register();
+        var ambient = new BooleanSetting("vce.nightvision.ambient".ToIdentifier(), true, TextManager.Get("vce.nightvision.ambient"))
+        {
+            ShowInUI = true,
+            SyncMode = SettingSyncMode.ServerAuthority
+        };
+        SettingsService.RegisterSetting(ambient);
+        NightVisionAmbient = SettingsService.RetrieveSetting<BooleanSetting>(ambient.Identifier);
         InitProjectSpecific();
     }
 
@@ -74,6 +82,7 @@ public partial class VCEPlugin : IBarotraumaPlugin
         HookService.RegisterHook<PluginRoundEndedDelegate>(APSHooks.OnRoundEnded);
 #if CLIENT
         HookService.RegisterHook<PluginRoundEndedDelegate>(OwnerTraceHistory.Clear);
+        HookService.RegisterHook<PluginRoundEndedDelegate>(VCE_NightVision.NightVisionRenderer.EndRound);
 #endif
     }
 
@@ -83,6 +92,8 @@ public partial class VCEPlugin : IBarotraumaPlugin
         HookService.DeregisterHook<PluginRoundEndedDelegate>(APSHooks.OnRoundEnded);
 #if CLIENT
         HookService.DeregisterHook<PluginRoundEndedDelegate>(OwnerTraceHistory.Clear);
+        HookService.DeregisterHook<PluginRoundEndedDelegate>(VCE_NightVision.NightVisionRenderer.EndRound);
+        VCE_NightVision.NightVisionRenderer.Reset();
 #endif
     }
 }

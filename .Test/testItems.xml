@@ -78,4 +78,16 @@
     <GuidanceDataLink role="Receiver" channel="test" />
     <GuidanceThruster maxthrust="3" fuelconsumption="2" />
   </Item>
+  <Item identifier="vcenightvisiontest" name="" category="Equipment" tags="smallitem" scale="0.5">
+    <InventoryIcon texture="Content/Items/JobGear/TalentGear.png" sourcerect="0,224,63,31" />
+    <Sprite texture="Content/Items/JobGear/TalentGear.png" sourcerect="0,224,63,31" depth="0.55" />
+    <Body width="70" height="24" density="15" />
+    <Wearable slots="Any,Head">
+      <sprite texture="Content/Items/JobGear/TalentGear.png" limb="Head" inheritlimbdepth="true" inheritscale="true" ignorelimbscale="true" scale="0.65" sourcerect="1,192,64,31" origin="0.4,0.5" />
+    </Wearable>
+    <NightVision gain="2.5" ambientboost="0.25" bloom="0.15" thermalMode="Off" />
+  </Item>
+  <Item identifier="vcenightvisionlamp" name="" variantof="lamp">
+    <LightComponent powerconsumption="0" range="1400" />
+  </Item>
 </Items>

@@ -72,4 +72,9 @@
   <vce.ammoloader.upload>上传</vce.ammoloader.upload>
   <vce.ammoloader.uploadhint>把本地预设上传到预设列表</vce.ammoloader.uploadhint>
   <vce.ammoloader.localpreset>本地预设 | 尚未加入列表</vce.ammoloader.localpreset>
+  <entityname.vcenightvisiontest>VCE 测试夜视仪</entityname.vcenightvisiontest>
+  <entitydescription.vcenightvisiontest>佩戴后开启夜视。</entitydescription.vcenightvisiontest>
+  <entityname.vcenightvisionlamp>VCE 测试舱灯</entityname.vcenightvisionlamp>
+  <entitydescription.vcenightvisionlamp>可切换明暗，用于对比夜视效果。</entitydescription.vcenightvisionlamp>
+  <vce.nightvision.ambient>允许夜视仪提高环境光</vce.nightvision.ambient>
 </infotexts>
