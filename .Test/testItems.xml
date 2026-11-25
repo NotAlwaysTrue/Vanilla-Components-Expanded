@@ -54,4 +54,13 @@
     <VirtualizedAmmoStorage projectileidentifier="shotgunshellblunt" />
     <Holdable slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect" />
   </Item>
+  <Item identifier="vceairbursttestgun" name="VCE Airburst Test Gun" variantof="revolver" />
+  <Item identifier="vceairbursttestround" name="VCE Airburst Test Round" category="Weapon" tags="smallitem,revolverammo,handheldammo">
+    <Sprite texture="Content/Items/Weapons/weapons_new.png" sourcerect="146,157,21,44" depth="0.54" />
+    <Body width="6" height="3" density="10" />
+    <Pickable slots="Any" />
+    <AirburstProjectile launchimpulse="40" removeonhit="true" maxlifetime="15">
+      <StatusEffect type="OnImpact" target="This"><Explosion range="150" force="5"><Affliction identifier="explosiondamage" strength="10" /></Explosion></StatusEffect>
+    </AirburstProjectile>
+  </Item>
 </Items>

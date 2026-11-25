@@ -30,6 +30,7 @@ public partial class VCEPlugin : IBarotraumaPlugin
     {
         typeof(SwitchableRangedWeapon), typeof(BackpackFedWeapon), typeof(TrajectoryCalculator),
         typeof(VirtualizedMagazine), typeof(VirtualizedMagazineFactory), typeof(VirtualizedMagazineLoader), typeof(VirtualizedProjectile), typeof(VirtualizedAmmoStorage),
+        typeof(VCE_Airburst.AirburstProjectile),
         typeof(ActiveProtectionSystem), typeof(AmmoLoader)
     };
 
@@ -40,6 +41,7 @@ public partial class VCEPlugin : IBarotraumaPlugin
         ContentFileRegistrar.RegisterContentFile<ArmorPrefabFile>();
         ItemComponentRegistrar.RegisterItemComponents(ictypes);
         VirtualShotNetwork.Register();
+        VCE_Airburst.AirburstNetwork.Register();
         InitProjectSpecific();
     }
 

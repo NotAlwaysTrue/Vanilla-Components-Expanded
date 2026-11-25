@@ -9,6 +9,7 @@
     <Import_RootNamespace>SharedSource</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)SharedSource\Airburst\*.cs" />
     <Content Include="$(MSBuildThisFileDirectory)SharedItems.props" />
   </ItemGroup>
   <ItemGroup>
