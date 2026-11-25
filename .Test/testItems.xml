@@ -63,4 +63,19 @@
       <StatusEffect type="OnImpact" target="This"><Explosion range="150" force="5"><Affliction identifier="explosiondamage" strength="10" /></Explosion></StatusEffect>
     </AirburstProjectile>
   </Item>
+  <Item identifier="vceguidancetestgun" name="VCE Guidance Test Gun" variantof="revolver">
+    <GuidanceDataLink role="Publisher" channel="test" manualmode="MLOS" />
+    <CentralFireControl maxrange="8000" illumination="SemiActiveSonar" />
+  </Item>
+  <Item identifier="vceguidancetestround" name="VCE Guided Test Round" category="Weapon" tags="smallitem,revolverammo,handheldammo">
+    <Sprite texture="Content/Items/Weapons/weapons_new.png" sourcerect="146,157,21,44" depth="0.54" />
+    <Body width="6" height="3" density="10" />
+    <Pickable slots="Any" />
+    <GuidedProjectile launchimpulse="15" removeonhit="true">
+      <guidance mode="MLOS|DataLink|ActiveSonar" turnrate="75" maxlifetime="12" />
+      <Attack><Affliction identifier="internaldamage" strength="10" /></Attack>
+    </GuidedProjectile>
+    <GuidanceDataLink role="Receiver" channel="test" />
+    <GuidanceThruster maxthrust="3" fuelconsumption="2" />
+  </Item>
 </Items>
