@@ -1,27 +1,23 @@
 using Barotrauma.Plugins;
+using VanillaComponentsExpanded;
 
 namespace VCE_Airburst;
 
 internal static class AirburstNetwork
 {
-    private enum Header { AimDistance }
     public struct Aim : INetSerializableStruct
     {
         [NetworkSerialize] public ushort ItemId { get; set; }
         [NetworkSerialize] public ushort ShooterId { get; set; }
         [NetworkSerialize] public float Range { get; set; }
     }
-    private static readonly IGameNetwork network = PluginServiceProvider.GetService<IGameNetwork>();
-    internal static void Register()
-    {
-        network.RegisterNetworkHeaders<Header>();
 #if SERVER
-        network.RegisterHandler<Header, Aim>(Header.AimDistance, Receive);
+    internal static void RegisterHandler() =>
+        VCEPlugin.Network.RegisterHandler<VceNetworkHeader, Aim>(VceNetworkHeader.AirburstAimDistance, Receive);
 #endif
-    }
 #if CLIENT
     internal static void Send(ushort item, ushort shooter, float range) =>
-        network.Send(Header.AimDistance, new Aim { ItemId = item, ShooterId = shooter, Range = range });
+        VCEPlugin.Network.Send(VceNetworkHeader.AirburstAimDistance, new Aim { ItemId = item, ShooterId = shooter, Range = range });
 #else
     // Bind early reports to the ammo instance. Removal/round teardown releases the entry.
     private sealed record Pending(ushort Shooter, float Range, double Until);

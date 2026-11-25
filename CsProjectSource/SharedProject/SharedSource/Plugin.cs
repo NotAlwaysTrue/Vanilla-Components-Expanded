@@ -15,9 +15,17 @@ using VCE_VirtualizedMagazine;
 
 namespace VanillaComponentsExpanded;
 
+internal enum VceNetworkHeader
+{
+    Trace = 0,
+    Impact = 1,
+    AirburstAimDistance = 2,
+    GuidanceCursor = 3
+}
 
 public partial class VCEPlugin : IBarotraumaPlugin
 {
+    internal static readonly IGameNetwork Network = PluginServiceProvider.GetService<IGameNetwork>();
     public static readonly IDebugConsole DebugConsole = PluginServiceProvider.GetService<IDebugConsole>();
     public static readonly ISimpleHookService HookService = PluginServiceProvider.GetService<ISimpleHookService>();
     public static readonly ISettingsService SettingsService = PluginServiceProvider.GetService<ISettingsService>();
@@ -43,9 +51,13 @@ public partial class VCEPlugin : IBarotraumaPlugin
         ContentFileRegistrar.RegisterContentFile<MagazinePrefabFile>();
         ContentFileRegistrar.RegisterContentFile<ArmorPrefabFile>();
         ItemComponentRegistrar.RegisterItemComponents(ictypes);
-        VirtualShotNetwork.Register();
-        VCE_Airburst.AirburstNetwork.Register();
-        VCE_Guidance.GuidanceDataLink.Register();
+        Network.RegisterNetworkHeaders<VceNetworkHeader>();
+#if CLIENT
+        VirtualShotNetwork.RegisterHandlers();
+#else
+        VCE_Airburst.AirburstNetwork.RegisterHandler();
+        VCE_Guidance.GuidanceDataLink.RegisterHandler();
+#endif
         var ambient = new BooleanSetting("vce.nightvision.ambient".ToIdentifier(), true, TextManager.Get("vce.nightvision.ambient"))
         {
             ShowInUI = true,

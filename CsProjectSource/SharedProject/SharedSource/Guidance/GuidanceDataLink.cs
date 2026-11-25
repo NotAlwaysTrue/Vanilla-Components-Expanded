@@ -1,5 +1,6 @@
 using Barotrauma.Items.Components;
 using Barotrauma.Plugins;
+using VanillaComponentsExpanded;
 
 namespace VCE_Guidance;
 
@@ -51,18 +52,15 @@ public sealed class GuidanceDataLink : ItemComponent
         return best;
     }
 
-    private enum Header { Aim }
     public struct Cursor : INetSerializableStruct
     {
         [NetworkSerialize] public ushort Device { get; set; }
         [NetworkSerialize] public Vector2 Position { get; set; }
     }
-    private static readonly IGameNetwork Network = PluginServiceProvider.GetService<IGameNetwork>();
-    internal static void Register()
-    {
-        Network.RegisterNetworkHeaders<Header>();
 #if SERVER
-        Network.RegisterHandler<Header, Cursor>(Header.Aim, (data, client) =>
+    internal static void RegisterHandler()
+    {
+        VCEPlugin.Network.RegisterHandler<VceNetworkHeader, Cursor>(VceNetworkHeader.GuidanceCursor, (data, client) =>
         {
             if (Entity.FindEntityByID(data.Device) is Item device &&
                 device.GetComponent<GuidanceDataLink>() is { } link &&
@@ -73,8 +71,8 @@ public sealed class GuidanceDataLink : ItemComponent
                 link.nextAim = Timing.TotalTime + 0.045;
             }
         });
-#endif
     }
+#endif
     private bool OperatedBy(Character c) => role != Role.Receiver && !c.IsDead && item.Condition > 0 &&
         (c.SelectedItem == item || c.HeldItems.Contains(item) && c.IsKeyDown(InputType.Aim));
 
@@ -87,7 +85,7 @@ public sealed class GuidanceDataLink : ItemComponent
         nextAim = Timing.TotalTime + 0.1;
         if (Character.Controlled is not { } c || !OperatedBy(c)) return;
         if (GameMain.Client == null) SetAim(c.CursorWorldPosition);
-        else Network.Send(Header.Aim, new Cursor { Device = item.ID, Position = c.CursorWorldPosition });
+        else VCEPlugin.Network.Send(VceNetworkHeader.GuidanceCursor, new Cursor { Device = item.ID, Position = c.CursorWorldPosition });
     }
 #endif
     public override void ReceiveSignal(Signal signal, Connection connection)
