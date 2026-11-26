@@ -20,7 +20,9 @@ public sealed class GuidedProjectile : Projectile
     private GuidanceDataLink? link, source;
     private Entity? lockTarget;
     private Character? shooter;
-    private Vector2? launchOffsetFromShooter;
+    private const double ShooterCheckInterval = 0.5;
+    private double nextShooterCheck = double.PositiveInfinity;
+    private bool previousShooterCheckWasClear;
     private Submarine? launchSub;
 
     public GuidedProjectile(Item item, ContentXElement element) : base(item, element)
@@ -52,9 +54,9 @@ public sealed class GuidedProjectile : Projectile
     public override void DoLaunch(Vector2 impulse)
     {
         shooter = User;
-        // Dropping the item in the base launch temporarily moves it away from its muzzle position.
-        launchOffsetFromShooter = shooter != null && !DamageUser && IgnoredBodies is { Count: > 0 }
-            ? PositionInShooterFrame(shooter) - shooter.SimPosition : null;
+        previousShooterCheckWasClear = false;
+        nextShooterCheck = shooter != null && !DamageUser && IgnoredBodies is { Count: > 0 }
+            ? Timing.TotalTimeUnpaused + ShooterCheckInterval : double.PositiveInfinity;
         base.DoLaunch(impulse);
         if (GameMain.NetworkMember is { IsClient: true }) return;
         launchSub = Launcher?.Submarine ?? shooter?.Submarine;
@@ -70,57 +72,40 @@ public sealed class GuidedProjectile : Projectile
         SetRoute(authoredRoute, relative);
     }
 
-    private Vector2 PositionInShooterFrame(Character owner) =>
-        item.Submarine == owner.Submarine ? item.SimPosition :
-        item.SimPosition + ((item.Submarine?.SimPosition ?? Vector2.Zero) - (owner.Submarine?.SimPosition ?? Vector2.Zero));
-
-    private void UpdateShooterClearance(Vector2 launchOffset)
+    private void CheckShooterClearance()
     {
+        nextShooterCheck = double.PositiveInfinity;
         if (shooter is not { Removed: false } owner || IgnoredBodies is not { Count: > 0 } ||
-            item.ParentInventory != null || removePending || IsStuckToTarget)
+            item.ParentInventory != null || removePending || IsStuckToTarget) return;
+
+        bool outside = !OverlapsShooter(owner);
+        if (outside && previousShooterCheckWasClear)
         {
-            launchOffsetFromShooter = null;
+            // Keep held-item pushers, server-side lag compensation bodies and other launch exclusions.
+            IgnoredBodies.RemoveAll(body => body.UserData == owner ||
+                body.UserData is Limb limb && limb.character == owner && limb.body.FarseerBody == body);
             return;
         }
 
-        Vector2 round = PositionInShooterFrame(owner);
-        Vector2 departure = (round - owner.SimPosition) - launchOffset;
-        if (departure.LengthSquared() <= Settings.LinearSlop * Settings.LinearSlop) return;
-        Vector2 direction = Vector2.Normalize(departure);
-        float radius = item.body.GetMaxExtent() + Settings.LinearSlop;
+        previousShooterCheckWasClear = outside;
+        nextShooterCheck = Timing.TotalTimeUnpaused + ShooterCheckInterval;
+    }
 
-        // Require a separating plane behind the entire round and ahead of every live body.
-        // A gap between the arms and feet at launch is still inside this envelope.
-        bool HasCleared(PhysicsBody body)
+    private bool OverlapsShooter(Character owner)
+    {
+        Vector2 roundPosition = item.WorldPosition;
+        float roundRadius = item.body.GetMaxExtent();
+
+        bool Overlaps(PhysicsBody body, Vector2 worldPosition)
         {
-            if (!body.FarseerBody.Enabled) return true;
-            foreach (var fixture in body.FarseerBody.FixtureList)
-            {
-                if (fixture.IsSensor) continue;
-                for (int child = 0; child < fixture.ProxyCount; ++child)
-                {
-                    fixture.GetAABB(out var bounds, child);
-                    var front = new Vector2(direction.X >= 0 ? bounds.UpperBound.X : bounds.LowerBound.X,
-                                            direction.Y >= 0 ? bounds.UpperBound.Y : bounds.LowerBound.Y);
-                    if (Vector2.Dot(round - front, direction) <= radius) return false;
-                }
-            }
-            return true;
+            float radius = ConvertUnits.ToDisplayUnits(roundRadius + body.GetMaxExtent());
+            return body.Enabled && Vector2.DistanceSquared(roundPosition, worldPosition) <= radius * radius;
         }
 
-        var ragdoll = owner.AnimController;
-        if (!HasCleared(ragdoll.Collider)) return;
-        foreach (var limb in ragdoll.Limbs)
-            if (!limb.IsSevered && !HasCleared(limb.body)) return;
-
-        // Keep held-item pushers, server-side lag compensation bodies and other launch exclusions.
-        for (int i = IgnoredBodies.Count - 1; i >= 0; --i)
-        {
-            var body = IgnoredBodies[i];
-            if (body.UserData == owner || body.UserData is Limb limb && limb.character == owner && limb.body.FarseerBody == body)
-                IgnoredBodies.RemoveAt(i);
-        }
-        launchOffsetFromShooter = null;
+        if (Overlaps(owner.AnimController.Collider, owner.WorldPosition)) return true;
+        foreach (var limb in owner.AnimController.Limbs)
+            if (!limb.IsSevered && Overlaps(limb.body, limb.WorldPosition)) return true;
+        return false;
     }
 
     private void SetRoute(Vector2[] points, bool offset)
@@ -139,7 +124,7 @@ public sealed class GuidedProjectile : Projectile
 
     public override void Update(float deltaTime, Camera cam)
     {
-        if (launchOffsetFromShooter is { } offset) UpdateShooterClearance(offset);
+        if (Timing.TotalTimeUnpaused >= nextShooterCheck) CheckShooterClearance();
         bool hit = impactQueue.Count > 0;
         base.Update(deltaTime, cam);
         if (!flying) return;
