@@ -20,6 +20,7 @@ public sealed class GuidedProjectile : Projectile
     private GuidanceDataLink? link, source;
     private Entity? lockTarget;
     private Character? shooter;
+    private Vector2? launchOffsetFromShooter;
     private Submarine? launchSub;
 
     public GuidedProjectile(Item item, ContentXElement element) : base(item, element)
@@ -50,9 +51,12 @@ public sealed class GuidedProjectile : Projectile
 
     public override void DoLaunch(Vector2 impulse)
     {
+        shooter = User;
+        // Dropping the item in the base launch temporarily moves it away from its muzzle position.
+        launchOffsetFromShooter = shooter != null && !DamageUser && IgnoredBodies is { Count: > 0 }
+            ? PositionInShooterFrame(shooter) - shooter.SimPosition : null;
         base.DoLaunch(impulse);
         if (GameMain.NetworkMember is { IsClient: true }) return;
-        shooter = User;
         launchSub = Launcher?.Submarine ?? shooter?.Submarine;
         link = item.GetComponent<GuidanceDataLink>();
         motor = item.GetComponent<GuidanceThruster>();
@@ -64,6 +68,59 @@ public sealed class GuidedProjectile : Projectile
         source = null;
         lastRoute = [];
         SetRoute(authoredRoute, relative);
+    }
+
+    private Vector2 PositionInShooterFrame(Character owner) =>
+        item.Submarine == owner.Submarine ? item.SimPosition :
+        item.SimPosition + ((item.Submarine?.SimPosition ?? Vector2.Zero) - (owner.Submarine?.SimPosition ?? Vector2.Zero));
+
+    private void UpdateShooterClearance(Vector2 launchOffset)
+    {
+        if (shooter is not { Removed: false } owner || IgnoredBodies is not { Count: > 0 } ||
+            item.ParentInventory != null || removePending || IsStuckToTarget)
+        {
+            launchOffsetFromShooter = null;
+            return;
+        }
+
+        Vector2 round = PositionInShooterFrame(owner);
+        Vector2 departure = (round - owner.SimPosition) - launchOffset;
+        if (departure.LengthSquared() <= Settings.LinearSlop * Settings.LinearSlop) return;
+        Vector2 direction = Vector2.Normalize(departure);
+        float radius = item.body.GetMaxExtent() + Settings.LinearSlop;
+
+        // Require a separating plane behind the entire round and ahead of every live body.
+        // A gap between the arms and feet at launch is still inside this envelope.
+        bool HasCleared(PhysicsBody body)
+        {
+            if (!body.FarseerBody.Enabled) return true;
+            foreach (var fixture in body.FarseerBody.FixtureList)
+            {
+                if (fixture.IsSensor) continue;
+                for (int child = 0; child < fixture.ProxyCount; ++child)
+                {
+                    fixture.GetAABB(out var bounds, child);
+                    var front = new Vector2(direction.X >= 0 ? bounds.UpperBound.X : bounds.LowerBound.X,
+                                            direction.Y >= 0 ? bounds.UpperBound.Y : bounds.LowerBound.Y);
+                    if (Vector2.Dot(round - front, direction) <= radius) return false;
+                }
+            }
+            return true;
+        }
+
+        var ragdoll = owner.AnimController;
+        if (!HasCleared(ragdoll.Collider)) return;
+        foreach (var limb in ragdoll.Limbs)
+            if (!limb.IsSevered && !HasCleared(limb.body)) return;
+
+        // Keep held-item pushers, server-side lag compensation bodies and other launch exclusions.
+        for (int i = IgnoredBodies.Count - 1; i >= 0; --i)
+        {
+            var body = IgnoredBodies[i];
+            if (body.UserData == owner || body.UserData is Limb limb && limb.character == owner && limb.body.FarseerBody == body)
+                IgnoredBodies.RemoveAt(i);
+        }
+        launchOffsetFromShooter = null;
     }
 
     private void SetRoute(Vector2[] points, bool offset)
@@ -82,6 +139,7 @@ public sealed class GuidedProjectile : Projectile
 
     public override void Update(float deltaTime, Camera cam)
     {
+        if (launchOffsetFromShooter is { } offset) UpdateShooterClearance(offset);
         bool hit = impactQueue.Count > 0;
         base.Update(deltaTime, cam);
         if (!flying) return;
