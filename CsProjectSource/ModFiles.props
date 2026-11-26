@@ -1,0 +1,101 @@
+<Project>
+
+  <!--
+    Keeps the package files that Barotrauma reads from the mod root in sync with the build:
+
+      PluginInfo.xml : fully regenerated from $(ModName) and the bin\<Platform>\<Client|Server>\ layout.
+                       Do not edit it by hand - it is overwritten on every build.
+      filelist.xml   : the %ModName% token is replaced with $(ModName). Everything else is left untouched.
+  -->
+
+  <UsingTask TaskName="GenerateModPackageFiles" TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <ModName ParameterType="System.String" Required="true" />
+      <PluginInfoPath ParameterType="System.String" Required="true" />
+      <FileListPath ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+
+    <Task>
+      <Code Type="Fragment" Language="cs">
+<![CDATA[
+char pct = (char)37;
+string modDir = pct + "ModDir" + pct;
+string modNameToken = pct + "ModName" + pct;
+
+var sb = new System.Text.StringBuilder();
+sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>").Append('\n');
+sb.Append("<PluginInfos notsyncedinmultiplayer=\"false\" >").Append('\n');
+string[] platforms = new string[] { "Windows", "Linux", "Mac" };
+string[] targets = new string[] { "Server", "Client" };
+foreach (string platform in platforms)
+{
+    foreach (string target in targets)
+    {
+        sb.Append(string.Format(
+            "  <MainAssemblyInfo assemblypath=\"{0}/bin/{1}/{2}/{3}{2}.dll\" platforms=\"{1}\" targets=\"{2}\" />",
+            modDir, platform, target, ModName)).Append('\n');
+    }
+
+    if (platform != platforms[platforms.Length - 1]) sb.Append('\n');
+}
+sb.Append("</PluginInfos>").Append('\n');
+
+string pluginInfo = sb.ToString();
+string fileList = null;
+if (System.IO.File.Exists(FileListPath))
+{
+    string current = System.IO.File.ReadAllText(FileListPath);
+
+    // Keep <ContentPackage name="..."> in sync with $(ModName); the rest of the file is preserved.
+    var nameAttribute = new System.Text.RegularExpressions.Regex("(<ContentPackage\\b[^>]*?\\bname=\")[^\"]*(\")");
+    string updated = nameAttribute.Replace(current, delegate (System.Text.RegularExpressions.Match match)
+    {
+        return match.Groups[1].Value + ModName + match.Groups[2].Value;
+    });
+
+    updated = updated.Replace(modNameToken, ModName);
+    if (updated != current) fileList = updated;
+}
+
+System.Action<string, string> save = delegate (string path, string text)
+{
+    if (text == null) return;
+
+    if (System.IO.File.Exists(path) &&
+        System.IO.File.ReadAllText(path).Replace("\r\n", "\n") == text.Replace("\r\n", "\n"))
+    {
+        return;
+    }
+
+    for (int attempt = 0; attempt < 5; attempt++)
+    {
+        try
+        {
+            System.IO.File.WriteAllText(path, text, new System.Text.UTF8Encoding(false));
+            return;
+        }
+        catch (System.IO.IOException)
+        {
+            System.Threading.Thread.Sleep(100);
+        }
+    }
+
+    Log.LogWarning("Could not update " + path + ": the file is locked by another process.");
+};
+
+save(PluginInfoPath, pluginInfo);
+save(FileListPath, fileList);
+]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="GenerateModPackageFiles" BeforeTargets="BeforeBuild"
+          Condition="'$(ModName)' != '' and '$(DesignTimeBuild)' != 'true'">
+    <GenerateModPackageFiles ModName="$(ModName)"
+                             PluginInfoPath="$(PluginInfoPath)"
+                             FileListPath="$(FileListPath)" />
+  </Target>
+
+</Project>

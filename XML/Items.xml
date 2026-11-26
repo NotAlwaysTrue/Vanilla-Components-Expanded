@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Items>
+  <!--
   <Item name="" identifier="vceluacomponent" category="Electrical" tags="" linkable="true" allowedlinks="structure,item" spritecolor="100,100,255,255" inventoryiconcolor="100,100,255,255" resizehorizontal="true" resizevertical="true">
     <Sprite texture="%ModDir%/XML/LuaComp.png" depth="0.850" sourcerect="0,0,32,26" />
     <LuaComponent />
@@ -71,5 +72,59 @@
       <output name="signal_out31" displayname="connection.signaloutx~[num]=31" />
       <output name="signal_out32" displayname="connection.signaloutx~[num]=32" />
     </ConnectionPanel>
+  </Item>
+  -->
+
+  <Item name="" identifier="VCE_VirtualizedProjectile" category="Weapon" maxstacksize="1" interactthroughwalls="true" cargocontaineridentifier="metalcrate" tags="" impactsoundtag="impact_metal_light" hideinmenus="true" scale="0.5">
+    <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="0,0,1,1" origin="0.5,0.5" />
+    <Sprite texture="Content/Items/Weapons/weapons_new.png" sourcerect="0,0,1,1" depth="0.55" origin="0.5,0.5" />
+    <Body width="40" height="14" density="30" />
+    <VirtualizedProjectile characterusable="false" hitscan="true">
+      <StatusEffect type="OnNotContained" target="This" stackable="false">
+        <Remove />
+      </StatusEffect>
+    </VirtualizedProjectile>
+  </Item>
+
+  <Item identifier="wip_vceammoloader" name="" category="Machine" tags="vceammoloader,donttakeitems,dontsellitems" scale="0.5">
+    <Sprite texture="Content/Items/Fabricators/FabricatorsAndDeconstructors.png" sourcerect="0,624,336,400" depth="0.8" />
+    <AmmoLoader inputcontainerindex="0" outputcontainerindex="1" targetcontainerindex="2" canbeselected="true" msg="ItemMsgInteractSelect">
+      <GuiFrame relativesize="0.6,0.62" minsize="700,470" anchor="Center" style="ItemUI" />
+    </AmmoLoader>
+    <ItemContainer capacity="1" slotsperrow="1" maxstacksize="1" canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
+      <Containable items="VCE_VirtualizedAmmoStorage" />
+    </ItemContainer>
+    <ItemContainer capacity="1" slotsperrow="1" maxstacksize="1" canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
+      <Containable items="VCE_VirtualizedAmmoStorage,VCE_VirtualizedMagazine" />
+    </ItemContainer>
+    <ItemContainer capacity="4" slotsperrow="1" maxstacksize="64" canbeselected="true" hideitems="true" allowuioverlap="true" uilabel="">
+      <Containable items="VCE_VirtualizedMagazine" />
+    </ItemContainer>
+  </Item>
+
+  <Item name="" identifier="wip_vceportableammoloader" maxstacksize="8" maxstacksizecharacterinventory="2" scale="0.5" category="Weapon" tags="smallitem" impactsoundtag="impact_metal_light">
+    <PreferredContainer primary="assaultrifle" minamount="1" maxamount="1" spawnprobability="1"/>
+    <PreferredContainer primary="armcab" secondary="secarmcab"/>
+    <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="960,960,64,64" />
+    <Sprite texture="Content/Items/Weapons/weapons_new.png" depth="0.54" sourcerect="146,157,21,44" origin="0.5,0.5" />
+    <Body width="28" height="40" density="25" />
+    <VirtualizedMagazineLoader/>
+    <ItemContainer capacity="1" hideitems="true" ContainedStateIndicatorSlot="1">
+      <Containable items="VCE_VirtualizedAmmoStorage" />
+      <SlotIcon slotindex="1" texture="Content/UI/StatusMonitorUI.png" sourcerect="128,448,64,64" origin="0.5,0.5" />
+      <SubContainer capacity="1"  maxstacksize="1">
+        <Containable items="VCE_VirtualizedMagazine" />
+      </SubContainer>
+    </ItemContainer>
+    <CustomInterface canbeselected="false" drawhudwhenequipped="true" allowuioverlap="true">
+      <GuiFrame relativesize="0.15,0.1" anchor="CenterRight" relativeoffset="0,0.1" style="ItemUI" />
+      <IntegerInput text="Amount" targetitemcomponent="VirtualizedMagazineLoader" propertyname="PushAmount" min="1" step="1" GetValueInterval="0.5"/>
+      <Button text="Load">
+        <StatusEffect type="OnUse" target="This">
+          <Use />
+        </StatusEffect>
+      </Button>
+    </CustomInterface>
+    <Holdable canBeCombined="true" slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect"/>
   </Item>
 </Items>

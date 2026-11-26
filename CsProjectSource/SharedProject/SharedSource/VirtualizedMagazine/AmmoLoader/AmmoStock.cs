@@ -1,0 +1,74 @@
+using System.Xml.Linq;
+
+namespace VCE_VirtualizedMagazine;
+
+public sealed class AmmoStock
+{
+    private readonly Dictionary<string, int> counts = new(StringComparer.OrdinalIgnoreCase);
+    public IReadOnlyDictionary<string, int> Counts => counts;
+    public int this[string id] => counts.GetValueOrDefault(id);
+    /// <summary>
+    /// Bumped whenever the stored amounts change. The server caches the encoded snapshot per revision, and this is the
+    /// only signal it needs to know the stock changed within the same revision (large stocks are expensive to encode).
+    /// </summary>
+    internal uint Version { get; private set; }
+
+    public bool CanAdd(IReadOnlyDictionary<string, int> amounts) =>
+        amounts.Keys.Distinct(StringComparer.OrdinalIgnoreCase).Count() == amounts.Count &&
+        amounts.All(p => !string.IsNullOrWhiteSpace(p.Key) && p.Value > 0 &&
+            (long)this[p.Key] + p.Value <= int.MaxValue);
+
+    public bool TryAdd(IReadOnlyDictionary<string, int> amounts)
+    {
+        if (!CanAdd(amounts)) { return false; }
+        foreach (var p in amounts) { counts[p.Key] = this[p.Key] + p.Value; }
+        if (amounts.Count > 0) { Version++; }
+        return true;
+    }
+
+    public bool CanTake(IReadOnlyDictionary<string, int> amounts) =>
+        amounts.Count > 0 && amounts.Keys.Distinct(StringComparer.OrdinalIgnoreCase).Count() == amounts.Count &&
+        amounts.All(p => p.Value > 0 && this[p.Key] >= p.Value);
+
+    public bool TryTake(IReadOnlyDictionary<string, int> amounts)
+    {
+        if (!CanTake(amounts)) { return false; }
+        foreach (var p in amounts)
+        {
+            int remaining = this[p.Key] - p.Value;
+            if (remaining == 0) { counts.Remove(p.Key); }
+            else { counts[p.Key] = remaining; }
+        }
+        Version++;
+        return true;
+    }
+
+    /// <summary>Counts rounds per ammo type in one pass; used on every load with up to <see cref="AmmoPlan.MaxRounds" /> rounds.</summary>
+    public static Dictionary<string, int> Count(IEnumerable<string> rounds)
+    {
+        var result = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (string id in rounds) { result[id] = result.GetValueOrDefault(id) + 1; }
+        return result;
+    }
+
+    public XElement Save() => new("Stock", counts.OrderBy(p => p.Key)
+        .Select(p => new XElement("Ammo", new XAttribute("id", p.Key), new XAttribute("count", p.Value))));
+
+    public void Load(XElement? element)
+    {
+        var restored = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var ammo in element?.Elements("Ammo") ?? Enumerable.Empty<XElement>())
+        {
+            string id = (string?)ammo.Attribute("id") ?? "";
+            int count = (int?)ammo.Attribute("count") ?? 0;
+            if (string.IsNullOrWhiteSpace(id) || count <= 0 || restored.ContainsKey(id))
+            {
+                throw new FormatException("Invalid or duplicate ammo stock entry.");
+            }
+            restored.Add(id, count);
+        }
+        counts.Clear();
+        foreach (var p in restored) { counts.Add(p.Key, p.Value); }
+        Version++;
+    }
+}

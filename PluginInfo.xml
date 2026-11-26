@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<PluginInfos notsyncedinmultiplayer="false" >
+  <MainAssemblyInfo assemblypath="%ModDir%/bin/Windows/Server/VanillaComponentsExpandedServer.dll" platforms="Windows" targets="Server" />
+  <MainAssemblyInfo assemblypath="%ModDir%/bin/Windows/Client/VanillaComponentsExpandedClient.dll" platforms="Windows" targets="Client" />
+
+  <MainAssemblyInfo assemblypath="%ModDir%/bin/Linux/Server/VanillaComponentsExpandedServer.dll" platforms="Linux" targets="Server" />
+  <MainAssemblyInfo assemblypath="%ModDir%/bin/Linux/Client/VanillaComponentsExpandedClient.dll" platforms="Linux" targets="Client" />
+
+  <MainAssemblyInfo assemblypath="%ModDir%/bin/Mac/Server/VanillaComponentsExpandedServer.dll" platforms="Mac" targets="Server" />
+  <MainAssemblyInfo assemblypath="%ModDir%/bin/Mac/Client/VanillaComponentsExpandedClient.dll" platforms="Mac" targets="Client" />
+</PluginInfos>

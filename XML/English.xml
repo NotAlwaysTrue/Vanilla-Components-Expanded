@@ -1,14 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
 <infotexts language="English" nowhitespace="false" translatedname="English">
-  <Vanilla_Components_Expanded.SRW_ModeSwitchKey.DisplayName>Mode Switch Key</Vanilla_Components_Expanded.SRW_ModeSwitchKey.DisplayName>
-  <Vanilla_Components_Expanded.SRW_ModeSwitchKey.ToolTip>Set Mode Switch Key</Vanilla_Components_Expanded.SRW_ModeSwitchKey.ToolTip>
-  <Vanilla_Components_Expanded.SRW_ModeSwitchKey.DisplayCategory>SwitchableRangedWeapon</Vanilla_Components_Expanded.SRW_ModeSwitchKey.DisplayCategory>
-  <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayName>Fire Mode Switch Key</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayName>
-  <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.ToolTip>Set Fire Mode Switch Key</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.ToolTip>
-  <Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayCategory>SwitchableRangedWeapon</Vanilla_Components_Expanded.SRW_FireModeSwitchKey.DisplayCategory>
-  <Vanilla_Components_Expanded.SRW_CaculatorStepPerSecond.DisplayName>Trajectory Calculator Sample Rate</Vanilla_Components_Expanded.SRW_CaculatorStepPerSecond.DisplayName>
-  <Vanilla_Components_Expanded.SRW_CaculatorStepPerSecond.ToolTip>Set the sample rate for the trajectory calculator, higher values will produce better curves but reduce performance</Vanilla_Components_Expanded.SRW_CaculatorStepPerSecond.ToolTip>
-  <Vanilla_Components_Expanded.SRW_CaculatorStepPerSecond.DisplayCategory>TrajectoryCalculator</Vanilla_Components_Expanded.SRW_CaculatorStepPerSecond.DisplayCategory>
   <entityname.vceluacomponent>Lua Component</entityname.vceluacomponent>
   <entitydescription.vceluacomponent>Using Lua script for embedded programming.</entitydescription.vceluacomponent>
+  <entityname.vceammoloader>Universal Ammo Loader</entityname.vceammoloader>
+  <entitydescription.vceammoloader>Stores ammunition packages and loads magazines in the selected firing order.</entitydescription.vceammoloader>
+
+  <vce.ammoloader.plan>Sequence</vce.ammoloader.plan>
+  <vce.ammoloader.loadpreset>Load preset</vce.ammoloader.loadpreset>
+  <vce.ammoloader.delete>x</vce.ammoloader.delete>
+  <vce.ammoloader.topfirst>Top to bottom: firing order. Fill remaining space; new rounds fire first, excess stays in stock.</vce.ammoloader.topfirst>
+  <vce.ammoloader.savepreset>Save preset</vce.ammoloader.savepreset>
+  <vce.ammoloader.presetname>Name</vce.ammoloader.presetname>
+  <vce.ammoloader.clear>Clear</vce.ammoloader.clear>
+  <vce.ammoloader.unload>Unload to stock</vce.ammoloader.unload>
+  <vce.ammoloader.stock>Machine ammunition stock</vce.ammoloader.stock>
+  <vce.ammoloader.intake>Input</vce.ammoloader.intake>
+  <vce.ammoloader.intakehint>Deposited ammo packages are consumed and added to stock</vce.ammoloader.intakehint>
+  <vce.ammoloader.slotprev>Select previous magazine</vce.ammoloader.slotprev>
+  <vce.ammoloader.slotnext>Select next magazine</vce.ammoloader.slotnext>
+  <vce.ammoloader.startsection>Start section</vce.ammoloader.startsection>
+  <vce.ammoloader.endsection>End section</vce.ammoloader.endsection>
+  <vce.ammoloader.autorepeat>Auto repeat</vce.ammoloader.autorepeat>
+  <vce.ammoloader.autorepeathint>Repeat the main section until the magazine space is filled, will not affect Start Section or End Section</vce.ammoloader.autorepeathint>
+  <vce.ammoloader.output>Output</vce.ammoloader.output>
+  <vce.ammoloader.currentmagazine>Current Magazine</vce.ammoloader.currentmagazine>
+  <vce.ammoloader.outputhint>Packed ammunition appears here; drag it out or return it to the intake</vce.ammoloader.outputhint>
+  <vce.ammoloader.clickwithdraw>Click to withdraw one package, drag into the sequence or a preset to add it</vce.ammoloader.clickwithdraw>
+  <vce.ammoloader.withdraw>Click to withdraw one package</vce.ammoloader.withdraw>
+  <vce.ammoloader.nooutput>No separate pickup slots configured</vce.ammoloader.nooutput>
+  <vce.ammoloader.nopackage>No available package for this ammunition</vce.ammoloader.nopackage>
+  <vce.ammoloader.outputfull>Pickup slots are full or cannot accept this package</vce.ammoloader.outputfull>
+  <vce.ammoloader.check>Loading check</vce.ammoloader.check>
+  <vce.ammoloader.needstock>Required / Stock</vce.ammoloader.needstock>
+  <vce.ammoloader.targetslot>Magazine</vce.ammoloader.targetslot>
+  <vce.ammoloader.load>Load</vce.ammoloader.load>
+  <vce.ammoloader.confirmreplace>The current preset has unsaved changes. Replace it with the selected preset?</vce.ammoloader.confirmreplace>
+  <vce.ammoloader.nopresets>No compatible presets</vce.ammoloader.nopresets>
+  <vce.ammoloader.nomagazine>Insert a magazine</vce.ammoloader.nomagazine>
+  <vce.ammoloader.empty>Empty magazine</vce.ammoloader.empty>
+  <vce.ammoloader.unavailable>Machine broken or configuration invalid</vce.ammoloader.unavailable>
+  <vce.ammoloader.syncing>Synchronizing stock</vce.ammoloader.syncing>
+  <vce.ammoloader.full>Magazine is full</vce.ammoloader.full>
+  <vce.ammoloader.invalidplan>Plan is empty or exceeds plan limits</vce.ammoloader.invalidplan>
+  <vce.ammoloader.incompatible>Plan contains incompatible ammunition</vce.ammoloader.incompatible>
+  <vce.ammoloader.notenough>Insufficient stock</vce.ammoloader.notenough>
+  <vce.ammoloader.ready>Ready to load</vce.ammoloader.ready>
+  <vce.ammoloader.invalidpreset>Enter a name and a valid plan</vce.ammoloader.invalidpreset>
+  <vce.ammoloader.saved>Preset saved</vce.ammoloader.saved>
+  <vce.ammoloader.addhint>Add ammunition from stock below</vce.ammoloader.addhint>
+  <vce.ammoloader.rounds>rounds</vce.ammoloader.rounds>
+  <vce.ammoloader.types>types</vce.ammoloader.types>
+  <vce.ammoloader.allstock>All stock</vce.ammoloader.allstock>
+  <vce.ammoloader.availableammo>Available ammo</vce.ammoloader.availableammo>
+  <vce.ammoloader.stored>Stored</vce.ammoloader.stored>
+  <vce.ammoloader.supplied>Supply</vce.ammoloader.supplied>
+  <vce.ammoloader.stockandsupply>Stock [stock] + Supply [supply]</vce.ammoloader.stockandsupply>
+  <vce.ammoloader.supplyhint>Supply counts use the reserve remaining after the current plan. Ammo types from the same supply share a reserve; their counts cannot be added together.</vce.ammoloader.supplyhint>
+  <vce.ammoloader.supplycost>Supply cost / reserve</vce.ammoloader.supplycost>
+  <vce.ammoloader.supplyerror>Invalid supply configuration; only stored ammunition is available</vce.ammoloader.supplyerror>
+  <vce.ammoloader.compatiblestock>Compatible stock</vce.ammoloader.compatiblestock>
+  <vce.ammoloader.allpresets>All presets</vce.ammoloader.allpresets>
+  <vce.ammoloader.compatiblepresets>Compatible presets</vce.ammoloader.compatiblepresets>
+  <vce.ammoloader.builtin>Mod preset | read only</vce.ammoloader.builtin>
+  <vce.ammoloader.unsaved>Unsaved</vce.ammoloader.unsaved>
+  <vce.ammoloader.savedstate>Saved</vce.ammoloader.savedstate>
+  <vce.ammoloader.emptyplan>Empty plan: add ammunition</vce.ammoloader.emptyplan>
+  <vce.ammoloader.emptystock>No available stock: deposit ammo packages below</vce.ammoloader.emptystock>
+  <vce.ammoloader.remove>Delete</vce.ammoloader.remove>
+  <vce.ammoloader.dragorder>Drag the name to reorder</vce.ammoloader.dragorder>
+  <vce.ammoloader.upload>Upload</vce.ammoloader.upload>
+  <vce.ammoloader.uploadhint>Send this local preset to the preset list</vce.ammoloader.uploadhint>
+  <vce.ammoloader.localpreset>Local preset | not in the list yet</vce.ammoloader.localpreset>
 </infotexts>

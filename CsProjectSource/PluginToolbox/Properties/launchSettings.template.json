@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Launch Barotrauma": {
+      "commandName": "Executable",
+      "executablePath": "{{BarotraumaExePath}}"
+    },
+    "Build Release": {
+      "commandName": "Project",
+      "commandLineArgs": "--build"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ArmorPrefabs>
+  <!--
+  Register the XML with an <ArmorPrefab file="..." /> entry in the content
+  package and use an existing item's identifier for each armor entry.
+  Wrap an entry in <Override> to replace a prefab from an earlier package.
+
+  Target identifiers can be affliction IDs, affliction types, or "Any".
+  Worn armor is processed in this order: Head, OuterClothes, InnerClothes.
+  Each carrier processes its insert before its shell. Penetration and damage
+  carry over to the next layer. An item equipped in multiple slots counts once.
+  A helmet covering the body or clothing covering the head must declare the
+  hit limb in ProtectionAreas for that slot to participate.
+  Without plateposition, slots use the legacy layout: head/torso/waist 0,
+  arms/hands 1, thighs 2, and no insert for lower legs/feet.
+  maxcondition defaults to the item's maximum when omitted.
+  The optional Corrections group applies before the layer resolves the hit.
+  For Custom, wear is (target strength / divisor) * (maxcondition / maxhits).
+  RicochetSound is used in single-player and defaults to the game's ricochet sound.
+
+  <ArmorPrefab identifier="sampleitemid" type="Custom" level="4"
+    ricochetchance="0.15" forcepenoverride="2" penresistance="0.8"
+    aftereffectmultiplier="0.8" clamppen="false"
+    maxhits="60" maxcondition="100" ignoredamage="false"
+    isplatecarrier="false" ishelmet="false" playsound="true" soundrange="1000">
+    <TargetIdentifiers>
+      <Affliction identifier="gunshotwound" />
+    </TargetIdentifiers>
+    <ProtectionAreas>
+      <Limb type="Torso" />
+      <Limb type="Waist" />
+    </ProtectionAreas>
+    <Corrections multiplier="0.1" enabled="false">
+      <Affliction identifier="blunttrauma" amount="1" multiplybymaxvitality="true" />
+    </Corrections>
+    <CustomExpression divisor="100" />
+    <RicochetSound file="%ModDir%/Sounds/ricochet.ogg" range="1000" />
+  </ArmorPrefab>
+  -->
+</ArmorPrefabs>

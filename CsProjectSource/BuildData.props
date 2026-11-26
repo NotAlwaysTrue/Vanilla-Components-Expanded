@@ -1,0 +1,33 @@
+<Project>
+  <PropertyGroup>
+    <!-- 
+    IMPORTANT: Don't make use of special (ie: spaces / : ; , \ < > ?) (periods "." are good) and non-english characters in the ModName.
+     -->    
+    <ModName>VanillaComponentsExpanded</ModName>
+    <RepositoryURL>https://github.com/NotAlwaysTrue/Vanilla-Components-Expanded</RepositoryURL>
+
+    <!-- 
+    Enables the use of Publicized assemblies in place of the standard Barotrauma assemblies, allowing access to members that were 
+    previously restricted by access modifiers. Enable only if you know what you are doing.
+     -->
+    <UsePublicizedAssemblies>true</UsePublicizedAssemblies>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Root of the mod: the parent of this folder. Barotrauma loads the mod straight from here. -->
+    <ModRootDir>$(MSBuildThisFileDirectory)..\</ModRootDir>
+
+    <!-- Compiled assemblies end up in <root>\bin\<Platform>\<Client|Server>\ -->
+    <ModOutputDir>$(ModRootDir)bin\$(PlatformName)\$(BuildTarget)</ModOutputDir>
+
+    <!-- Package files Barotrauma reads from the mod root. -->
+    <PluginInfoPath>$(ModRootDir)PluginInfo.xml</PluginInfoPath>
+    <FileListPath>$(ModRootDir)filelist.xml</FileListPath>
+
+    <!-- Fallback used when UserBuildData.props is missing. Assumes the mod lives in <install>\LocalMods\<ModName>. -->
+    <BarotraumaExePath Condition="'$(BarotraumaExePath)' == ''">$(ModRootDir)..\..\Barotrauma.exe</BarotraumaExePath>
+  </PropertyGroup>
+
+  <!-- Machine specific overrides (see UserBuildData.props.example). Ignored by git. -->
+  <Import Project="$(MSBuildThisFileDirectory)UserBuildData.props" Condition="Exists('$(MSBuildThisFileDirectory)UserBuildData.props')" />
+</Project>

@@ -1,0 +1,90 @@
+<Project>
+  <!--
+    launchSettings.json is plain JSON: Visual Studio and "dotnet run" read "executablePath"
+    verbatim and never expand "$(...)", so writing "$(BarotraumaExePath)" there makes the
+    "Launch Barotrauma" profile try to start a file literally called "$(BarotraumaExePath)".
+
+    Properties\launchSettings.template.json is the source of truth; this target expands
+    {{BarotraumaExePath}} with the value resolved by BuildData.props (UserBuildData.props
+    override, or the <repo>\..\..\Barotrauma.exe fallback) and writes
+    Properties\launchSettings.json, which is generated output - edit the template instead.
+  -->
+
+  <UsingTask TaskName="GenerateLaunchSettings" TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <TemplatePath ParameterType="System.String" Required="true" />
+      <OutputPath ParameterType="System.String" Required="true" />
+      <ExecutablePath ParameterType="System.String" Required="false" />
+      <GameDirectory ParameterType="System.String" Required="false" />
+    </ParameterGroup>
+
+    <Task>
+      <Code Type="Fragment" Language="cs">
+<![CDATA[
+const string token = "{{BarotraumaExePath}}";
+
+if (!System.IO.File.Exists(TemplatePath))
+{
+    Log.LogError("Launch settings template not found: " + TemplatePath);
+    return false;
+}
+
+string gameRoot = (GameDirectory ?? string.Empty).TrimEnd('\\');
+string repoRoot = gameRoot.Length == 0 ? "<repo>" : System.IO.Path.GetFullPath(gameRoot);
+string exePath = (ExecutablePath ?? string.Empty).Trim().Trim('"');
+if (exePath.Length == 0)
+{
+    Log.LogError("BarotraumaExePath is not set. Add it to " + repoRoot + "\\CsProjectSource\\UserBuildData.props " +
+                 "(copy UserBuildData.props.example) so the 'Launch Barotrauma' profile knows where the game is.");
+    return false;
+}
+
+// A directory is a common slip; accept it and append the executable name.
+if (System.IO.Directory.Exists(exePath))
+{
+    exePath = System.IO.Path.Combine(exePath, "Barotrauma.exe");
+}
+
+exePath = exePath.Replace('/', System.IO.Path.DirectorySeparatorChar);
+string fullPath = System.IO.Path.GetFullPath(exePath);
+
+if (!System.IO.File.Exists(fullPath))
+{
+    Log.LogWarning("BarotraumaExePath points to a file that does not exist: " + fullPath +
+                   ". The 'Launch Barotrauma' launch profile will fail to start until it is fixed.");
+}
+
+// JSON needs backslashes escaped.
+string json = System.IO.File.ReadAllText(TemplatePath).Replace(token, fullPath.Replace("\\", "\\\\"));
+
+System.Action<string, string> save = delegate (string path, string text)
+{
+    if (System.IO.File.Exists(path) &&
+        System.IO.File.ReadAllText(path).Replace("\r\n", "\n") == text.Replace("\r\n", "\n"))
+    {
+        return;
+    }
+
+    string directory = System.IO.Path.GetDirectoryName(path);
+    if (!System.IO.Directory.Exists(directory)) { System.IO.Directory.CreateDirectory(directory); }
+
+    System.IO.File.WriteAllText(path, text, new System.Text.UTF8Encoding(false));
+    Log.LogMessage(MessageImportance.Normal, "Generated " + path + " (executablePath: " + fullPath + ")");
+};
+
+save(OutputPath, json);
+]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="GenerateLaunchSettings" BeforeTargets="BeforeBuild"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <GenerateLaunchSettings TemplatePath="$(MSBuildProjectDirectory)\Properties\launchSettings.template.json"
+                            OutputPath="$(MSBuildProjectDirectory)\Properties\launchSettings.json"
+                            ExecutablePath="$(BarotraumaExePath)"
+                            GameDirectory="$(ModRootDir)" />
+  </Target>
+
+</Project>
