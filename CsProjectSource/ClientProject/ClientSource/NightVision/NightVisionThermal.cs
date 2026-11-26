@@ -39,10 +39,12 @@ internal sealed class NightVisionThermal : IDisposable
             candidates.Sort(static (a, b) => a.Distance.CompareTo(b.Distance));
             for (int i = 0; i < Math.Min(limit, candidates.Count); i++)
             {
-                var anim = candidates[i].Target.AnimController;
+                var target = candidates[i].Target;
+                var anim = target.AnimController;
                 foreach (var limb in anim.Limbs)
                 {
-                    if (limb.Hidden || limb.IsSevered || (limb.Mass < 0.5f && limb != anim.MainLimb)) continue;
+                    if (limb.Hidden || limb.IsSevered) continue;
+                    if (!target.IsHuman && limb != anim.MainLimb && limb.Mass < 0.5f) continue;
                     outlines.Add(new(limb.WorldPosition, ConvertUnits.ToDisplayUnits(limb.body.GetSize()), -limb.body.Rotation));
                 }
             }

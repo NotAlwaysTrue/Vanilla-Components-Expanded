@@ -17,7 +17,8 @@ float3 Tint, LineTint;
 float luminance(float3 color) { return dot(color, float3(0.299, 0.587, 0.114)); }
 float bright(float2 uv) { return max(0, luminance(tex2D(Scene, saturate(uv)).rgb) - 0.55); }
 
-float4 NightPixel(float4 color : COLOR0, float2 uv : TEXCOORD0) : COLOR_TARGET
+// Keep SpriteBatch's full output signature so DirectX reads UVs from register 2.
+float4 NightPixel(float4 position : SV_Position, float4 color : COLOR0, float2 uv : TEXCOORD0) : COLOR_TARGET
 {
     float2 center = uv * 2 - 1;
     float r2 = dot(center, center);
