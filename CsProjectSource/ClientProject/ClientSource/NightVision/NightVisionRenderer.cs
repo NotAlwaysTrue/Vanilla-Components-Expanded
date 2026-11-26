@@ -16,13 +16,11 @@ internal static class NightVisionRenderer
     private static readonly NightVisionThermal thermal = new();
     private static GraphicsDevice? device;
     private static Effect? effect;
+    private static BlendState? lightFloorBlend;
     private static bool fallback;
     private static Settings settings;
     private static float blend;
     private static bool hadThermal;
-
-    internal static float Ambient => blend > 0 && VanillaComponentsExpanded.VCEPlugin.NightVisionAmbient.Value
-        ? Math.Clamp(settings.Ambient * blend, 0, 1) : 0;
 
     internal static void Prepare(GameScreen screen, GraphicsDevice graphics, SpriteBatch batch, double dt)
     {
@@ -36,6 +34,14 @@ internal static class NightVisionRenderer
         {
             thermal.Dispose();
             effect?.Dispose();
+            lightFloorBlend?.Dispose();
+            lightFloorBlend = new BlendState
+            {
+                ColorSourceBlend = Blend.One,
+                ColorDestinationBlend = Blend.One,
+                ColorBlendFunction = BlendFunction.Max,
+                ColorWriteChannels = ColorWriteChannels.Red | ColorWriteChannels.Green | ColorWriteChannels.Blue
+            };
             device = graphics;
             try
             {
@@ -56,6 +62,17 @@ internal static class NightVisionRenderer
         if (useThermal && nv != null) thermal.Prepare(graphics, batch, screen.Cam, nv, fallback);
         else if (!useThermal && hadThermal) thermal.Dispose();
         hadThermal = useThermal;
+    }
+
+    internal static void ApplyLightFloor(SpriteBatch batch)
+    {
+        if (blend <= 0 || settings.Ambient <= 0 || !VanillaComponentsExpanded.VCEPlugin.NightVisionAmbient.Value) return;
+
+        float floor = Math.Clamp(settings.Ambient * blend, 0, 1);
+        var area = batch.GraphicsDevice.Viewport.Bounds;
+        batch.Begin(blendState: lightFloorBlend);
+        try { batch.Draw(GUI.WhiteTexture, area, new Color(floor, floor, floor)); }
+        finally { batch.End(); }
     }
 
     internal static RenderTarget2D Composite(GameScreen screen, SpriteBatch batch)
@@ -139,6 +156,8 @@ internal static class NightVisionRenderer
         NightVision.ClearWearers();
         effect?.Dispose();
         effect = null;
+        lightFloorBlend?.Dispose();
+        lightFloorBlend = null;
         device = null;
         thermal.Dispose();
         blend = 0;
