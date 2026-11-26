@@ -86,7 +86,7 @@
     </VirtualizedProjectile>
   </Item>
 
-  <Item identifier="vceammoloader" name="" category="Machine" tags="vceammoloader,donttakeitems,dontsellitems" scale="0.5">
+  <Item identifier="wip_vceammoloader" name="" category="Machine" tags="vceammoloader,donttakeitems,dontsellitems" scale="0.5">
     <Sprite texture="Content/Items/Fabricators/FabricatorsAndDeconstructors.png" sourcerect="0,624,336,400" depth="0.8" />
     <AmmoLoader inputcontainerindex="0" outputcontainerindex="1" targetcontainerindex="2" canbeselected="true" msg="ItemMsgInteractSelect">
       <GuiFrame relativesize="0.6,0.62" minsize="700,470" anchor="Center" style="ItemUI" />
@@ -102,7 +102,7 @@
     </ItemContainer>
   </Item>
 
-  <Item name="" identifier="vceportableammoloader" maxstacksize="8" maxstacksizecharacterinventory="2" scale="0.5" category="Weapon" tags="smallitem" impactsoundtag="impact_metal_light">
+  <Item name="" identifier="wip_vceportableammoloader" maxstacksize="8" maxstacksizecharacterinventory="2" scale="0.5" category="Weapon" tags="smallitem" impactsoundtag="impact_metal_light">
     <PreferredContainer primary="assaultrifle" minamount="1" maxamount="1" spawnprobability="1"/>
     <PreferredContainer primary="armcab" secondary="secarmcab"/>
     <InventoryIcon texture="Content/Items/InventoryIconAtlas.png" sourcerect="960,960,64,64" />
