@@ -31,10 +31,12 @@ internal static class GuidanceContacts
 
     internal static Entity? Scan(Item source, Character? user, Submarine? friendlySub, Vector2 origin,
         float range, GuidanceMode sensor, bool passive = false, Vector2 direction = default, float minDot = -1,
-        bool characters = true, bool vessels = true, bool items = true, bool interiorOnly = false)
+        bool characters = true, bool vessels = true, bool items = true, bool interiorOnly = false,
+        bool requireVisibility = false)
     {
         Entity? best = null;
         float bestDistance = range * range;
+        bool checkVisibility = requireVisibility || sensor is GuidanceMode.ActiveImaging or GuidanceMode.ActiveInfrared;
         void Consider(Entity target, float audible = float.PositiveInfinity)
         {
             if (target == source || target == user || target.Removed ||
@@ -49,7 +51,7 @@ internal static class GuidanceContacts
             float d = delta.LengthSquared();
             if (d < 1 || d >= bestDistance || d > audible * audible ||
                 minDot > -1 && Vector2.Dot(delta, direction) < MathF.Sqrt(d) * minDot ||
-                sensor is GuidanceMode.ActiveImaging or GuidanceMode.ActiveInfrared && !Visible(origin, target)) return;
+                checkVisibility && !Visible(origin, target)) return;
             bestDistance = d;
             best = target;
         }

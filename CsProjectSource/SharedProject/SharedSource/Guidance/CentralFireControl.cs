@@ -30,6 +30,7 @@ public sealed class CentralFireControl : Powered
         link ??= item.GetComponent<GuidanceDataLink>();
         if (link == null) return;
         var previous = link.Track;
+        var previousIllumination = link.Illumination;
         link.Track = link.Illumination = null;
         if (item.Condition <= 0 || PowerConsumption > 0 && Voltage < MinVoltage) return;
 
@@ -66,17 +67,31 @@ public sealed class CentralFireControl : Powered
                 cone = Math.Max(cone, Sonar.DirectionalPingDotProduct);
             }
         }
-        Entity? target = GuidanceContacts.Scan(item, item.GetRootInventoryOwner() as Character, item.Submarine, origin, range, GuidanceMode.ActiveSonar,
-            passive, forward, cone, characters, vessels, items, sonar?.DetectSubmarineWalls == true);
+        Entity? Scan(bool requireVisibility = false) => GuidanceContacts.Scan(item, item.GetRootInventoryOwner() as Character,
+            item.Submarine, origin, range, GuidanceMode.ActiveSonar, passive, forward, cone, characters, vessels, items,
+            sonar?.DetectSubmarineWalls == true, requireVisibility);
+
+        Entity? target = Scan();
         if (target == null) return;
-        Vector2 position = target.WorldPosition;
         double now = Timing.TotalTime;
-        Vector2 velocity = previous is { } old && old.Target == target && now > old.Stamp
-            ? (position - old.Position) / (float)(now - old.Stamp) : Vector2.Zero;
-        var track = new GuidanceTrack(target, position, velocity, now, GuidanceMode.DataLink);
+        GuidanceTrack MakeTrack(Entity contact, GuidanceTrack? last, GuidanceMode mode)
+        {
+            Vector2 position = contact.WorldPosition;
+            Vector2 velocity = last is { } old && old.Target == contact && now > old.Stamp
+                ? (position - old.Position) / (float)(now - old.Stamp) : Vector2.Zero;
+            return new GuidanceTrack(contact, position, velocity, now, mode);
+        }
+
+        var track = MakeTrack(target, previous, GuidanceMode.DataLink);
         link.Track = track;
         if ((illuminationMode == GuidanceMode.SemiActiveSonar && !passive) ||
             (illuminationMode == GuidanceMode.SemiActiveLaser && GuidanceContacts.Visible(origin, target)))
+        {
             link.Illumination = track with { Mode = illuminationMode };
+        }
+        else if (illuminationMode == GuidanceMode.SemiActiveLaser && Scan(requireVisibility: true) is { } visible)
+        {
+            link.Illumination = MakeTrack(visible, previousIllumination, illuminationMode);
+        }
     }
 }
