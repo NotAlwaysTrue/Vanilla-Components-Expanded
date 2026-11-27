@@ -15,21 +15,33 @@ using VCE_VirtualizedMagazine;
 
 namespace VanillaComponentsExpanded;
 
+internal enum VceNetworkHeader
+{
+    Trace = 0,
+    Impact = 1,
+    AirburstAimDistance = 2,
+    GuidanceCursor = 3
+}
 
 public partial class VCEPlugin : IBarotraumaPlugin
 {
+    internal static readonly IGameNetwork Network = PluginServiceProvider.GetService<IGameNetwork>();
     public static readonly IDebugConsole DebugConsole = PluginServiceProvider.GetService<IDebugConsole>();
     public static readonly ISimpleHookService HookService = PluginServiceProvider.GetService<ISimpleHookService>();
     public static readonly ISettingsService SettingsService = PluginServiceProvider.GetService<ISettingsService>();
     public static readonly IContentFileRegistrar ContentFileRegistrar = PluginServiceProvider.GetService<IContentFileRegistrar>();
     public static readonly IItemComponentRegistrar ItemComponentRegistrar = PluginServiceProvider.GetService<IItemComponentRegistrar>();
 
+    internal static BooleanSetting NightVisionAmbient { get; private set; } = null!;
     private static Harmony harmony;
 
     private static readonly Type[] ictypes =
     {
         typeof(SwitchableRangedWeapon), typeof(BackpackFedWeapon), typeof(TrajectoryCalculator),
         typeof(VirtualizedMagazine), typeof(VirtualizedMagazineFactory), typeof(VirtualizedMagazineLoader), typeof(VirtualizedProjectile), typeof(VirtualizedAmmoStorage),
+        typeof(VCE_Airburst.AirburstProjectile), typeof(VCE_NightVision.NightVision),
+        typeof(VCE_Guidance.GuidedProjectile), typeof(VCE_Guidance.GuidanceDataLink),
+        typeof(VCE_Guidance.GuidanceThruster), typeof(VCE_Guidance.CentralFireControl),
         typeof(ActiveProtectionSystem), typeof(AmmoLoader)
     };
 
@@ -39,7 +51,20 @@ public partial class VCEPlugin : IBarotraumaPlugin
         ContentFileRegistrar.RegisterContentFile<MagazinePrefabFile>();
         ContentFileRegistrar.RegisterContentFile<ArmorPrefabFile>();
         ItemComponentRegistrar.RegisterItemComponents(ictypes);
-        VirtualShotNetwork.Register();
+        Network.RegisterNetworkHeaders<VceNetworkHeader>();
+#if CLIENT
+        VirtualShotNetwork.RegisterHandlers();
+#else
+        VCE_Airburst.AirburstNetwork.RegisterHandler();
+        VCE_Guidance.GuidanceDataLink.RegisterHandler();
+#endif
+        var ambient = new BooleanSetting("vce.nightvision.ambient".ToIdentifier(), true, TextManager.Get("vce.nightvision.ambient"))
+        {
+            ShowInUI = true,
+            SyncMode = SettingSyncMode.ServerAuthority
+        };
+        SettingsService.RegisterSetting(ambient);
+        NightVisionAmbient = SettingsService.RetrieveSetting<BooleanSetting>(ambient.Identifier);
         InitProjectSpecific();
     }
 
@@ -69,6 +94,7 @@ public partial class VCEPlugin : IBarotraumaPlugin
         HookService.RegisterHook<PluginRoundEndedDelegate>(APSHooks.OnRoundEnded);
 #if CLIENT
         HookService.RegisterHook<PluginRoundEndedDelegate>(OwnerTraceHistory.Clear);
+        HookService.RegisterHook<PluginRoundEndedDelegate>(VCE_NightVision.NightVisionRenderer.EndRound);
 #endif
     }
 
@@ -78,6 +104,8 @@ public partial class VCEPlugin : IBarotraumaPlugin
         HookService.DeregisterHook<PluginRoundEndedDelegate>(APSHooks.OnRoundEnded);
 #if CLIENT
         HookService.DeregisterHook<PluginRoundEndedDelegate>(OwnerTraceHistory.Clear);
+        HookService.DeregisterHook<PluginRoundEndedDelegate>(VCE_NightVision.NightVisionRenderer.EndRound);
+        VCE_NightVision.NightVisionRenderer.Reset();
 #endif
     }
 }

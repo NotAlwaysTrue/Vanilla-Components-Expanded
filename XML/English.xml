@@ -71,4 +71,9 @@
   <vce.ammoloader.upload>Upload</vce.ammoloader.upload>
   <vce.ammoloader.uploadhint>Send this local preset to the preset list</vce.ammoloader.uploadhint>
   <vce.ammoloader.localpreset>Local preset | not in the list yet</vce.ammoloader.localpreset>
+  <entityname.vcenightvisiontest>VCE Test Night Vision Goggles</entityname.vcenightvisiontest>
+  <entitydescription.vcenightvisiontest>Wear to enable night vision.</entitydescription.vcenightvisiontest>
+  <entityname.vcenightvisionlamp>VCE Test Room Light</entityname.vcenightvisionlamp>
+  <entitydescription.vcenightvisionlamp>Switchable room light for comparing night vision in light and darkness.</entitydescription.vcenightvisionlamp>
+  <vce.nightvision.ambient>Allow night vision to raise ambient light</vce.nightvision.ambient>
 </infotexts>

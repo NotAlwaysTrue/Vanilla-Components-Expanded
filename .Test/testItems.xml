@@ -54,4 +54,40 @@
     <VirtualizedAmmoStorage projectileidentifier="shotgunshellblunt" />
     <Holdable slots="Any,RightHand,LeftHand" handle1="0,0" msg="ItemMsgPickUpSelect" />
   </Item>
+  <Item identifier="vceairbursttestgun" name="VCE Airburst Test Gun" variantof="revolver" />
+  <Item identifier="vceairbursttestround" name="VCE Airburst Test Round" category="Weapon" tags="smallitem,revolverammo,handheldammo">
+    <Sprite texture="Content/Items/Weapons/weapons_new.png" sourcerect="146,157,21,44" depth="0.54" />
+    <Body width="6" height="3" density="10" />
+    <Pickable slots="Any" />
+    <AirburstProjectile launchimpulse="40" removeonhit="true" maxlifetime="15">
+      <StatusEffect type="OnImpact" target="This"><Explosion range="150" force="5"><Affliction identifier="explosiondamage" strength="10" /></Explosion></StatusEffect>
+    </AirburstProjectile>
+  </Item>
+  <Item identifier="vceguidancetestgun" name="VCE Guidance Test Gun" variantof="revolver">
+    <GuidanceDataLink role="Publisher" channel="test" manualmode="MLOS" />
+    <CentralFireControl maxrange="8000" illumination="SemiActiveSonar" />
+  </Item>
+  <Item identifier="vceguidancetestround" name="VCE Guided Test Round" category="Weapon" tags="smallitem,revolverammo,handheldammo">
+    <Sprite texture="Content/Items/Weapons/weapons_new.png" sourcerect="146,157,21,44" depth="0.54" />
+    <Body width="6" height="3" density="10" />
+    <Pickable slots="Any" />
+    <GuidedProjectile launchimpulse="15" removeonhit="true">
+      <guidance mode="MLOS|DataLink|ActiveSonar" turnrate="75" maxlifetime="12" />
+      <Attack><Affliction identifier="internaldamage" strength="10" /></Attack>
+    </GuidedProjectile>
+    <GuidanceDataLink role="Receiver" channel="test" />
+    <GuidanceThruster maxthrust="3" fuelconsumption="2" />
+  </Item>
+  <Item identifier="vcenightvisiontest" name="" category="Equipment" tags="smallitem" scale="0.5">
+    <InventoryIcon texture="Content/Items/JobGear/TalentGear.png" sourcerect="0,224,63,31" />
+    <Sprite texture="Content/Items/JobGear/TalentGear.png" sourcerect="0,224,63,31" depth="0.55" />
+    <Body width="70" height="24" density="15" />
+    <Wearable slots="Any,Head">
+      <sprite texture="Content/Items/JobGear/TalentGear.png" limb="Head" inheritlimbdepth="true" inheritscale="true" ignorelimbscale="true" scale="0.65" sourcerect="1,192,64,31" origin="0.4,0.5" />
+    </Wearable>
+    <NightVision gain="2.5" ambientboost="0.25" bloom="0.15" thermalMode="Off" />
+  </Item>
+  <Item identifier="vcenightvisionlamp" name="" variantof="lamp">
+    <LightComponent powerconsumption="0" range="1400" />
+  </Item>
 </Items>

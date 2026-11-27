@@ -1,4 +1,5 @@
 using Barotrauma.Plugins;
+using VanillaComponentsExpanded;
 
 namespace VCE_VirtualizedMagazine;
 
@@ -42,41 +43,37 @@ internal struct VirtualShotImpact : INetSerializableStruct
 
 internal static class VirtualShotNetwork
 {
-    private enum Header { Trace, Impact }
-    private static readonly IGameNetwork network = PluginServiceProvider.GetService<IGameNetwork>();
-
-    internal static void Register()
-    {
-        network.RegisterNetworkHeaders<Header>();
 #if CLIENT
-        network.RegisterHandler<Header, VirtualShotTrace>(Header.Trace, VirtualizedProjectile.PlayTrace);
-        network.RegisterHandler<Header, VirtualShotImpact>(Header.Impact, VirtualizedProjectile.PlayImpact);
-#endif
+    internal static void RegisterHandlers()
+    {
+        VCEPlugin.Network.RegisterHandler<VceNetworkHeader, VirtualShotTrace>(VceNetworkHeader.Trace, VirtualizedProjectile.PlayTrace);
+        VCEPlugin.Network.RegisterHandler<VceNetworkHeader, VirtualShotImpact>(VceNetworkHeader.Impact, VirtualizedProjectile.PlayImpact);
     }
+#endif
 
 #if SERVER
     internal static void SendTrace(FiredRound round, Vector2 start, Vector2[] ends, int firstRay, TracePrediction? prediction)
     {
         var trace = new VirtualShotTrace { Round = round, Start = start, Ends = ends, FirstRay = firstRay };
-        Send(Header.Trace, trace, prediction?.ShooterId, trace with { Prediction = prediction });
+        Send(VceNetworkHeader.Trace, trace, prediction?.ShooterId, trace with { Prediction = prediction });
     }
 
     internal static void SendImpact(FiredRound round, ActionType result, Limb? limb, Entity? target, Vector2 position) =>
-        Send(Header.Impact, new VirtualShotImpact
+        Send(VceNetworkHeader.Impact, new VirtualShotImpact
         {
             Round = round, Position = position, TargetId = target?.ID ?? 0,
             LimbIndex = limb == null ? -1 : Array.IndexOf(limb.character.AnimController.Limbs, limb),
             Success = result == ActionType.OnSuccess
         });
 
-    private static void Send<T>(Header header, T message, ushort? shooterId = null, T ownerMessage = default)
+    private static void Send<T>(VceNetworkHeader header, T message, ushort? shooterId = null, T ownerMessage = default)
         where T : struct, INetSerializableStruct
     {
         foreach (var client in GameMain.Server.ConnectedClients)
         {
             if (!client.InGame || client.NeedsMidRoundSync) { continue; }
             bool isShooter = shooterId.HasValue && client.Character?.ID == shooterId.Value;
-            network.SendToClient(client, header, isShooter ? ownerMessage : message);
+            VCEPlugin.Network.SendToClient(client, header, isShooter ? ownerMessage : message);
         }
     }
 #endif

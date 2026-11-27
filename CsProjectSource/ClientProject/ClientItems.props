@@ -8,6 +8,11 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)..\Shaders\NightVision.DirectX_11.mgfx" LogicalName="VCE.NightVision.mgfx" Condition="'$(PlatformName)' == 'Windows'" />
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)..\Shaders\NightVision.OpenGL.mgfx" LogicalName="VCE.NightVision.mgfx" Condition="'$(PlatformName)' != 'Windows'" />
+  </ItemGroup>
+
   <Import Project="..\BuildData.props" />
 
   <Import Project="..\SharedProject\SharedProject.projitems" Label="Shared" />
